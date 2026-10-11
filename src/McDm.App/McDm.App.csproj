@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
@@ -9,7 +9,14 @@
     <RootNamespace>McDm.App</RootNamespace>
     <AssemblyName>MCDownloadManager</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <UseAppHost>true</UseAppHost>
+    <SatelliteResourceLanguages>en;tr</SatelliteResourceLanguages>
   </PropertyGroup>
+  <ItemGroup>
+    <!-- WinForms and WPF both define Application, Clipboard, MessageBox...: keep WinForms out of the implicit usings -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\McDm.Core\McDm.Core.csproj" />
   </ItemGroup>

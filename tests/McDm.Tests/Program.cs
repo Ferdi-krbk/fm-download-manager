@@ -226,22 +226,34 @@ await Test("file names: Content-Disposition, uniqueness, path traversal", async 
     Check(FileNames.Sanitize("CON.txt") == "_CON.txt", "reserved name not handled");
 });
 
+// ───────────── bridge helpers ─────────────
+async Task<(BridgeServer bridge, string token, string bb, HttpClient http)> StartBridge(DownloadManager m, BridgeHooks? hooks = null)
+{
+    var tokens = new TokenStore(Path.Combine(Tmp(), "bridge.token"));
+    var bridge = new BridgeServer(m, tokens, hooks);
+    await bridge.StartAsync(0);
+    return (bridge, tokens.Token, $"http://127.0.0.1:{bridge.Port}", new HttpClient());
+}
+
+HttpRequestMessage BReq(string bb, HttpMethod method, string path, string? token, string? originHeader = "chrome-extension://abcdef",
+                        string? host = null, object? body = null, bool extHeader = false)
+{
+    var r = new HttpRequestMessage(method, bb + path);
+    if (originHeader != null) r.Headers.TryAddWithoutValidation("Origin", originHeader);
+    if (token != null) r.Headers.TryAddWithoutValidation("X-MCDM-Token", token);
+    if (extHeader) r.Headers.TryAddWithoutValidation("X-MCDM-Extension", "chrome");
+    if (host != null) r.Headers.Host = host;
+    if (body != null) r.Content = JsonContent.Create(body);
+    return r;
+}
+
 await Test("bridge: origin/host enforcement and API contract", async () =>
 {
     var root = Tmp(); using var m = NewManager(root);
-    await using var bridge = new BridgeServer(m);
-    await bridge.StartAsync(0);
-    var bb = $"http://127.0.0.1:{bridge.Port}";
-    using var http = new HttpClient();
-
+    var (bridge, tok, bb, http) = await StartBridge(m);
+    await using var _b = bridge; using var _h = http;
     HttpRequestMessage Req(HttpMethod method, string path, string? originHeader = "chrome-extension://abcdef", string? host = null, object? body = null)
-    {
-        var r = new HttpRequestMessage(method, bb + path);
-        if (originHeader != null) r.Headers.TryAddWithoutValidation("Origin", originHeader);
-        if (host != null) r.Headers.Host = host;
-        if (body != null) r.Content = JsonContent.Create(body);
-        return r;
-    }
+        => BReq(bb, method, path, tok, originHeader, host, body);
 
     Check((await http.SendAsync(Req(HttpMethod.Get, "/ping", null))).StatusCode == HttpStatusCode.Forbidden, "no Origin must be rejected");
     Check((await http.SendAsync(Req(HttpMethod.Get, "/ping", "https://evil.example"))).StatusCode == HttpStatusCode.Forbidden, "web origin must be rejected");
@@ -257,7 +269,7 @@ await Test("bridge: origin/host enforcement and API contract", async () =>
     Check(pre.StatusCode == HttpStatusCode.NoContent, "preflight " + pre.StatusCode);
 
     Check((await http.SendAsync(Req(HttpMethod.Post, "/download", body: new { url = "file:///C:/Windows/win.ini" }))).StatusCode == HttpStatusCode.BadRequest, "file:// must be rejected");
-    Check((await http.SendAsync(Req(HttpMethod.Post, "/download", body: new { url = Base + "/file", kind = "video" }))).StatusCode == HttpStatusCode.NotImplemented, "video should be 501 for now");
+    Check((await http.SendAsync(Req(HttpMethod.Post, "/download", body: new { url = Base + "/file", kind = "video" }))).StatusCode == HttpStatusCode.NotImplemented, "video must be 501 while yt-dlp is unavailable");
     Check((await http.SendAsync(Req(HttpMethod.Post, "/action", body: new { id = "nope", action = "pause" }))).StatusCode == HttpStatusCode.BadRequest, "unknown id");
 
     var dl = await http.SendAsync(Req(HttpMethod.Post, "/download", body: new { url = Base + "/file", filename = "viaBridge.bin", kind = "file", segments = 6 }));
@@ -267,12 +279,202 @@ await Test("bridge: origin/host enforcement and API contract", async () =>
     await WaitFor(() =>
     {
         var s = http.SendAsync(Req(HttpMethod.Get, "/downloads")).Result.Content.ReadAsStringAsync().Result;
-        var el = JsonDocument.Parse(s).RootElement.EnumerateArray().First(e => e.GetProperty("id").GetString() == id);
-        status = el.GetProperty("status").GetString()!;
+        var el = JsonDocument.Parse(s).RootElement.GetProperty("items").EnumerateArray().First(e => e.GetProperty("id").GetString() == id);
+        status = el.GetProperty("state").GetString()!;
         return status is "completed" or "failed";
     }, 30, "bridge download");
     Check(status == "completed", "status " + status);
     Check(HashFile(Path.Combine(root, "dl", "viaBridge.bin")) == Hash(Big), "bridge download hash mismatch");
+});
+
+await Test("bridge: pairing token is required (missing/wrong -> 401, OPTIONS exempt, /ping minimal)", async () =>
+{
+    var root = Tmp(); using var m = NewManager(root);
+    var (bridge, tok, bb, http) = await StartBridge(m, new BridgeHooks { YtDlpAvailable = () => true, MinCaptureSizeMB = () => 5 });
+    await using var _b = bridge; using var _h = http;
+
+    foreach (var (method, path) in new[] { (HttpMethod.Get, "/downloads"), (HttpMethod.Post, "/download"), (HttpMethod.Post, "/action") })
+    {
+        var none = await http.SendAsync(BReq(bb, method, path, null, body: method == HttpMethod.Post ? new { url = Base + "/file" } : null));
+        Check(none.StatusCode == HttpStatusCode.Unauthorized, $"{path} without token: {none.StatusCode}");
+        var wrong = await http.SendAsync(BReq(bb, method, path, new string('0', 64), body: method == HttpMethod.Post ? new { url = Base + "/file" } : null));
+        Check(wrong.StatusCode == HttpStatusCode.Unauthorized, $"{path} with wrong token: {wrong.StatusCode}");
+    }
+    Check(m.Snapshot().Count == 0, "unauthenticated /download must not create a download");
+
+    var pre = await http.SendAsync(BReq(bb, HttpMethod.Options, "/download", null));
+    Check(pre.StatusCode == HttpStatusCode.NoContent, "OPTIONS must not need a token");
+    var allowed = string.Join(",", pre.Headers.GetValues("Access-Control-Allow-Headers"));
+    foreach (var h in new[] { "X-MCDM-Token", "X-MCDM-Extension", "X-MCDM-Extension-Id", "Content-Type" })
+        Check(allowed.Contains(h, StringComparison.OrdinalIgnoreCase), "preflight does not allow " + h);
+
+    var anon = JsonDocument.Parse(await (await http.SendAsync(BReq(bb, HttpMethod.Get, "/ping", null))).Content.ReadAsStringAsync()).RootElement;
+    var names = anon.EnumerateObject().Select(p => p.Name).OrderBy(x => x).ToArray();
+    Check(string.Join(",", names) == "name,paired,platform,version", "anonymous /ping must expose only name/platform/version/paired, got " + string.Join(",", names));
+    Check(!anon.GetProperty("paired").GetBoolean(), "anonymous ping must say paired:false");
+
+    var full = JsonDocument.Parse(await (await http.SendAsync(BReq(bb, HttpMethod.Get, "/ping", tok))).Content.ReadAsStringAsync()).RootElement;
+    Check(full.GetProperty("paired").GetBoolean(), "paired ping must say paired:true");
+    Check(full.GetProperty("ytDlpAvailable").GetBoolean(), "ytDlpAvailable should follow the hook");
+    Check(full.GetProperty("captureExtensions").GetArrayLength() > 10, "captureExtensions missing");
+    Check(full.GetProperty("minSizeMB").GetInt32() == 5 && full.TryGetProperty("active", out _) && full.TryGetProperty("version", out _), "ping fields");
+
+    // a wrong token on /ping degrades to the anonymous answer, never to an error that leaks anything
+    var bad = JsonDocument.Parse(await (await http.SendAsync(BReq(bb, HttpMethod.Get, "/ping", "deadbeef"))).Content.ReadAsStringAsync()).RootElement;
+    Check(!bad.GetProperty("paired").GetBoolean(), "wrong token must not be paired");
+});
+
+await Test("bridge: rejects web pages, Origin null, odd hosts and non-http(s) schemes even with a valid token", async () =>
+{
+    var root = Tmp(); using var m = NewManager(root);
+    var (bridge, tok, bb, http) = await StartBridge(m);
+    await using var _b = bridge; using var _h = http;
+
+    foreach (var origin in new[] { "null", "https://evil.example", "http://127.0.0.1:48213", "http://localhost", "file://", "chrome-extension://", "ftp://x" })
+    {
+        var r = await http.SendAsync(BReq(bb, HttpMethod.Post, "/download", tok, origin, body: new { url = Base + "/file" }));
+        Check(r.StatusCode == HttpStatusCode.Forbidden, $"Origin '{origin}' got {r.StatusCode}");
+        var p = await http.SendAsync(BReq(bb, HttpMethod.Options, "/download", null, origin));
+        Check(p.StatusCode == HttpStatusCode.Forbidden, $"preflight for '{origin}' got {p.StatusCode}");
+    }
+    // no Origin and no extension marker (e.g. a plain form post / curl) is refused
+    Check((await http.SendAsync(BReq(bb, HttpMethod.Post, "/download", tok, null, body: new { url = Base + "/file" }))).StatusCode == HttpStatusCode.Forbidden, "no Origin, no marker");
+    Check((await http.SendAsync(BReq(bb, HttpMethod.Options, "/download", tok, null, extHeader: true))).StatusCode == HttpStatusCode.Forbidden, "preflight without Origin");
+    foreach (var host in new[] { "evil.example", "127.0.0.1.evil.example", "192.168.1.5", "localhost.evil.test:48213" })
+        Check((await http.SendAsync(BReq(bb, HttpMethod.Get, "/ping", tok, host: host))).StatusCode == HttpStatusCode.Forbidden, "Host " + host);
+
+    foreach (var url in new[] { "file:///C:/Windows/win.ini", "ftp://example.com/a.bin", "javascript:alert(1)", "data:text/plain,hi", "\\\\server\\share\\a.bin", "C:\\Windows\\win.ini", "//example.com/a" })
+    {
+        var r = await http.SendAsync(BReq(bb, HttpMethod.Post, "/download", tok, body: new { url }));
+        Check(r.StatusCode == HttpStatusCode.BadRequest, $"url '{url}' got {r.StatusCode}");
+    }
+    Check((await http.SendAsync(BReq(bb, HttpMethod.Post, "/download", tok, body: new { url = "http://example.com/" + new string('a', 9000) }))).StatusCode == HttpStatusCode.BadRequest, "overlong url");
+    Check(m.Snapshot().Count == 0, "no download may be created by rejected requests");
+});
+
+await Test("bridge: replays the exact requests the extension sends (Chrome GET without Origin, POST with Origin)", async () =>
+{
+    var root = Tmp(); using var m = NewManager(root);
+    var (bridge, tok, bb, http) = await StartBridge(m);
+    await using var _b = bridge; using var _h = http;
+    string? seenBrowser = null; bool? seenPaired = null;
+    bridge.ExtensionSeen += e => { seenBrowser = e.Browser; seenPaired = e.Paired; };
+
+    // GET /ping?browser=chrome — headers exactly as background.js sets them, no Origin (Chrome drops it for host-permission GETs)
+    var ping = new HttpRequestMessage(HttpMethod.Get, bb + "/ping?browser=chrome");
+    ping.Headers.TryAddWithoutValidation("X-MCDM-Extension", "chrome");
+    ping.Headers.TryAddWithoutValidation("X-MCDM-Extension-Id", "abcdefghijklmnopabcdefghijklmnop");
+    var pr = await http.SendAsync(ping);
+    Check(pr.StatusCode == HttpStatusCode.OK, "ping w/o Origin " + pr.StatusCode);
+    Check(seenBrowser == "chrome" && seenPaired == false, $"wizard hook: {seenBrowser}/{seenPaired}");
+    ping = new HttpRequestMessage(HttpMethod.Get, bb + "/ping?browser=edge");
+    ping.Headers.TryAddWithoutValidation("X-MCDM-Extension", "edge");
+    ping.Headers.TryAddWithoutValidation("X-MCDM-Token", tok);
+    await http.SendAsync(ping);
+    Check(seenBrowser == "edge" && seenPaired == true && bridge.LastExtensionPaired, "paired ping must be reported");
+    ping = new HttpRequestMessage(HttpMethod.Get, bb + "/ping?browser=<script>");
+    ping.Headers.TryAddWithoutValidation("X-MCDM-Extension", "x");
+    await http.SendAsync(ping);
+    Check(seenBrowser == "unknown", "browser name must be whitelisted");
+
+    // preflight for the POST, as Chrome would send it
+    var pre = new HttpRequestMessage(HttpMethod.Options, bb + "/download");
+    pre.Headers.TryAddWithoutValidation("Origin", "chrome-extension://abcdefghijklmnopabcdefghijklmnop");
+    pre.Headers.TryAddWithoutValidation("Access-Control-Request-Method", "POST");
+    pre.Headers.TryAddWithoutValidation("Access-Control-Request-Headers", "content-type,x-mcdm-extension,x-mcdm-extension-id,x-mcdm-token");
+    var prr = await http.SendAsync(pre);
+    Check(prr.StatusCode == HttpStatusCode.NoContent, "preflight " + prr.StatusCode);
+    Check(prr.Headers.GetValues("Access-Control-Allow-Methods").Single().Contains("POST"), "allow methods");
+
+    // POST /download with the payload shape of sendToApp()
+    const string payload = """
+    {"url":"__U__/file","filename":"contract.bin","referer":"https://example.test/page","kind":"file",
+     "userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130","cookieHeader":"sid=abc123; pref=x",
+     "cookies":[{"name":"sid","value":"abc123","domain":"127.0.0.1","path":"/","secure":false,"expirationDate":1900000000},
+                {"name":"pref","value":"x","domain":"127.0.0.1","path":"/","secure":false,"expirationDate":0}]}
+    """;
+    var post = new HttpRequestMessage(HttpMethod.Post, bb + "/download")
+    { Content = new StringContent(payload.Replace("__U__", Base), Encoding.UTF8, "application/json") };
+    post.Headers.TryAddWithoutValidation("Origin", "chrome-extension://abcdefghijklmnopabcdefghijklmnop");
+    post.Headers.TryAddWithoutValidation("X-MCDM-Extension", "chrome");
+    post.Headers.TryAddWithoutValidation("X-MCDM-Extension-Id", "abcdefghijklmnopabcdefghijklmnop");
+    post.Headers.TryAddWithoutValidation("X-MCDM-Token", tok);
+    var resp = await http.SendAsync(post);
+    var body = JsonDocument.Parse(await resp.Content.ReadAsStringAsync()).RootElement;
+    Check(resp.StatusCode == HttpStatusCode.OK && body.GetProperty("ok").GetBoolean(), "extension requires {ok:true}: " + body);
+    var item = m.Find(body.GetProperty("id").GetString()!)!;
+    Check(item.Request.Referer == "https://example.test/page" && item.Request.UserAgent!.Contains("Chrome/130") && item.Request.CookieHeader == "sid=abc123; pref=x", "request fields not carried over");
+    Check(item.Request.Cookies?.Count == 2 && item.Request.Cookies[0].ExpirationDate == 1900000000, "cookie list not carried over");
+
+    var list = JsonDocument.Parse(await (await http.SendAsync(BReq(bb, HttpMethod.Get, "/downloads", tok))).Content.ReadAsStringAsync()).RootElement.GetProperty("items");
+    var row = list.EnumerateArray().First();
+    foreach (var f in new[] { "id", "name", "state", "total", "received", "speed" }) Check(row.TryGetProperty(f, out _), "downloads item lacks '" + f + "' (popup.js reads it)");
+    Check(row.GetProperty("state").GetString() is "probing" or "downloading" or "completed" or "queued", "state vocabulary: " + row.GetProperty("state"));
+    await WaitFor(() => item.Status == DownloadStatus.Completed, 30, "contract download");
+
+    var act = await http.SendAsync(BReq(bb, HttpMethod.Post, "/action", tok, body: new { id = item.Id, action = "remove" }));
+    Check(act.StatusCode == HttpStatusCode.OK && (await act.Content.ReadAsStringAsync()).Contains("\"ok\":true"), "remove action");
+});
+
+string? FindRepoFile(string rel)
+{
+    for (var d = new DirectoryInfo(AppContext.BaseDirectory); d != null; d = d.Parent)
+        if (File.Exists(Path.Combine(d.FullName, rel)) || Directory.Exists(Path.Combine(d.FullName, rel))) return Path.Combine(d.FullName, rel);
+    return null;
+}
+
+await Test("extension: real background.js intercepts, cancels browser download and hands it over (needs node)", async () =>
+{
+    var harness = FindRepoFile(Path.Combine("tests", "extension-harness", "harness.js"));
+    var extDir = FindRepoFile("extension");
+    Check(harness != null && extDir != null, "harness or extension folder not found");
+    string? node = null;
+    foreach (var cand in new[] { "node", "node.exe", @"C:\Program Files\nodejs\node.exe", "/usr/bin/node", "/usr/local/bin/node" })
+    {
+        try
+        {
+            using var probe = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(cand, "--version") { RedirectStandardOutput = true, UseShellExecute = false })!;
+            probe.WaitForExit(5000); if (probe.ExitCode == 0) { node = cand; break; }
+        }
+        catch { }
+    }
+    if (node == null) { Console.WriteLine("      (node not found: harness skipped)"); return; }
+
+    var root = Tmp(); using var m = NewManager(root);
+    var (bridge, tok, bb, http) = await StartBridge(m);
+    await using var _b = bridge; using var _h = http;
+
+    var psi = new System.Diagnostics.ProcessStartInfo(node) { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
+    psi.ArgumentList.Add(harness!); psi.ArgumentList.Add(bridge.Port.ToString()); psi.ArgumentList.Add(tok); psi.ArgumentList.Add(extDir!); psi.ArgumentList.Add(Base + "/file");
+    using var proc = System.Diagnostics.Process.Start(psi)!;
+    var outTask = proc.StandardOutput.ReadToEndAsync(); var errTask = proc.StandardError.ReadToEndAsync();
+    if (!proc.WaitForExit(60000)) { proc.Kill(true); throw new Exception("harness timed out"); }
+    var stdout = await outTask;
+    var line = stdout.Split('\n').FirstOrDefault(l => l.StartsWith("REPORT:"));
+    Check(line != null, "no report from harness: " + stdout + await errTask);
+    var rep = JsonDocument.Parse(line!["REPORT:".Length..]).RootElement;
+
+    var st0 = rep.GetProperty("statusUnpaired");
+    Check(st0.GetProperty("reachable").GetBoolean() && !st0.GetProperty("paired").GetBoolean() && !st0.GetProperty("online").GetBoolean(), "unpaired status: " + st0);
+    Check(!rep.GetProperty("interceptUnpaired").GetProperty("taken").GetBoolean() && rep.GetProperty("interceptUnpaired").GetProperty("suggested").GetBoolean(),
+          "an unpaired extension must leave the download to the browser");
+    Check(!rep.GetProperty("pairBad").GetProperty("ok").GetBoolean() && !rep.GetProperty("pairWrong").GetProperty("ok").GetBoolean(), "bad codes must not pair");
+    Check(rep.GetProperty("pairGood").GetProperty("ok").GetBoolean(), "good code must pair: " + rep.GetProperty("pairGood"));
+    Check(rep.GetProperty("statusPaired").GetProperty("online").GetBoolean(), "paired status must be online");
+    var took = rep.GetProperty("interceptPaired");
+    Check(took.GetProperty("taken").GetBoolean() && !took.GetProperty("suggested").GetBoolean(), "paired extension must take the download: " + took);
+    Check(rep.GetProperty("cancel").GetArrayLength() == 1 && rep.GetProperty("erase").GetArrayLength() == 1, "browser download must be cancelled and erased once");
+
+    var items = m.Snapshot();
+    Check(items.Count == 1, "expected exactly one download in the app, got " + items.Count);
+    var it = items[0];
+    Check(it.Request.Url == Base + "/file", "url");
+    Check(it.Request.Referer == "https://example.test/page", "referer");
+    Check(it.Request.UserAgent!.Contains("Chrome/130"), "user agent");
+    Check(it.Request.CookieHeader == "sid=abc123; pref=x" && it.Request.Cookies!.Count == 2, "cookies");
+    Check(it.Request.FileName == "contract.bin", "file name must be the basename, got " + it.Request.FileName);
+    await WaitFor(() => it.Status is DownloadStatus.Completed or DownloadStatus.Failed, 30, "intercepted download");
+    Check(it.Status == DownloadStatus.Completed && HashFile(it.SavePath) == Hash(Big), "intercepted download content");
 });
 
 Console.WriteLine($"\n{passed} passed, {failed} failed");

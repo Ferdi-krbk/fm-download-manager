@@ -65,6 +65,7 @@ public sealed class DownloadItem : ObservableBase
     private string? _error;
     private double _speed;
     private int _connections;
+    private string? _stage;
 
     public string Id { get; set; } = Guid.NewGuid().ToString("N")[..12];
     public DownloadRequest Request { get; set; } = new();
@@ -87,6 +88,8 @@ public sealed class DownloadItem : ObservableBase
     public DownloadStatus Status { get => _status; set => Set(ref _status, value); }
     public string? Error { get => _error; set => Set(ref _error, value); }
 
+    /// <summary>Free-form phase text for video downloads ("Merging…"); null for plain files.</summary>
+    [JsonIgnore] public string? Stage { get => _stage; set => Set(ref _stage, value); }
     [JsonIgnore] public double Speed { get => _speed; set => Set(ref _speed, value); }
     [JsonIgnore] public int ActiveConnections { get => _connections; set => Set(ref _connections, value); }
     [JsonIgnore] public double Progress => _total > 0 ? Math.Clamp((double)_downloaded / _total, 0, 1) : 0;

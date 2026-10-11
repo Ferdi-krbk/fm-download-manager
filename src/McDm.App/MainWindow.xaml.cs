@@ -27,7 +27,12 @@ public partial class MainWindow : Window
     // closing the window keeps the app (and the browser bridge) alive in the tray
     protected override void OnClosing(CancelEventArgs e)
     {
-        if (!_allowClose) { e.Cancel = true; Hide(); }
+        if (!_allowClose)
+        {
+            e.Cancel = true;
+            // WPF forbids changing Visibility while a window is closing: hide right after the close request unwinds
+            Dispatcher.BeginInvoke(new Action(Hide));
+        }
         base.OnClosing(e);
     }
 

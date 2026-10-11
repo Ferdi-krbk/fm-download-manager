@@ -1,0 +1,8 @@
+﻿bin/
+obj/
+*.user
+.vs/
+Tools/*.exe
+dist/
+publish/
+*.mcdm-part

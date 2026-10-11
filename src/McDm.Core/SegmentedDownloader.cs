@@ -1,0 +1,542 @@
+using System.Buffers;
+using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.Net;
+using System.Net.Http.Headers;
+using System.Runtime.ExceptionServices;
+using System.Text.Json;
+using Microsoft.Win32.SafeHandles;
+
+namespace McDm.Core;
+
+public sealed class EngineOptions
+{
+    public int MaxRetries { get; set; } = 6;
+    public TimeSpan ReadTimeout { get; set; } = TimeSpan.FromSeconds(30);
+    public int BufferSize { get; set; } = 64 * 1024;
+    /// <summary>Files smaller than this are fetched as a single stream.</summary>
+    public long MinSplitBytes { get; set; } = 2 * 1024 * 1024;
+    public long MinChunkBytes { get; set; } = 1024 * 1024;
+    public long MaxChunkBytes { get; set; } = 32L * 1024 * 1024;
+    public TimeSpan ThrottleBackoff { get; set; } = TimeSpan.FromSeconds(2);
+}
+
+public class DownloadException : Exception
+{
+    public DownloadException(string message, Exception? inner = null) : base(message, inner) { }
+}
+public sealed class FatalDownloadException : DownloadException
+{
+    public FatalDownloadException(string message, Exception? inner = null) : base(message, inner) { }
+}
+internal sealed class TransientException : Exception
+{
+    public TransientException(string message) : base(message) { }
+}
+internal sealed class ThrottledException : Exception
+{
+    public TimeSpan? RetryAfter { get; }
+    public ThrottledException(TimeSpan? retryAfter) : base("Server is throttling (429/503)") => RetryAfter = retryAfter;
+}
+
+internal sealed class ResumeState
+{
+    public long Total { get; set; }
+    public string? Validator { get; set; }
+    public bool Ranges { get; set; }
+    public List<Chunk> Chunks { get; set; } = new();
+}
+
+/// <summary>
+/// Multi-connection HTTP downloader. The file is cut into chunks that a pool of workers pulls from a queue
+/// (Range requests, pwrite-style writes into one pre-sized file). 429/503 shrinks the worker pool; chunk
+/// progress is persisted so downloads resume after pause, crash or restart.
+/// </summary>
+public sealed class SegmentedDownloader
+{
+    private static readonly object PathLock = new();
+    private readonly HttpClient _http;
+    private readonly EngineOptions _opt;
+
+    public SegmentedDownloader(HttpClient? http = null, EngineOptions? options = null)
+    {
+        _opt = options ?? new EngineOptions();
+        _http = http ?? CreateDefaultClient();
+    }
+
+    public static HttpClient CreateDefaultClient()
+    {
+        var handler = new SocketsHttpHandler
+        {
+            AllowAutoRedirect = false,                    // redirects are followed manually so cookies can be dropped cross-host
+            UseCookies = false,
+            AutomaticDecompression = DecompressionMethods.None, // Range + Content-Encoding do not mix
+            PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+            MaxConnectionsPerServer = 32,
+            ConnectTimeout = TimeSpan.FromSeconds(20),
+        };
+        return new HttpClient(handler, disposeHandler: true) { Timeout = Timeout.InfiniteTimeSpan };
+    }
+
+    // ───────────────────────── public entry point ─────────────────────────
+
+    public async Task RunAsync(DownloadItem item, int maxConnections, CancellationToken ct)
+    {
+        maxConnections = Math.Clamp(maxConnections, 1, 16);
+
+        var probe = await RetryAsync(() => ProbeAsync(item, ct), ct);
+        item.SupportsRanges = probe.Ranges;
+        item.TotalBytes = probe.Total;
+
+        ResumeState? state = string.IsNullOrEmpty(item.SavePath) ? null : ReadState(item.SavePath);
+        bool canResume = state != null && probe.Ranges && state.Ranges && state.Total == probe.Total
+                         && state.Validator == probe.Validator && File.Exists(PartPath(item.SavePath));
+        List<Chunk> chunks;
+        if (canResume)
+        {
+            chunks = state!.Chunks;
+        }
+        else
+        {
+            if (string.IsNullOrEmpty(item.SavePath)) AssignSavePath(item, probe.FileName);
+            else { TryDelete(PartPath(item.SavePath)); TryDelete(StatePath(item.SavePath)); }
+            chunks = PlanChunks(probe.Total, probe.Ranges, maxConnections);
+        }
+        item.FileName = Path.GetFileName(item.SavePath);
+
+        var part = PartPath(item.SavePath);
+        bool completed = false;
+        var handle = File.OpenHandle(part, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite, FileOptions.Asynchronous);
+        var ctx = new RunCtx
+        {
+            Item = item, Url = probe.Url, UseRange = probe.Ranges, Total = probe.Total,
+            Validator = probe.Validator, Chunks = chunks, Handle = handle,
+        };
+        using var stop = new CancellationTokenSource();
+        Task? progress = null;
+        try
+        {
+            if (probe.Total > 0 && RandomAccess.GetLength(handle) != probe.Total)
+                RandomAccess.SetLength(handle, probe.Total);
+
+            for (int i = 0; i < chunks.Count; i++) if (!chunks[i].IsComplete) ctx.Queue.Enqueue(i);
+            ctx.Throttles = new int[chunks.Count];
+            int workers = Math.Min(maxConnections, Math.Max(1, ctx.Queue.Count));
+            ctx.Active = workers;
+            ctx.Target = workers;
+
+            Persist(ctx, flush: false);
+            progress = ProgressLoopAsync(ctx, stop.Token);
+
+            using var wcts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            var tasks = Enumerable.Range(0, workers).Select(_ => Task.Run(async () =>
+            {
+                try { await WorkerAsync(ctx, wcts.Token); }
+                catch (OperationCanceledException) when (wcts.IsCancellationRequested) { }
+                catch (Exception ex)
+                {
+                    Interlocked.CompareExchange(ref ctx.Failure, ex, null);
+                    wcts.Cancel();
+                }
+            })).ToArray();
+            await Task.WhenAll(tasks);
+
+            if (ctx.Failure != null) ExceptionDispatchInfo.Capture(ctx.Failure).Throw();
+            ct.ThrowIfCancellationRequested();
+
+            completed = chunks.All(c => c.IsComplete);
+            if (!completed) throw new FatalDownloadException("Download ended with missing segments");
+        }
+        finally
+        {
+            stop.Cancel();
+            if (progress != null) { try { await progress; } catch { } }
+            UpdateProgress(ctx, 0);
+            if (!completed) Persist(ctx, flush: true);
+            handle.Dispose();
+        }
+
+        // finished: close handle (done above), move into place, drop state
+        long finalSize = chunks.Sum(c => c.Done);
+        item.TotalBytes = finalSize;
+        item.DownloadedBytes = finalSize;
+        item.ActiveConnections = 0;
+        item.Speed = 0;
+        try { File.Move(part, item.SavePath, overwrite: false); }
+        catch (IOException)
+        {
+            lock (PathLock)
+            {
+                item.SavePath = FileNames.Unique(item.Directory, Path.GetFileName(item.SavePath));
+                File.Move(part, item.SavePath, overwrite: false);
+            }
+            item.FileName = Path.GetFileName(item.SavePath);
+        }
+        TryDelete(StatePath(item.SavePath));
+        TryDelete(StatePath(Path.ChangeExtension(part, null) ?? ""));
+    }
+
+    // ───────────────────────── probing ─────────────────────────
+
+    private sealed record Probe(Uri Url, long Total, bool Ranges, string? Validator, string FileName);
+
+    private async Task<Probe> ProbeAsync(DownloadItem item, CancellationToken ct)
+    {
+        var (resp, url) = await SendAsync(item, new Uri(item.Request.Url), 0, 0, ct);
+        using (resp)
+        {
+            long total;
+            bool ranges;
+            switch (resp.StatusCode)
+            {
+                case HttpStatusCode.PartialContent:
+                    var len = resp.Content.Headers.ContentRange?.Length;
+                    ranges = len.HasValue;
+                    total = len ?? -1;
+                    break;
+                case HttpStatusCode.RequestedRangeNotSatisfiable: // empty file
+                    ranges = false;
+                    total = resp.Content.Headers.ContentRange?.Length ?? 0;
+                    break;
+                case HttpStatusCode.OK:
+                    ranges = false;
+                    total = resp.Content.Headers.ContentLength ?? -1;
+                    break;
+                default:
+                    ThrowForStatus(resp);
+                    throw new InvalidOperationException();
+            }
+
+            var cd = resp.Content.Headers.ContentDisposition;
+            string? name = (cd?.FileNameStar ?? cd?.FileName)?.Trim('"');
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                try { name = Uri.UnescapeDataString(Path.GetFileName(url.AbsolutePath)); } catch { name = null; }
+            }
+            string validator = resp.Headers.ETag?.Tag ?? resp.Content.Headers.LastModified?.ToString("R") ?? "";
+            return new Probe(url, total, ranges, validator.Length == 0 ? null : validator, FileNames.Sanitize(name));
+        }
+    }
+
+    // ───────────────────────── chunk planning ─────────────────────────
+
+    private List<Chunk> PlanChunks(long total, bool ranges, int connections)
+    {
+        if (total == 0) return new();
+        if (total < 0) return new() { new Chunk { Start = 0, End = -1 } };
+        if (!ranges || total < _opt.MinSplitBytes) return new() { new Chunk { Start = 0, End = total - 1 } };
+
+        long size = (long)Math.Ceiling(total / (connections * 4.0));
+        size = Math.Clamp(size, _opt.MinChunkBytes, _opt.MaxChunkBytes);
+        var list = new List<Chunk>();
+        for (long start = 0; start < total; start += size)
+            list.Add(new Chunk { Start = start, End = Math.Min(start + size, total) - 1 });
+        return list;
+    }
+
+    // ───────────────────────── workers ─────────────────────────
+
+    private sealed class RunCtx
+    {
+        public required DownloadItem Item;
+        public required Uri Url;
+        public required bool UseRange;
+        public required long Total;
+        public required string? Validator;
+        public required List<Chunk> Chunks;
+        public required SafeFileHandle Handle;
+        public ConcurrentQueue<int> Queue = new();
+        public int[] Throttles = Array.Empty<int>();
+        public int Active;
+        public int Target;
+        public Exception? Failure;
+        private long _lastReduce;
+        private readonly object _reduceLock = new();
+
+        public bool TryRetire()
+        {
+            while (true)
+            {
+                int a = Volatile.Read(ref Active);
+                if (a <= Volatile.Read(ref Target)) return false;
+                if (Interlocked.CompareExchange(ref Active, a - 1, a) == a) return true;
+            }
+        }
+
+        public void ReduceTarget()
+        {
+            lock (_reduceLock)
+            {
+                long now = Environment.TickCount64;
+                if (now - _lastReduce < 2000) return;
+                _lastReduce = now;
+                Volatile.Write(ref Target, Math.Max(1, Volatile.Read(ref Target) / 2));
+            }
+        }
+    }
+
+    private async Task WorkerAsync(RunCtx c, CancellationToken ct)
+    {
+        bool counted = true;
+        try
+        {
+            while (!ct.IsCancellationRequested)
+            {
+                if (c.TryRetire()) { counted = false; return; }
+                if (!c.Queue.TryDequeue(out int idx)) return;
+                try
+                {
+                    await DownloadChunkAsync(c, idx, ct);
+                }
+                catch (ThrottledException tex)
+                {
+                    if (Interlocked.Increment(ref c.Throttles[idx]) > _opt.MaxRetries * 2)
+                        throw new FatalDownloadException("Server keeps rejecting requests (429/503)");
+                    c.ReduceTarget();
+                    c.Queue.Enqueue(idx);
+                    await Task.Delay(tex.RetryAfter ?? _opt.ThrottleBackoff, ct);
+                }
+            }
+        }
+        finally
+        {
+            if (counted) Interlocked.Decrement(ref c.Active);
+        }
+    }
+
+    private async Task DownloadChunkAsync(RunCtx c, int idx, CancellationToken ct)
+    {
+        var chunk = c.Chunks[idx];
+        int attempt = 0;
+        while (true)
+        {
+            ct.ThrowIfCancellationRequested();
+            long before = chunk.Done;
+            try
+            {
+                await TransferAsync(c, chunk, ct);
+                return;
+            }
+            catch (Exception ex) when (ex is HttpRequestException or IOException or TransientException
+                                       || (ex is OperationCanceledException && !ct.IsCancellationRequested))
+            {
+                if (chunk.Done > before) attempt = 0;
+                if (++attempt > _opt.MaxRetries)
+                    throw new FatalDownloadException($"Segment failed after {_opt.MaxRetries} retries: {ex.Message}", ex);
+                await Task.Delay(Backoff(attempt), ct);
+            }
+        }
+    }
+
+    private async Task TransferAsync(RunCtx c, Chunk chunk, CancellationToken ct)
+    {
+        long pos = chunk.Start + chunk.Done;
+        long? rangeEnd = c.UseRange && chunk.End >= 0 ? chunk.End : null;
+        var (resp, _) = await SendAsync(c.Item, c.Url, c.UseRange ? pos : null, rangeEnd, ct);
+        using (resp)
+        {
+            if (!resp.IsSuccessStatusCode) ThrowForStatus(resp);
+            if (c.UseRange)
+            {
+                if (resp.StatusCode != HttpStatusCode.PartialContent)
+                    throw new FatalDownloadException("Server stopped honoring Range requests");
+                if (resp.Content.Headers.ContentRange?.From != pos)
+                    throw new FatalDownloadException("Server returned an unexpected byte range");
+            }
+
+            await using var stream = await resp.Content.ReadAsStreamAsync(ct);
+            var buf = ArrayPool<byte>.Shared.Rent(_opt.BufferSize);
+            try
+            {
+                using var readCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                while (true)
+                {
+                    int want = buf.Length;
+                    if (chunk.End >= 0) want = (int)Math.Min(want, chunk.Length - chunk.Done);
+                    if (want <= 0) break;
+
+                    readCts.CancelAfter(_opt.ReadTimeout);
+                    int n = await stream.ReadAsync(buf.AsMemory(0, want), readCts.Token);
+                    if (n == 0) break;
+
+                    try { await RandomAccess.WriteAsync(c.Handle, buf.AsMemory(0, n), chunk.Start + chunk.Done, ct); }
+                    catch (IOException ex) { throw new FatalDownloadException($"Disk write failed: {ex.Message}", ex); }
+                    chunk.Done += n;
+                }
+            }
+            finally { ArrayPool<byte>.Shared.Return(buf); }
+        }
+
+        if (chunk.End >= 0 && !chunk.IsComplete) throw new TransientException("Connection closed early");
+        if (chunk.End < 0) chunk.End = chunk.Start + chunk.Done - 1; // unknown-length stream finished
+    }
+
+    // ───────────────────────── HTTP ─────────────────────────
+
+    private async Task<(HttpResponseMessage, Uri)> SendAsync(DownloadItem item, Uri url, long? from, long? to, CancellationToken ct)
+    {
+        var origin = new Uri(item.Request.Url);
+        for (int hop = 0; hop < 10; hop++)
+        {
+            var req = new HttpRequestMessage(HttpMethod.Get, url);
+            req.Headers.TryAddWithoutValidation("Accept-Encoding", "identity");
+            req.Headers.TryAddWithoutValidation("User-Agent",
+                item.Request.UserAgent ?? "Mozilla/5.0 (Windows NT 10.0; Win64; x64) MCDownloadManager/0.1");
+            if (!string.IsNullOrWhiteSpace(item.Request.Referer))
+                req.Headers.TryAddWithoutValidation("Referer", item.Request.Referer);
+
+            bool sameSite = string.Equals(url.Host, origin.Host, StringComparison.OrdinalIgnoreCase)
+                            && !(origin.Scheme == "https" && url.Scheme == "http");
+            if (sameSite && BuildCookie(item.Request, url) is { } cookie)
+                req.Headers.TryAddWithoutValidation("Cookie", cookie);
+            if (from.HasValue) req.Headers.Range = new RangeHeaderValue(from, to);
+
+            using var hc = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            hc.CancelAfter(_opt.ReadTimeout);
+            var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, hc.Token);
+
+            if (resp.StatusCode is HttpStatusCode.MovedPermanently or HttpStatusCode.Found or HttpStatusCode.SeeOther
+                or HttpStatusCode.TemporaryRedirect or HttpStatusCode.PermanentRedirect
+                && resp.Headers.Location is { } loc)
+            {
+                url = loc.IsAbsoluteUri ? loc : new Uri(url, loc);
+                resp.Dispose();
+                if (url.Scheme is not ("http" or "https")) throw new FatalDownloadException("Redirect to unsupported scheme");
+                continue;
+            }
+            return (resp, url);
+        }
+        throw new FatalDownloadException("Too many redirects");
+    }
+
+    private static string? BuildCookie(DownloadRequest r, Uri url)
+    {
+        if (!string.IsNullOrWhiteSpace(r.CookieHeader)) return r.CookieHeader;
+        if (r.Cookies is not { Count: > 0 }) return null;
+        var parts = r.Cookies
+            .Where(c => DomainMatches(url.Host, c.Domain) && (!c.Secure || url.Scheme == "https"))
+            .Select(c => $"{c.Name}={c.Value}");
+        var joined = string.Join("; ", parts);
+        return joined.Length == 0 ? null : joined;
+    }
+
+    private static bool DomainMatches(string host, string? domain)
+    {
+        if (string.IsNullOrEmpty(domain)) return true;
+        domain = domain.TrimStart('.');
+        return host.Equals(domain, StringComparison.OrdinalIgnoreCase)
+               || host.EndsWith("." + domain, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static void ThrowForStatus(HttpResponseMessage r)
+    {
+        int code = (int)r.StatusCode;
+        if (code is 429 or 503)
+        {
+            TimeSpan? after = r.Headers.RetryAfter?.Delta
+                              ?? (r.Headers.RetryAfter?.Date is { } d ? d - DateTimeOffset.UtcNow : null);
+            if (after is { } a) after = a < TimeSpan.Zero ? TimeSpan.Zero : (a > TimeSpan.FromSeconds(30) ? TimeSpan.FromSeconds(30) : a);
+            throw new ThrottledException(after);
+        }
+        if (code is 408 or >= 500) throw new TransientException($"HTTP {code}");
+        throw new FatalDownloadException($"HTTP {code} {r.ReasonPhrase}");
+    }
+
+    private async Task<T> RetryAsync<T>(Func<Task<T>> op, CancellationToken ct)
+    {
+        for (int attempt = 1; ; attempt++)
+        {
+            try { return await op(); }
+            catch (ThrottledException tex) when (attempt <= _opt.MaxRetries)
+            {
+                await Task.Delay(tex.RetryAfter ?? _opt.ThrottleBackoff, ct);
+            }
+            catch (Exception ex) when (attempt <= _opt.MaxRetries &&
+                                       (ex is HttpRequestException or TransientException
+                                        || (ex is OperationCanceledException && !ct.IsCancellationRequested)))
+            {
+                await Task.Delay(Backoff(attempt), ct);
+            }
+        }
+    }
+
+    private static TimeSpan Backoff(int attempt) => TimeSpan.FromSeconds(Math.Min(15, Math.Pow(2, attempt - 1)));
+
+    // ───────────────────────── progress & persistence ─────────────────────────
+
+    private async Task ProgressLoopAsync(RunCtx c, CancellationToken token)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(250));
+        var clock = Stopwatch.StartNew();
+        long lastBytes = c.Chunks.Sum(x => x.Done);
+        double lastT = 0, speed = 0;
+        int ticks = 0;
+        try
+        {
+            while (await timer.WaitForNextTickAsync(token))
+            {
+                long bytes = c.Chunks.Sum(x => x.Done);
+                double now = clock.Elapsed.TotalSeconds;
+                double inst = (bytes - lastBytes) / Math.Max(0.001, now - lastT);
+                speed = speed <= 0 ? inst : speed * 0.7 + inst * 0.3;
+                lastBytes = bytes; lastT = now;
+                UpdateProgress(c, speed);
+                if (++ticks % 8 == 0) Persist(c, flush: true);
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private static void UpdateProgress(RunCtx c, double speed)
+    {
+        c.Item.DownloadedBytes = c.Chunks.Sum(x => x.Done);
+        c.Item.ActiveConnections = speed > 0 ? Volatile.Read(ref c.Active) : 0;
+        c.Item.Speed = speed;
+    }
+
+    private static string PartPath(string savePath) => savePath + ".mcdm-part";
+    private static string StatePath(string savePath) => savePath + ".mcdm";
+
+    private static void Persist(RunCtx c, bool flush)
+    {
+        if (!c.UseRange || c.Total <= 0) return; // not resumable
+        try
+        {
+            if (flush) RandomAccess.FlushToDisk(c.Handle);
+            var state = new ResumeState { Total = c.Total, Validator = c.Validator, Ranges = true, Chunks = c.Chunks };
+            var path = StatePath(c.Item.SavePath);
+            var tmp = path + ".tmp";
+            File.WriteAllText(tmp, JsonSerializer.Serialize(state));
+            File.Move(tmp, path, overwrite: true);
+        }
+        catch { /* best effort */ }
+    }
+
+    private static ResumeState? ReadState(string savePath)
+    {
+        try
+        {
+            var p = StatePath(savePath);
+            return File.Exists(p) ? JsonSerializer.Deserialize<ResumeState>(File.ReadAllText(p)) : null;
+        }
+        catch { return null; }
+    }
+
+    private static void AssignSavePath(DownloadItem item, string probedName)
+    {
+        lock (PathLock)
+        {
+            var name = FileNames.Sanitize(string.IsNullOrWhiteSpace(item.Request.FileName) ? probedName : item.Request.FileName);
+            var dir = string.IsNullOrEmpty(item.Directory) ? Directory.GetCurrentDirectory() : item.Directory;
+            Directory.CreateDirectory(dir);
+            item.Directory = dir;
+            item.SavePath = FileNames.Unique(dir, name);
+            using (File.Create(PartPath(item.SavePath))) { } // reserve the name
+        }
+    }
+
+    public static void TryDelete(string path)
+    {
+        try { if (!string.IsNullOrEmpty(path) && File.Exists(path)) File.Delete(path); } catch { }
+    }
+}

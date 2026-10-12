@@ -107,6 +107,14 @@ public sealed class DownloadManager : IDisposable
             throw new ArgumentException("Only http(s), magnet and torrent URLs are supported");
         }
 
+        // Fast-path: Direct static video files (.mp4/.mkv/.webm) from movie or web sites
+        // that do NOT require yt-dlp extraction or audio conversion are routed directly
+        // to the ultra-fast 16-channel SegmentedDownloader!
+        if (request.Kind == DownloadKind.Video && !request.AudioOnly && IsDirectStaticMedia(request.Url))
+        {
+            request.Kind = DownloadKind.File;
+        }
+
         if (request.Kind == DownloadKind.Video && (_videoEngine == null || !_videoEngine.Available))
             throw new NotSupportedException("Video downloads are not available (yt-dlp missing)");
 
@@ -356,6 +364,24 @@ public sealed class DownloadManager : IDisposable
     private void Post(Action a)
     {
         if (_ui != null) _ui.Post(_ => a(), null); else a();
+    }
+
+    public static bool IsDirectStaticMedia(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return false;
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return false;
+        var host = uri.Host.ToLowerInvariant();
+        if (host.Contains("youtube.com") || host.Contains("youtu.be") ||
+            host.Contains("twitter.com") || host.Contains("x.com") ||
+            host.Contains("tiktok.com") || host.Contains("instagram.com") ||
+            host.Contains("vimeo.com") || host.Contains("dailymotion.com") ||
+            host.Contains("reddit.com") || host.Contains("twitch.tv"))
+        {
+            return false;
+        }
+        var path = uri.AbsolutePath.ToLowerInvariant();
+        return (path.EndsWith(".mp4") || path.EndsWith(".mkv") || path.EndsWith(".webm") || path.EndsWith(".avi") || path.EndsWith(".mov"))
+               && !path.EndsWith(".m3u8") && !path.EndsWith(".mpd");
     }
 
     public void Dispose()

@@ -122,6 +122,14 @@ public sealed class VideoDownloader
                host.Contains("reddit.com");
     }
 
+    public static bool IsYouTubeUrl(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return false;
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return false;
+        var host = uri.Host.ToLowerInvariant();
+        return host.Contains("youtube.com") || host.Contains("youtu.be");
+    }
+
     // ───────────────────────── argument construction ─────────────────────────
 
     public static string FormatSelector(VideoOptions o) =>
@@ -141,6 +149,9 @@ public sealed class VideoDownloader
                                               string? cookiesFile, string? ffmpegLocation,
                                               string? userAgent = null, string? referer = null)
     {
+        var cacheDir = Path.Combine(AppPaths.DataDirectory, "yt-dlp-cache");
+        try { Directory.CreateDirectory(cacheDir); } catch { }
+
         var a = new List<string>
         {
             "--ignore-config",
@@ -154,15 +165,22 @@ public sealed class VideoDownloader
             "--no-mtime",
             "--concurrent-fragments", "8",
             "--buffer-size", "1024K",
-            "--http-chunk-size", "10M",
             "--throttled-rate", "100K",
             "--no-check-certificates",
             "--socket-timeout", "10",
-            "--impersonate", "chrome",
+            "--extractor-retries", "2",
+            "--file-access-retries", "2",
+            "--cache-dir", cacheDir,
             "-c",                                  // continue partial downloads (resume)
             "--no-part-if-exists-placeholder-never-used".Length > 0 ? "--no-overwrites" : "",
             "-f", FormatSelector(o),
         };
+
+        if (IsYouTubeUrl(url))
+        {
+            a.Add("--extractor-args");
+            a.Add("youtube:player_client=android,web;player_skip=configs,webpage");
+        }
         a.RemoveAll(string.IsNullOrEmpty);
         if (!string.IsNullOrWhiteSpace(userAgent))
         {
@@ -377,6 +395,7 @@ public sealed class VideoDownloader
             }
             else if (line.StartsWith("[download] Destination: ", StringComparison.Ordinal))
             {
+                item.Stage = "İndirme Başlatılıyor...";
                 var fp = line.Substring("[download] Destination: ".Length).Trim();
                 if (!string.IsNullOrEmpty(fp) && string.IsNullOrEmpty(finalPath)) finalPath = fp;
             }
@@ -385,6 +404,18 @@ public sealed class VideoDownloader
             {
                 item.Stage = "Merging";
                 item.Speed = 0;
+            }
+            else if (line.Contains("Extracting URL:") || line.Contains("[youtube]") || line.Contains("[twitter]") || line.Contains("[tiktok]") || line.Contains("[generic]"))
+            {
+                if (item.DownloadedBytes == 0 && item.Stage == null) item.Stage = "Akışlar Çözülüyor...";
+            }
+            else if (line.Contains("Downloading webpage") || line.Contains("Downloading player") || line.Contains("Downloading API") || line.Contains("Downloading JSON"))
+            {
+                if (item.DownloadedBytes == 0) item.Stage = "Formatlar Alınıyor...";
+            }
+            else if (line.Contains("Downloading 1 format") || line.Contains("Downloading m3u8"))
+            {
+                if (item.DownloadedBytes == 0) item.Stage = "Bağlantı Kuruluyor...";
             }
             else if (line.StartsWith("ERROR:", StringComparison.Ordinal))
             {

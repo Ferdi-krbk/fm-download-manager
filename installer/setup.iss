@@ -1,5 +1,5 @@
 #define MyAppName "FM Download Manager"
-#define MyAppVersion "2.0.0"
+#define MyAppVersion "3.0.0"
 #define MyAppPublisher "FM Download Manager Authors"
 #define MyAppURL "https://github.com/mstcvk/mc-download-manager"
 #define MyAppExeName "FMDownloadManager.exe"

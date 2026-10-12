@@ -24,7 +24,22 @@ public partial class AddUrlsDialog : Window
                 UrlsBox.SelectAll();
             }
         }
+        UpdateValidCount();
         UrlsBox.Focus();
+    }
+
+    private void UrlsBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    {
+        UpdateValidCount();
+    }
+
+    private void UpdateValidCount()
+    {
+        if (UrlsBox == null || ValidLinksCountText == null) return;
+        var lines = UrlsBox.Text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        int valid = lines.Count(l => Uri.TryCreate(l, UriKind.Absolute, out var uri) && (uri.Scheme == "http" || uri.Scheme == "https"));
+        ValidLinksCountText.Text = $"{valid} VALID LINKS";
+        if (OkButton != null) OkButton.IsEnabled = valid > 0;
     }
 
     private void Ok_Click(object sender, RoutedEventArgs e)

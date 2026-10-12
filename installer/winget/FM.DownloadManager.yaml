@@ -1,0 +1,42 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.version.1.6.0.schema.json
+PackageIdentifier: FM.DownloadManager
+PackageVersion: 0.1.0
+DefaultLocale: en-US
+ManifestType: version
+ManifestVersion: 1.6.0
+---
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.6.0.schema.json
+PackageIdentifier: FM.DownloadManager
+PackageVersion: 0.1.0
+PackageLocale: en-US
+Publisher: FM Download Manager Authors
+PublisherUrl: https://github.com/mstcvk/mc-download-manager
+PackageName: FM Download Manager
+PackageUrl: https://github.com/mstcvk/mc-download-manager
+License: MIT
+ShortDescription: High-performance multi-connection download manager for Windows with browser interception and video downloads.
+Tags:
+  - download-manager
+  - multi-connection
+  - downloader
+  - segmented
+  - yt-dlp
+  - ffmpeg
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0
+---
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.6.0.schema.json
+PackageIdentifier: FM.DownloadManager
+PackageVersion: 0.1.0
+InstallerType: inno
+Scope: user
+InstallModes:
+  - interactive
+  - silent
+  - silentWithProgress
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/mstcvk/mc-download-manager/releases/download/v0.1.0/FMDownloadManager-Setup-0.1.0.exe
+    InstallerSha256: 0000000000000000000000000000000000000000000000000000000000000000
+ManifestType: installer
+ManifestVersion: 1.6.0

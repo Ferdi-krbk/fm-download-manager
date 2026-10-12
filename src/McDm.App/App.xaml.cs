@@ -36,8 +36,17 @@ public partial class App : System.Windows.Application
     private TorrentDownloader? _torrentEngine;
     private string _lastSeenClipboard = "";
 
+    [System.Runtime.InteropServices.DllImport("shell32.dll", SetLastError = true)]
+    private static extern int SetCurrentProcessExplicitAppUserModelID([System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPWStr)] string AppID);
+
     protected override async void OnStartup(StartupEventArgs e)
     {
+        try
+        {
+            SetCurrentProcessExplicitAppUserModelID("FM.DownloadManager.v3");
+        }
+        catch { }
+
         AppDomain.CurrentDomain.UnhandledException += (s, args) =>
         {
             try
@@ -153,7 +162,7 @@ public partial class App : System.Windows.Application
         StartTrayTooltipUpdater();
         StartScheduler();
 
-        _window = new MainWindow(_manager, _tokenStore, _settings);
+        _window = new MainWindow(_manager, _tokenStore, _settings, _bridge);
         if (!e.Args.Contains("--background")) _window.Show();
         }
         catch (Exception ex)
@@ -186,11 +195,10 @@ public partial class App : System.Windows.Application
         Icon icon = SystemIcons.Application;
         try
         {
-            string? exe = Environment.ProcessPath;
-            if (!string.IsNullOrEmpty(exe) && File.Exists(exe))
+            var sri = System.Windows.Application.GetResourceStream(new Uri("pack://application:,,,/Resources/app.ico"));
+            if (sri?.Stream != null)
             {
-                using var assoc = Icon.ExtractAssociatedIcon(exe);
-                if (assoc != null) icon = (Icon)assoc.Clone();
+                icon = new Icon(sri.Stream, 32, 32);
             }
         }
         catch { }
@@ -199,11 +207,11 @@ public partial class App : System.Windows.Application
         {
             try
             {
-                string diskIco = Path.Combine(AppContext.BaseDirectory, "Resources", "app.ico");
-                if (File.Exists(diskIco))
+                string? exe = Environment.ProcessPath;
+                if (!string.IsNullOrEmpty(exe) && File.Exists(exe))
                 {
-                    using var fs = File.OpenRead(diskIco);
-                    icon = new Icon(fs);
+                    using var assoc = Icon.ExtractAssociatedIcon(exe);
+                    if (assoc != null) icon = (Icon)assoc.Clone();
                 }
             }
             catch { }

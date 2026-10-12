@@ -158,8 +158,8 @@
 
     <!-- ChipButton Style (Compact pill button for chips/presets) -->
     <Style x:Key="ChipButton" TargetType="Button">
-        <Setter Property="Height" Value="20" />
-        <Setter Property="Padding" Value="6,0" />
+        <Setter Property="Height" Value="22" />
+        <Setter Property="Padding" Value="1,0" />
         <Setter Property="FontSize" Value="10" />
         <Setter Property="FontFamily" Value="{DynamicResource UiFont}" />
         <Setter Property="FontWeight" Value="SemiBold" />
@@ -175,7 +175,7 @@
                             Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="10"
+                            CornerRadius="5"
                             Padding="{TemplateBinding Padding}"
                             SnapsToDevicePixels="True">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
@@ -931,4 +931,79 @@
 
     <Style x:Key="CaptionBtn" TargetType="Button" BasedOn="{StaticResource WindowMinButtonStyle}" />
     <Style x:Key="CloseCaptionBtn" TargetType="Button" BasedOn="{StaticResource WindowCloseButtonStyle}" />
+
+    <!-- Modern Sleek Slider Style -->
+    <Style x:Key="SliderThumbStyle" TargetType="Thumb">
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Thumb">
+                    <Grid>
+                        <Ellipse x:Name="ThumbOuter" Width="14" Height="14" Fill="{DynamicResource AccentBrush}">
+                            <Ellipse.Effect>
+                                <DropShadowEffect BlurRadius="6" ShadowDepth="1" Opacity="0.4" Color="#C92A3E" />
+                            </Ellipse.Effect>
+                        </Ellipse>
+                        <Ellipse x:Name="ThumbInner" Width="6" Height="6" Fill="#FFFFFF" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="ThumbOuter" Property="Fill" Value="{DynamicResource AccentHoverBrush}" />
+                            <Setter TargetName="ThumbOuter" Property="Width" Value="16" />
+                            <Setter TargetName="ThumbOuter" Property="Height" Value="16" />
+                        </Trigger>
+                        <Trigger Property="IsDragging" Value="True">
+                            <Setter TargetName="ThumbOuter" Property="Fill" Value="{DynamicResource AccentPressBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="SliderRepeatButtonStyle" TargetType="RepeatButton">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="IsTabStop" Value="False" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RepeatButton">
+                    <Border Background="Transparent" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="Slider">
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="MinHeight" Value="22" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Slider">
+                    <Grid VerticalAlignment="Center">
+                        <!-- Track Background -->
+                        <Border Height="4" CornerRadius="2" Background="{DynamicResource LineStrongBrush}" VerticalAlignment="Center" SnapsToDevicePixels="True" />
+                        <!-- Active Fill & Thumb via Track -->
+                        <Track x:Name="PART_Track">
+                            <Track.DecreaseRepeatButton>
+                                <RepeatButton Style="{StaticResource SliderRepeatButtonStyle}" Command="Slider.DecreaseLarge">
+                                    <Border Height="4" CornerRadius="2" Background="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
+                                </RepeatButton>
+                            </Track.DecreaseRepeatButton>
+                            <Track.Thumb>
+                                <Thumb Style="{StaticResource SliderThumbStyle}" VerticalAlignment="Center" />
+                            </Track.Thumb>
+                            <Track.IncreaseRepeatButton>
+                                <RepeatButton Style="{StaticResource SliderRepeatButtonStyle}" Command="Slider.IncreaseLarge" />
+                            </Track.IncreaseRepeatButton>
+                        </Track>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
 </ResourceDictionary>

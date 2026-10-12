@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:McDm.App"
         Title="FM Download Manager" Width="1140" Height="680" MinWidth="900" MinHeight="520"
-        Icon="Resources/app.ico"
+        Icon="pack://application:,,,/Resources/app.ico"
         WindowStartupLocation="CenterScreen"
         FontFamily="{DynamicResource UiFont}"
         Background="{DynamicResource Bg0Brush}">
@@ -128,7 +128,7 @@
             <!-- 3. Body: Sidebar (210px) | Content Area -->
             <Grid Grid.Row="2">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="210" MinWidth="180" MaxWidth="300" />
+                    <ColumnDefinition Width="235" MinWidth="220" MaxWidth="320" />
                     <ColumnDefinition Width="1" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
@@ -138,10 +138,10 @@
                     <DockPanel LastChildFill="True">
                         <!-- Global Speed & Active Block at Sidebar Bottom -->
                         <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="12,12" Background="{DynamicResource Bg0Brush}">
-                            <Border Background="{DynamicResource Bg2Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="10" Padding="12,10">
+                            <Border Background="{DynamicResource Bg2Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="10" Padding="10,10">
                                 <StackPanel>
                                     <TextBlock x:Name="LblTotalSpeed" Text="Toplam Hız" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource TextDimBrush}" />
-                                    <TextBlock x:Name="TotalSpeedText" Text="0 B/s" FontFamily="{DynamicResource MonoFont}" FontWeight="Bold" FontSize="19" Foreground="{DynamicResource AccentBrush}" Margin="0,3,0,1" />
+                                    <TextBlock x:Name="TotalSpeedText" Text="0 B/s" FontFamily="{DynamicResource UiFont}" FontWeight="Bold" FontSize="20" Foreground="{DynamicResource TextStrongBrush}" Margin="0,3,0,1" />
                                     <TextBlock x:Name="ActiveCountText" Text="0 aktif indirme" FontFamily="{DynamicResource UiFont}" FontSize="11" Foreground="{DynamicResource TextMuteBrush}" />
                                     <Border Margin="0,8,0,0" CornerRadius="6" Background="{DynamicResource Bg1Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" Height="50" Padding="2">
                                         <local:SpeedGraphControl x:Name="SidebarSpeedGraph" Height="46" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
@@ -152,7 +152,7 @@
                                         <StackPanel>
                                             <DockPanel LastChildFill="True">
                                                 <TextBlock Text="Hız Limiti:" FontFamily="{DynamicResource UiFont}" FontSize="11" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" />
-                                                <TextBlock x:Name="TxtSpeedLimitVal" Text="Sınırsız" FontFamily="{DynamicResource MonoFont}" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                                <TextBlock x:Name="TxtSpeedLimitVal" Text="Sınırsız" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource AccentHoverBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
                                             </DockPanel>
                                             <Slider x:Name="SldSpeedLimit" Margin="0,5,0,6" Minimum="0" Maximum="50" TickFrequency="5" IsSnapToTickEnabled="False" ValueChanged="SldSpeedLimit_ValueChanged" />
                                             <Grid Margin="0,3,0,0">

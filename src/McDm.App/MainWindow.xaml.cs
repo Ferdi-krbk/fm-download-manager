@@ -17,6 +17,7 @@ public partial class MainWindow : Window
     private readonly DownloadManager _manager;
     private readonly TokenStore _tokenStore;
     private readonly AppSettings _settings;
+    private readonly BridgeServer? _bridge;
     private readonly ICollectionView _view;
     private readonly DispatcherTimer _speedTimer;
     private bool _allowClose;
@@ -28,12 +29,13 @@ public partial class MainWindow : Window
     private static readonly HashSet<string> DocExts = new(StringComparer.OrdinalIgnoreCase) { ".pdf", ".epub", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".txt" };
     private static readonly HashSet<string> ArcExts = new(StringComparer.OrdinalIgnoreCase) { ".zip", ".rar", ".7z", ".tar", ".gz", ".bz2", ".xz" };
 
-    public MainWindow(DownloadManager manager, TokenStore tokenStore, AppSettings settings)
+    public MainWindow(DownloadManager manager, TokenStore tokenStore, AppSettings settings, BridgeServer? bridge = null)
     {
         InitializeComponent();
         _manager = manager;
         _tokenStore = tokenStore;
         _settings = settings;
+        _bridge = bridge;
 
         _view = CollectionViewSource.GetDefaultView(_manager.Items);
         _view.Filter = FilterItem;
@@ -48,29 +50,79 @@ public partial class MainWindow : Window
         // Enforce application icon on window and taskbar
         try
         {
-            string? exe = Environment.ProcessPath;
-            if (!string.IsNullOrEmpty(exe) && File.Exists(exe))
+            Uri icoUri = new Uri("pack://application:,,,/FMDownloadManager;component/Resources/app.ico");
+            Icon = System.Windows.Media.Imaging.BitmapFrame.Create(
+                icoUri,
+                System.Windows.Media.Imaging.BitmapCreateOptions.None,
+                System.Windows.Media.Imaging.BitmapCacheOption.OnLoad);
+        }
+        catch
+        {
+            try
             {
-                using var assoc = System.Drawing.Icon.ExtractAssociatedIcon(exe);
-                if (assoc != null)
+                Icon = System.Windows.Media.Imaging.BitmapFrame.Create(
+                    new Uri("pack://application:,,,/Resources/app.ico"),
+                    System.Windows.Media.Imaging.BitmapCreateOptions.None,
+                    System.Windows.Media.Imaging.BitmapCacheOption.OnLoad);
+            }
+            catch { }
+        }
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Auto)]
+    private static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
+    private const uint WM_SETICON = 0x0080;
+    private static readonly IntPtr ICON_SMALL = IntPtr.Zero;
+    private static readonly IntPtr ICON_BIG = new IntPtr(1);
+    private System.Drawing.Icon? _iconBig;
+    private System.Drawing.Icon? _iconSmall;
+
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        try
+        {
+            var helper = new System.Windows.Interop.WindowInteropHelper(this);
+            IntPtr hwnd = helper.Handle;
+            if (hwnd != IntPtr.Zero)
+            {
+                System.Windows.Resources.StreamResourceInfo? sri = null;
+                try { sri = System.Windows.Application.GetResourceStream(new Uri("pack://application:,,,/FMDownloadManager;component/Resources/app.ico")); } catch { }
+                if (sri == null)
                 {
-                    using var bmp = assoc.ToBitmap();
-                    var hBitmap = bmp.GetHbitmap();
-                    try
-                    {
-                        var wpfBmp = System.Windows.Interop.Imaging.CreateBitmapSourceFromHBitmap(
-                            hBitmap, IntPtr.Zero, Int32Rect.Empty, System.Windows.Media.Imaging.BitmapSizeOptions.FromEmptyOptions());
-                        Icon = wpfBmp;
-                    }
-                    finally { DeleteObject(hBitmap); }
+                    try { sri = System.Windows.Application.GetResourceStream(new Uri("pack://application:,,,/Resources/app.ico")); } catch { }
                 }
+
+                if (sri?.Stream != null)
+                {
+                    using var ms = new MemoryStream();
+                    sri.Stream.CopyTo(ms);
+                    ms.Position = 0;
+                    _iconBig = new System.Drawing.Icon(ms, 128, 128);
+                    ms.Position = 0;
+                    _iconSmall = new System.Drawing.Icon(ms, 32, 32);
+                }
+                else
+                {
+                    string? exe = Environment.ProcessPath;
+                    if (!string.IsNullOrEmpty(exe) && File.Exists(exe))
+                    {
+                        var assoc = System.Drawing.Icon.ExtractAssociatedIcon(exe);
+                        if (assoc != null)
+                        {
+                            _iconBig = assoc;
+                            _iconSmall = assoc;
+                        }
+                    }
+                }
+
+                if (_iconBig != null) SendMessage(hwnd, WM_SETICON, ICON_BIG, _iconBig.Handle);
+                if (_iconSmall != null) SendMessage(hwnd, WM_SETICON, ICON_SMALL, _iconSmall.Handle);
             }
         }
         catch { }
     }
-
-    [System.Runtime.InteropServices.DllImport("gdi32.dll")]
-    private static extern bool DeleteObject(IntPtr hObject);
 
     public void ApplyLocalization()
     {
@@ -339,7 +391,7 @@ public partial class MainWindow : Window
 
     private void BrowserSetup_Click(object sender, RoutedEventArgs e)
     {
-        var win = new BrowserSetupWindow(_tokenStore) { Owner = this };
+        var win = new BrowserSetupWindow(_tokenStore, _bridge) { Owner = this };
         win.ShowDialog();
     }
 

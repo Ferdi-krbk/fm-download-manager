@@ -13,10 +13,10 @@ public sealed class AppSettings
     public int ConnectionsPerDownload { get; set; } = 8;
     public int MaxConcurrentDownloads { get; set; } = 3;
     public int SpeedLimitKbps { get; set; } = 0; // 0 = unlimited
-    public int MinCaptureSizeBytes { get; set; } = 5 * 1024 * 1024; // 5 MB
+    public int MinCaptureSizeBytes { get; set; } = 0; // 0 = capture all downloads (like IDM)
 
     public string CapturedExtensions { get; set; } =
-        "zip,rar,7z,tar,gz,iso,exe,msi,bin,dmg,pkg,mp4,mkv,webm,mov,avi,mp3,flac,wav,m4a,pdf,epub,doc,docx,xls,xlsx,ppt,pptx";
+        "zip,rar,7z,tar,gz,bz2,xz,iso,exe,msi,bin,dmg,pkg,apk,deb,rpm,appx,mp4,mkv,webm,mov,avi,flv,mp3,flac,wav,m4a,aac,ogg,pdf,epub,doc,docx,xls,xlsx,ppt,pptx,txt,csv,torrent";
 
     public string PreferredVideoFormat { get; set; } = "mp4";
     public int MaxVideoResolution { get; set; } = 1080;

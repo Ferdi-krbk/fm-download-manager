@@ -14,14 +14,15 @@ namespace McDm.App;
 public partial class BrowserSetupWindow : Window
 {
     private readonly TokenStore _tokenStore;
+    private readonly BridgeServer? _bridge;
     private readonly DispatcherTimer _pollTimer;
-    private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(2) };
     private readonly string _extensionDir;
 
-    public BrowserSetupWindow(TokenStore tokenStore)
+    public BrowserSetupWindow(TokenStore tokenStore, BridgeServer? bridge = null)
     {
         InitializeComponent();
         _tokenStore = tokenStore;
+        _bridge = bridge;
 
         // Extension directory: look in current app directory or project root
         var baseDir = AppDomain.CurrentDomain.BaseDirectory;
@@ -40,11 +41,11 @@ public partial class BrowserSetupWindow : Window
         TxtExtPath.Text = _extensionDir;
         TxtToken.Text = _tokenStore.Token;
 
-        _pollTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1.5) };
-        _pollTimer.Tick += async (_, _) => await CheckConnectionAsync();
+        _pollTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(800) };
+        _pollTimer.Tick += (_, _) => CheckConnection();
         _pollTimer.Start();
 
-        Loaded += async (_, _) => await CheckConnectionAsync();
+        Loaded += (_, _) => CheckConnection();
         Closed += (_, _) => _pollTimer.Stop();
     }
 
@@ -60,34 +61,26 @@ public partial class BrowserSetupWindow : Window
         catch { }
     }
 
-    private async Task CheckConnectionAsync()
+    private void CheckConnection()
     {
-        try
+        bool connected = _bridge != null 
+            && _bridge.LastExtensionSeenUtc.HasValue 
+            && (DateTime.UtcNow - _bridge.LastExtensionSeenUtc.Value).TotalSeconds <= 12 
+            && _bridge.LastExtensionPaired;
+
+        if (connected)
         {
-            var token = _tokenStore.Token;
-            using var req = new HttpRequestMessage(HttpMethod.Get, $"http://127.0.0.1:{BridgeServer.DefaultPort}/ping");
-            req.Headers.TryAddWithoutValidation("Origin", "chrome-extension://setup-wizard");
-            req.Headers.TryAddWithoutValidation("X-MCDM-Token", token);
-
-            var resp = await _http.SendAsync(req);
-            if (resp.IsSuccessStatusCode)
-            {
-                var json = await resp.Content.ReadAsStringAsync();
-                using var doc = JsonDocument.Parse(json);
-                if (doc.RootElement.TryGetProperty("paired", out var paired) && paired.GetBoolean())
-                {
-                    TxtStatus.Text = "Eklenti başarıyla bağlandı ve aktif! (v3.0.0)";
-                    TxtStatus.Foreground = Brushes.LightGreen;
-                    DotStatus.Fill = Brushes.LimeGreen;
-                    return;
-                }
-            }
+            string bName = (_bridge?.LastExtensionBrowser ?? "Tarayıcı").ToUpperInvariant();
+            TxtStatus.Text = $"✓ {bName} eklentisi başarıyla bağlandı ve aktif!";
+            TxtStatus.Foreground = Brushes.LightGreen;
+            DotStatus.Fill = Brushes.LimeGreen;
         }
-        catch { }
-
-        TxtStatus.Text = "Tarayıcı bekleniyor (Tek tıkla kurulum butonunu kullanın)...";
-        TxtStatus.Foreground = (Brush)FindResource("AccentBrush");
-        DotStatus.Fill = (Brush)FindResource("DangerBrush");
+        else
+        {
+            TxtStatus.Text = "Tarayıcı eklentisi henüz yüklenmedi / bekleniyor...";
+            TxtStatus.Foreground = (Brush)FindResource("TextMuteBrush");
+            DotStatus.Fill = (Brush)FindResource("DangerBrush");
+        }
     }
 
     private void OpenFolder_Click(object sender, RoutedEventArgs e)
@@ -109,16 +102,16 @@ public partial class BrowserSetupWindow : Window
     {
         SeedExtensionToken();
 
-        // 1. Register in Windows Registry
+        // 1. Copy extension path to clipboard for 1-click folder selection
+        try { ClipboardHelper.SetText(_extensionDir); } catch { }
+
+        // 2. Register in Windows Registry
         RegisterExtensionInRegistry(browserKey, _extensionDir);
 
-        // 2. Put token on clipboard as fallback
-        try { ClipboardHelper.SetText(_tokenStore.Token); } catch { }
+        TxtStatus.Text = "Tarayıcı açıldı. 'Paketlenmemiş öge yükle' diyerek panodaki klasörü seçin (Yol panoda)...";
+        TxtStatus.Foreground = (Brush)FindResource("AccentHoverBrush");
 
-        TxtStatus.Text = "🚀 Tarayıcı başlatılıyor, eklenti otomatik yükleniyor...";
-        TxtStatus.Foreground = Brushes.DeepSkyBlue;
-
-        // 3. Launch browser with extension
+        // 3. Launch browser
         try
         {
             Process.Start(new ProcessStartInfo(exe, $"--load-extension=\"{_extensionDir}\" {extensionsUrl}") { UseShellExecute = true });

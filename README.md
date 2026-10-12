@@ -18,13 +18,48 @@
 </p>
 
 <p align="center">
-  <a href="#-özellikler--features">Özellikler (Features)</a> •
-  <a href="#-mimari-architecture">Mimari (Architecture)</a> •
-  <a href="#-tek-t%C4%B1kla-taray%C4%B1c%C4%B1-kurulumu-one-click-browser-setup">Tarayıcı Entegrasyonu</a> •
-  <a href="#-klavye-k%C4%B1sayollar%C4%B1-shortcuts">Klavye Kısayolları</a> •
-  <a href="#-kurulum--installation">Kurulum</a> •
-  <a href="#-kaynaktan-derleme-building">Derleme</a>
+  <a href="#-ekran-görüntüleri-showcase">Arayüz &amp; Ekran Görüntüleri</a> •
+  <a href="#-öne-çıkan-özellikler-highlights">Özellikler</a> •
+  <a href="#-mimari-architecture">Mimari</a> •
+  <a href="#-tarayıcı-kurulumu-browser-integration">Tarayıcı Entegrasyonu</a> •
+  <a href="#-klavye-kısayolları-shortcuts">Kısayollar</a> •
+  <a href="#-kurulum--installation">Kurulum</a>
 </p>
+
+---
+
+## 📸 Ekran Görüntüleri (Showcase)
+
+<p align="center">
+  <img src="docs/ui/dashboard_dark.png" width="900" alt="FM Download Manager Ana Ekran" style="border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);" />
+  <br>
+  <i>FM Download Manager v3.0.0 — Modern Koyu Bordo Tema, Canlı Vektör Hız Grafiği ve Çok Parçalı İndirme Kuyruğu</i>
+</p>
+
+<br>
+
+<table align="center" width="100%">
+  <tr>
+    <td width="33%" align="center">
+      <img src="docs/ui/speed_limiter.png" width="280" alt="Canlı Hız Limiti &amp; Vektör Grafiği" />
+      <br>
+      <b>🎛️ Donanım Hızlandırmalı Hız Grafiği &amp; Slider</b>
+      <p><i>EMA yumuşatma, pik hız göstergesi ve tek tıkla bant genişliği sınırlandırma</i></p>
+    </td>
+    <td width="33%" align="center">
+      <img src="docs/ui/browser_setup.png" width="280" alt="Tarayıcı Eklentisi Kurulum Merkezi" />
+      <br>
+      <b>🌐 Sıfır Tık Eşleştirme (Zero-Click Pairing)</b>
+      <p><i>Token.json tohumlama ile kod kopyalamadan otomatik bağlantı doğrulama</i></p>
+    </td>
+    <td width="33%" align="center">
+      <img src="docs/ui/extension_popup.png" width="280" alt="Medya Yakalayıcı Eklenti" />
+      <br>
+      <b>🎬 Akıllı Medya Yakalayıcısı</b>
+      <p><i>YouTube, Twitter, TikTok ve 1000+ siteden tek tıkla 4K/MP3 indirme</i></p>
+    </td>
+  </tr>
+</table>
 
 ---
 
@@ -47,8 +82,8 @@
 ## 💎 Temel Yetenekler (Core Features)
 
 ### 1. ⚡ Dinamik Yeniden Segmentasyonlu Çok Parçalı Motor (Dynamic Resegmentation)
-* Dosyaları 16 paralel bağlantıya kadar parçalayarak bant genişliğini sonuna kadar kullanır.
-* **Akıllı Kuyruk Paylaşımı:** İndirme bitmeye yakınken yavaş kalan bir parça olduğunda, boşalan iş parçacığı o parçayı otomatik olarak ortadan ikiye bölerek kalan yarısını paralel çeker.
+* Dosyaları 16 paralel bağlantıya kadar parçalayarak ISS sınırlarını ve sunucu bant genişliğini sonuna kadar kullanır.
+* **Akıllı Parça Paylaşımı:** İndirme bitmeye yakınken yavaş kalan bir parça olduğunda, boşalan iş parçacığı o parçayı otomatik olarak ortadan ikiye bölerek kalan yarısını paralel çeker.
 
 ### 2. 🧲 Entegre BitTorrent & Magnet Desteği
 * Harici bir torrent istemcisine (uTorrent, qBittorrent vb.) gerek kalmadan `magnet:?xt=urn:btih:...` ve `.torrent` bağlantılarını doğrudan çeker.
@@ -57,17 +92,17 @@
 ### 3. 🎬 Süper Hızlı Medya & YouTube İndiricisi
 * `yt-dlp` ve `FFmpeg` motoruyla YouTube, Twitter/X, TikTok, Instagram ve 1000+ siteden tek tıkla video indirir.
 * **Format ve Kalite Seçici:** Bağlantı eklendiğinde açılan modern arayüzle *En Yüksek Kalite (4K/1080p)*, *720p HD* veya doğrudan *Yalnızca Ses Çıkar (MP3 / 320 kbps)* seçimi sunar.
-* **Ultra-Hızlı Başlatma:** `--concurrent-fragments 4` ve Android/Web istemci argümanlarıyla indirmeler saniyeler yerine anında başlar.
+* **Ultra-Hızlı Başlatma:** `--concurrent-fragments 4` ve optimize edilmiş istemci argümanlarıyla indirmeler saniyeler içinde anında başlar.
 
 ### 4. 📊 Donanım Hızlandırmalı Canlı Vektör Hız Grafiği
 * Sol kenar çubuğunda ve indirme ayrıntılarında WPF vektör çizimiyle gerçek zamanlı hız dalgalanmalarını gösterir.
-* **EMA Filtresi & Bezier Eğrileri:** Ağ dalgalanmalarını Exponential Moving Average ile pürüzsüzleştirir, pik hız göstergesiyle birlikte ipeksi bir grafik çizer.
+* **EMA Filtresi & Bezier Eğrileri:** Ağ dalgalanmalarını Exponential Moving Average ile pürüzsüzleştirir, pik hız göstergesiyle birlikte akıcı bir grafik çizer.
 
-### 5. 🎛️ Canlı Hız Limiti Kadranı (Speed Limiter Slider)
-* İndirme devam ederken sol paneldeki kaydırıcı veya hazır düğmeler (`[Oto] [2M] [5M] [10M] [20M]`) üzerinden tek tıkla internet kullanımını kısıtlayabilirsiniz.
+### 5. 🎛️ Modern Hız Limiti Kadranı (Speed Limiter Slider)
+* İndirme devam ederken sol paneldeki özel tasarımlı kaydırıcı veya hazır çipler (`[Oto] [2M] [5M] [10M] [20M]`) üzerinden tek tıkla internet kullanımını sınırlandırabilirsiniz.
 
-### 6. 🌐 Tek Tıkla Tarayıcı Eklentisi Kurulumu & Sıfır Tık Eşleştirme
-* **Google Chrome, Microsoft Edge ve Brave** için Windows Registry politikalarını otomatik yazar.
+### 6. 🌐 Sıfır Tık Tarayıcı Eklentisi Eşleştirmesi
+* **Google Chrome, Microsoft Edge ve Brave** için eklenti klasör yolunu otomatik panoya kopyalar ve geliştirici sayfasını açar.
 * Eklenti klasörüne otomatik olarak güvenlik anahtarı tohumlar (`token.json`). Kullanıcı kod kopyalayıp yapıştırmakla uğraşmadan eklenti tek tıkla yeşile döner ve eşleşir.
 
 ### 7. 📂 Otomatik Kategori Klasörlemesi
@@ -85,7 +120,7 @@
 ### 9. 🎨 Modern Çift Tema (Dark Burgundy & AMOLED Pure Black)
 * Varsayılan koyu bordo ve titanyum grafit tasarımı (`#C92A3E` + `#121318`).
 * Araç çubuğundaki ay simgesiyle tek tıkla **Derin Siyah AMOLED** (`#000000`) moduna geçiş imkanı.
-* Keskin Windows DIN tipografisi (**Bahnschrift**) ve 12–20px oval hatlar.
+* Keskin Windows DIN tipografisi (**Bahnschrift**) ve akıcı oval hatlar.
 
 ---
 

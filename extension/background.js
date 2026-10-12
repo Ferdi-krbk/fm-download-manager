@@ -233,11 +233,11 @@ function extOf(name) {
 }
 function matchesCaptureTypes(app, filename, url) {
   const list = app && Array.isArray(app.captureExtensions) ? app.captureExtensions : [];
-  if (!list.length) return true;
+  if (!list.length || list.includes('*')) return true;
   let path = '';
   try { path = new URL(url).pathname; } catch {}
   const e = extOf(filename) || extOf(path);
-  return !!e && list.includes(e);
+  return !e || list.includes(e);
 }
 
 // ---------- Download interception (Chrome) ----------

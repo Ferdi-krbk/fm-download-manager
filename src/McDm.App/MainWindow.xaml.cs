@@ -73,13 +73,21 @@ public partial class MainWindow : Window
         StatusText.Text = Strings.StatusReady;
     }
 
+    private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+    private void Maximize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+    private void Close_Click(object sender, RoutedEventArgs e) => Close();
+
     private void UpdateTotalSpeed()
     {
         double totalSpeed = _manager.Items.Where(i => i.Status == DownloadStatus.Downloading).Sum(i => i.Speed);
         int active = _manager.Items.Count(i => i.Status == DownloadStatus.Downloading);
-        TotalSpeedText.Text = active > 0
-            ? $"{active} downloading - {BytesConverter.Format(totalSpeed)}/s"
-            : "";
+        int queued = _manager.Items.Count(i => i.Status == DownloadStatus.Queued);
+        int done = _manager.Items.Count(i => i.Status == DownloadStatus.Completed);
+
+        TotalSpeedText.Text = active > 0 ? $"{BytesConverter.Format(totalSpeed)}/s" : "0 B/s";
+        ActiveCountText.Text = $"{active} ACTIVE";
+        StatusCountsText.Text = $"{active} ACTIVE / {queued} QUEUED / {done} DONE";
+        EmptyStateOverlay.Visibility = _manager.Items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private bool FilterItem(object obj)

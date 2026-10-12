@@ -98,7 +98,7 @@ public partial class App : System.Windows.Application
         _manager.ItemCompleted += item =>
         {
             if (_settings?.NotificationsEnabled == true)
-                _tray?.ShowBalloonTip(3000, Strings.DownloadComplete, item.FileName, Forms.ToolTipIcon.Info);
+                _tray?.ShowBalloonTip(3000, "DOWNLOAD COMPLETE", item.FileName, Forms.ToolTipIcon.Info);
         };
 
         _bridge = new BridgeServer(_manager, _tokenStore);
@@ -119,7 +119,11 @@ public partial class App : System.Windows.Application
 
     private void BuildTray()
     {
-        var menu = new Forms.ContextMenuStrip();
+        var menu = new Forms.ContextMenuStrip
+        {
+            Renderer = new DarkMenuRenderer(),
+            ShowImageMargin = false,
+        };
         menu.Items.Add(Strings.TrayOpen, null, (_, _) => ShowWindow());
         var startup = new Forms.ToolStripMenuItem(Strings.TrayStartWithWindows) { Checked = IsStartupEnabled(), CheckOnClick = true };
         startup.CheckedChanged += (_, _) => SetStartup(startup.Checked);

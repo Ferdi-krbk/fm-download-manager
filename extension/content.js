@@ -63,13 +63,47 @@
   const isYouTube = /(youtube\.com|youtu\.be)/i.test(location.hostname);
   const isTwitter = /(twitter\.com|x\.com)/i.test(location.hostname);
   const isTikTok = /tiktok\.com/i.test(location.hostname);
+  const isInstagram = /instagram\.com/i.test(location.hostname);
+  const isSocial = isYouTube || isTwitter || isTikTok || isInstagram;
+
+  function findActiveTweetUrl() {
+    if (location.pathname.includes('/status/')) return location.href.split('?')[0];
+    const videos = Array.from(document.querySelectorAll('video'));
+    let activeV = videos.find((v) => !v.paused && v.currentTime > 0) || videos[0];
+    if (activeV) {
+      const a = activeV.closest('article')?.querySelector('a[href*="/status/"]');
+      if (a && a.href) return a.href.split('?')[0];
+    }
+    return null;
+  }
+
+  function findActiveTikTokUrl() {
+    if (location.pathname.includes('/video/')) return location.href.split('?')[0];
+    const videos = Array.from(document.querySelectorAll('video'));
+    let activeV = videos.find((v) => !v.paused && v.currentTime > 0) || videos[0];
+    if (activeV) {
+      const a = activeV.closest('[data-e2e*="feed-item"], article, div')?.querySelector('a[href*="/video/"]');
+      if (a && a.href) return a.href.split('?')[0];
+    }
+    return null;
+  }
+
+  // Allow popup.js to ask for the active video URL directly
+  api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (msg?.type === 'getActiveMedia') {
+      let url = location.href;
+      if (isTwitter) url = findActiveTweetUrl() || location.href;
+      else if (isTikTok) url = findActiveTikTokUrl() || location.href;
+      sendResponse({ url, ok: true });
+    }
+  });
 
   const reported = new Set();
   function scanMedia() {
     const items = [];
 
-    // On standard websites (not YouTube), scan direct audio/video elements
-    if (!isYouTube) {
+    // On standard websites (not social platforms), scan direct audio/video elements
+    if (!isSocial) {
       document.querySelectorAll('video, audio, source').forEach((el) => {
         let src = el.currentSrc || el.src || el.getAttribute('src');
         if (src && !src.startsWith('blob:') && /^https?:/i.test(src) && !reported.has(src)) {
@@ -80,7 +114,7 @@
       });
     }
 
-    // YouTube: strictly report active video/short URL with clean title (never preview blobs or frames)
+    // YouTube: strictly report active video/short URL with clean title
     if (isYouTube) {
       const isWatch = location.pathname.startsWith('/watch') || location.pathname.startsWith('/shorts/');
       if (isWatch && !reported.has(location.href)) {
@@ -96,26 +130,22 @@
         });
       }
     } else if (isTwitter) {
-      const hasVideo = document.querySelector('video') !== null;
-      if (hasVideo) {
-        let tweetUrl = location.href;
-        if (!tweetUrl.includes('/status/')) {
-          const v = document.querySelector('video');
-          const a = v ? v.closest('article')?.querySelector('a[href*="/status/"]') : null;
-          if (a && a.href) tweetUrl = a.href;
-        }
-        if (tweetUrl.includes('/status/') && !reported.has(tweetUrl)) {
-          reported.add(tweetUrl);
-          const cleanTitle = (document.title || 'Twitter Video').replace(/\s*\|\s*X$/i, '').trim();
-          items.push({ url: tweetUrl, type: 'video/mp4', name: cleanTitle.slice(0, 100), kind: 'video' });
-        }
+      const tweetUrl = findActiveTweetUrl();
+      if (tweetUrl && !reported.has(tweetUrl)) {
+        reported.add(tweetUrl);
+        const article = document.querySelector(`article a[href*="${tweetUrl.split('/status/')[1]}"]`)?.closest('article');
+        const userEl = article?.querySelector('[data-testid="User-Name"]');
+        const author = userEl ? userEl.textContent.split('@')[0].trim() : '';
+        const cleanTitle = (author ? author + ' - ' : '') + (document.title || 'Twitter Video').replace(/\s*\|\s*X$/i, '').trim();
+        items.push({ url: tweetUrl, type: 'video/mp4', name: cleanTitle.slice(0, 100), kind: 'video' });
       }
     } else if (isTikTok) {
-      const hasVideo = document.querySelector('video') !== null;
-      if (hasVideo && !reported.has(location.href)) {
-        reported.add(location.href);
-        const cleanTitle = (document.title || 'TikTok Video').replace(/\s*\|\s*TikTok$/i, '').trim();
-        items.push({ url: location.href, type: 'video/mp4', name: cleanTitle.slice(0, 100), kind: 'video' });
+      const videoUrl = findActiveTikTokUrl();
+      if (videoUrl && !reported.has(videoUrl)) {
+        reported.add(videoUrl);
+        const author = location.pathname.split('/')[1] || '';
+        const cleanTitle = (author ? author + ' - ' : '') + (document.title || 'TikTok Video').replace(/\s*\|\s*TikTok$/i, '').trim();
+        items.push({ url: videoUrl, type: 'video/mp4', name: cleanTitle.slice(0, 100), kind: 'video' });
       }
     }
 

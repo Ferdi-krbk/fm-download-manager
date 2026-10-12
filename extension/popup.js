@@ -175,7 +175,18 @@ $('pageVideo').onclick = async () => {
   tab = tab || (await currentTab());
   if (!tab?.url) return;
   $('pageVideo').textContent = t('popupSending');
-  const r = await send({ type: 'download', url: tab.url, referer: tab.url, kind: 'video' });
+
+  let targetUrl = tab.url;
+  try {
+    const res = await new Promise((resolve) => {
+      api.tabs.sendMessage(tab.id, { type: 'getActiveMedia' }, (r) => {
+        resolve(api.runtime.lastError ? null : r);
+      });
+    });
+    if (res && res.url) targetUrl = res.url;
+  } catch {}
+
+  const r = await send({ type: 'download', url: targetUrl, referer: tab.url, kind: 'video' });
   if (r && r.ok) {
     $('pageVideo').textContent = t('popupStarted');
   } else {

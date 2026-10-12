@@ -16,6 +16,7 @@ public sealed class DownloadManager : IDisposable
     private readonly List<DownloadItem> _all = new();
     private readonly SegmentedDownloader _engine;
     private readonly VideoDownloader? _videoEngine;
+    private readonly TorrentDownloader? _torrentEngine;
     private readonly SynchronizationContext? _ui;
     private readonly string _dbPath;
 
@@ -23,6 +24,7 @@ public sealed class DownloadManager : IDisposable
     public ObservableCollection<DownloadItem> Items { get; } = new();
 
     public string DefaultDownloadDirectory { get; set; }
+    public bool AutoCategorizeSubfolders { get; set; } = false;
     public int DefaultConnections { get; set; } = 8;
     public int MaxConcurrentDownloads { get; set; } = 3;
     public SpeedLimiter SpeedLimiter { get; } = new();
@@ -31,12 +33,13 @@ public sealed class DownloadManager : IDisposable
 
     public DownloadManager(string dataDirectory, string? downloadDirectory = null,
                            SegmentedDownloader? engine = null, SynchronizationContext? uiContext = null,
-                           VideoDownloader? videoEngine = null)
+                           VideoDownloader? videoEngine = null, TorrentDownloader? torrentEngine = null)
     {
         Directory.CreateDirectory(dataDirectory);
         _dbPath = Path.Combine(dataDirectory, "downloads.json");
         _engine = engine ?? new SegmentedDownloader(options: new EngineOptions { Limiter = SpeedLimiter });
         _videoEngine = videoEngine;
+        _torrentEngine = torrentEngine;
         _ui = uiContext;
         DefaultDownloadDirectory = downloadDirectory
             ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
@@ -89,16 +92,56 @@ public sealed class DownloadManager : IDisposable
 
     public DownloadItem Add(DownloadRequest request)
     {
-        if (!Uri.TryCreate(request.Url, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https"))
-            throw new ArgumentException("Only http(s) URLs are supported");
+        bool isHttp = Uri.TryCreate(request.Url, UriKind.Absolute, out var uri) && (uri.Scheme is "http" or "https");
+        bool isMagnet = request.Url.StartsWith("magnet:?", StringComparison.OrdinalIgnoreCase);
+        bool isTorrent = request.Url.EndsWith(".torrent", StringComparison.OrdinalIgnoreCase);
+
+        if (isMagnet || isTorrent)
+        {
+            request.Kind = DownloadKind.Torrent;
+            if (_torrentEngine == null)
+                throw new NotSupportedException("Torrent downloads are not available");
+        }
+        else if (!isHttp)
+        {
+            throw new ArgumentException("Only http(s), magnet and torrent URLs are supported");
+        }
+
         if (request.Kind == DownloadKind.Video && (_videoEngine == null || !_videoEngine.Available))
             throw new NotSupportedException("Video downloads are not available (yt-dlp missing)");
+
+        string targetDir = AutoCategorizeSubfolders
+            ? CategoryHelper.ResolveDestinationDirectory(DefaultDownloadDirectory, request.FileName, request.Url, request.Kind, true)
+            : DefaultDownloadDirectory;
+
+        string initialFileName = "";
+        if (!string.IsNullOrWhiteSpace(request.FileName))
+        {
+            initialFileName = FileNames.Sanitize(request.FileName);
+        }
+        else if (request.Url.StartsWith("magnet:?", StringComparison.OrdinalIgnoreCase))
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(request.Url, @"dn=([^&]+)");
+            initialFileName = match.Success ? Uri.UnescapeDataString(match.Groups[1].Value) : "magnet-" + Guid.NewGuid().ToString("N")[..8];
+        }
+        else if (Uri.TryCreate(request.Url, UriKind.Absolute, out var parsedUri))
+        {
+            var seg = Path.GetFileName(parsedUri.AbsolutePath);
+            if (!string.IsNullOrWhiteSpace(seg))
+            {
+                initialFileName = FileNames.Sanitize(Uri.UnescapeDataString(seg));
+            }
+            else
+            {
+                initialFileName = parsedUri.Host;
+            }
+        }
 
         var item = new DownloadItem
         {
             Request = request,
-            Directory = DefaultDownloadDirectory,
-            FileName = string.IsNullOrWhiteSpace(request.FileName) ? "" : FileNames.Sanitize(request.FileName),
+            Directory = targetDir,
+            FileName = initialFileName,
             Status = DownloadStatus.Queued,
         };
         lock (_gate) _all.Add(item);
@@ -106,6 +149,26 @@ public sealed class DownloadManager : IDisposable
         Save();
         Pump();
         return item;
+    }
+
+    public void ResumeAll()
+    {
+        lock (_gate)
+        {
+            foreach (var item in _all.Where(i => i.Status == DownloadStatus.Paused))
+                item.Status = DownloadStatus.Queued;
+        }
+        Save();
+        Pump();
+    }
+
+    public void PauseAll()
+    {
+        lock (_gate)
+        {
+            var running = _all.Where(i => i.Status is DownloadStatus.Downloading or DownloadStatus.Queued).ToList();
+            foreach (var item in running) Pause(item.Id);
+        }
     }
 
     public DownloadItem? Find(string id)
@@ -205,6 +268,11 @@ public sealed class DownloadManager : IDisposable
                 if (_videoEngine == null) throw new FatalDownloadException("Video engine is not configured");
                 await _videoEngine.RunAsync(item, cts.Token);
             }
+            else if (item.Request.Kind == DownloadKind.Torrent)
+            {
+                if (_torrentEngine == null) throw new FatalDownloadException("Torrent engine is not configured");
+                await _torrentEngine.RunAsync(item, cts.Token);
+            }
             else
             {
                 await _engine.RunAsync(item, connections, cts.Token);
@@ -293,6 +361,7 @@ public sealed class DownloadManager : IDisposable
         List<DownloadItem> running;
         lock (_gate) running = _all.Where(i => i.Cts != null).ToList();
         foreach (var i in running) { i.Status = DownloadStatus.Paused; i.Cts?.Cancel(); }
+        _torrentEngine?.Dispose();
         Save();
     }
 }

@@ -25,6 +25,14 @@ public sealed class AppSettings
     public bool StartWithWindows { get; set; } = false;
     public bool ClipboardWatcherEnabled { get; set; } = true;
     public bool NotificationsEnabled { get; set; } = true;
+    public bool AutoCategorizeSubfolders { get; set; } = true;
+
+    // Scheduler (Zamanlayıcı)
+    public bool SchedulerEnabled { get; set; } = false;
+    public string SchedulerStartTime { get; set; } = "02:00";
+    public string SchedulerStopTime { get; set; } = "07:00";
+    public bool SchedulerAutoResume { get; set; } = true;
+    public bool SchedulerAutoPause { get; set; } = true;
 
     public static string SettingsFilePath =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MC Download Manager", "settings.json");

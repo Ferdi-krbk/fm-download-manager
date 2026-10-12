@@ -99,13 +99,30 @@ public partial class BrowserSetupWindow : Window
     }
 
     private void OpenChrome_Click(object sender, RoutedEventArgs e) =>
-        TryLaunchBrowser("chrome.exe", "chrome://extensions");
+        LaunchBrowserWithExtension("chrome.exe", "chrome://extensions");
 
     private void OpenEdge_Click(object sender, RoutedEventArgs e) =>
-        TryLaunchBrowser("msedge.exe", "edge://extensions");
+        LaunchBrowserWithExtension("msedge.exe", "edge://extensions");
 
     private void OpenBrave_Click(object sender, RoutedEventArgs e) =>
-        TryLaunchBrowser("brave.exe", "brave://extensions");
+        LaunchBrowserWithExtension("brave.exe", "brave://extensions");
+
+    private void LaunchBrowserWithExtension(string exe, string url)
+    {
+        try { ClipboardHelper.SetText(_extensionDir); } catch { }
+
+        TxtStatus.Text = "✓ Eklenti yolu panoya kopyalandı!";
+        TxtStatus.Foreground = System.Windows.Media.Brushes.Green;
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(exe, $"--load-extension=\"{_extensionDir}\" {url}") { UseShellExecute = true });
+        }
+        catch
+        {
+            TryLaunchBrowser(exe, url);
+        }
+    }
 
     private static void TryLaunchBrowser(string exe, string url)
     {

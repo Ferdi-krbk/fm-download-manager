@@ -125,7 +125,31 @@
                     <!-- Toggles -->
                     <CheckBox x:Name="ChkStartWithWindows" Content="START WITH WINDOWS" Margin="0,0,0,12" />
                     <CheckBox x:Name="ChkClipboardWatcher" Content="MONITOR CLIPBOARD FOR DOWNLOAD LINKS" Margin="0,0,0,12" />
-                    <CheckBox x:Name="ChkNotifications" Content="SHOW SYSTEM NOTIFICATIONS ON COMPLETION" Margin="0,0,0,10" />
+                    <CheckBox x:Name="ChkNotifications" Content="SHOW SYSTEM NOTIFICATIONS ON COMPLETION" Margin="0,0,0,12" />
+                    <CheckBox x:Name="ChkAutoCategorize" Content="Kategoriye göre alt klasörleme yap (Videos, Music, Torrents vb.)" Margin="0,0,0,18" />
+
+                    <Separator Margin="0,0,0,18" />
+
+                    <!-- Scheduler (Zamanlayıcı) -->
+                    <TextBlock x:Name="LblScheduler" Text="ZAMANLAYICI / KUYRUK PLANLAYICI" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,8" />
+                    <CheckBox x:Name="ChkScheduler" Content="Zamanlayıcıyı etkinleştir (Planlanan saat aralığında çalış)" Margin="0,0,0,12" />
+                    <Grid Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="16" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock x:Name="LblSchedStart" Text="BAŞLANGIÇ SAATİ (SS:dd)" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="10" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,4" />
+                            <TextBox x:Name="TxtSchedStart" FontFamily="{DynamicResource MonoFont}" Text="02:00" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock x:Name="LblSchedStop" Text="BİTİŞ SAATİ (SS:dd)" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="10" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,4" />
+                            <TextBox x:Name="TxtSchedStop" FontFamily="{DynamicResource MonoFont}" Text="07:00" />
+                        </StackPanel>
+                    </Grid>
+                    <CheckBox x:Name="ChkSchedAutoResume" Content="Başlangıç saatinde duraklatılan indirmeleri otomatik başlat" Margin="0,0,0,8" />
+                    <CheckBox x:Name="ChkSchedAutoPause" Content="Bitiş saatinde çalışan indirmeleri otomatik duraklat" Margin="0,0,0,14" />
                 </StackPanel>
             </ScrollViewer>
 

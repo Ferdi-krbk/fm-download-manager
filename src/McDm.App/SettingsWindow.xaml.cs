@@ -91,6 +91,13 @@ public partial class SettingsWindow : Window
         ChkStartWithWindows.IsChecked = _settings.StartWithWindows;
         ChkClipboardWatcher.IsChecked = _settings.ClipboardWatcherEnabled;
         ChkNotifications.IsChecked = _settings.NotificationsEnabled;
+        ChkAutoCategorize.IsChecked = _settings.AutoCategorizeSubfolders;
+
+        ChkScheduler.IsChecked = _settings.SchedulerEnabled;
+        TxtSchedStart.Text = _settings.SchedulerStartTime;
+        TxtSchedStop.Text = _settings.SchedulerStopTime;
+        ChkSchedAutoResume.IsChecked = _settings.SchedulerAutoResume;
+        ChkSchedAutoPause.IsChecked = _settings.SchedulerAutoPause;
     }
 
     private void Browse_Click(object sender, RoutedEventArgs e)
@@ -141,6 +148,13 @@ public partial class SettingsWindow : Window
         _settings.StartWithWindows = ChkStartWithWindows.IsChecked == true;
         _settings.ClipboardWatcherEnabled = ChkClipboardWatcher.IsChecked == true;
         _settings.NotificationsEnabled = ChkNotifications.IsChecked == true;
+        _settings.AutoCategorizeSubfolders = ChkAutoCategorize.IsChecked == true;
+
+        _settings.SchedulerEnabled = ChkScheduler.IsChecked == true;
+        _settings.SchedulerStartTime = string.IsNullOrWhiteSpace(TxtSchedStart.Text) ? "02:00" : TxtSchedStart.Text.Trim();
+        _settings.SchedulerStopTime = string.IsNullOrWhiteSpace(TxtSchedStop.Text) ? "07:00" : TxtSchedStop.Text.Trim();
+        _settings.SchedulerAutoResume = ChkSchedAutoResume.IsChecked == true;
+        _settings.SchedulerAutoPause = ChkSchedAutoPause.IsChecked == true;
 
         _settings.Save();
         _onSave(_settings);

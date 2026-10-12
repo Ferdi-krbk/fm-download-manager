@@ -59,6 +59,7 @@ public partial class DownloadDetailWindow : Window
         TxtDownloaded.Text = $"{dlText} / {totalText}";
 
         TxtSpeed.Text = _item.Speed > 0 ? $"{BytesConverter.Format(_item.Speed)}/s ({_item.ActiveConnections} connections)" : "0 B/s";
+        DetailSpeedGraph?.PushSample(_item.Speed);
         PrgOverall.Value = _item.Progress;
 
         // Try reading segment state file if present

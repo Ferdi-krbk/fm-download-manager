@@ -31,6 +31,9 @@ public partial class App : System.Windows.Application
     private MainWindow? _window;
     private DispatcherTimer? _clipboardTimer;
     private DispatcherTimer? _trayTooltipTimer;
+    private DispatcherTimer? _schedulerTimer;
+    private bool _schedulerWasInWindow;
+    private TorrentDownloader? _torrentEngine;
     private string _lastSeenClipboard = "";
 
     protected override async void OnStartup(StartupEventArgs e)
@@ -110,12 +113,15 @@ public partial class App : System.Windows.Application
                 MaxHeight = _settings.MaxVideoResolution,
             });
 
+        _torrentEngine = new TorrentDownloader();
         _manager = new DownloadManager(data, downloadDirectory: _settings.DownloadDirectory,
                                        uiContext: new DispatcherSynchronizationContext(Dispatcher),
-                                       videoEngine: videoEngine)
+                                       videoEngine: videoEngine,
+                                       torrentEngine: _torrentEngine)
         {
             DefaultConnections = _settings.ConnectionsPerDownload,
             MaxConcurrentDownloads = _settings.MaxConcurrentDownloads,
+            AutoCategorizeSubfolders = _settings.AutoCategorizeSubfolders,
         };
 
         _manager.ItemCompleted += item =>
@@ -145,6 +151,7 @@ public partial class App : System.Windows.Application
         BuildTray();
         StartClipboardWatcher();
         StartTrayTooltipUpdater();
+        StartScheduler();
 
         _window = new MainWindow(_manager, _tokenStore, _settings);
         if (!e.Args.Contains("--background")) _window.Show();
@@ -228,6 +235,23 @@ public partial class App : System.Windows.Application
                     if (text == _lastSeenClipboard) return;
                     _lastSeenClipboard = text;
 
+                    bool isMagnet = text.StartsWith("magnet:?", StringComparison.OrdinalIgnoreCase);
+                    bool isTorrentExt = text.EndsWith(".torrent", StringComparison.OrdinalIgnoreCase);
+
+                    if (isMagnet || isTorrentExt)
+                    {
+                        var msg = isMagnet
+                            ? "Panoda Magnet indirme bağlantısı algılandı. İndirmek istiyor musunuz?"
+                            : "Panoda Torrent dosyası algılandı. İndirmek istiyor musunuz?";
+                        var res = DarkMessageBox.Show(MainWindow, msg, "Torrent İndir", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                        if (res == MessageBoxResult.Yes)
+                        {
+                            _manager?.Add(new DownloadRequest { Url = text, Kind = DownloadKind.Torrent });
+                            ShowWindow();
+                        }
+                        return;
+                    }
+
                     if (Uri.TryCreate(text, UriKind.Absolute, out var uri) && (uri.Scheme is "http" or "https"))
                     {
                         var isVideo = VideoDownloader.IsVideoUrl(text);
@@ -256,6 +280,55 @@ public partial class App : System.Windows.Application
         _clipboardTimer.Start();
     }
 
+    private void StartScheduler()
+    {
+        _schedulerTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(15) };
+        _schedulerTimer.Tick += (_, _) => CheckScheduler();
+        _schedulerTimer.Start();
+        CheckScheduler();
+    }
+
+    private void CheckScheduler()
+    {
+        if (_settings == null || !_settings.SchedulerEnabled || _manager == null)
+        {
+            _schedulerWasInWindow = false;
+            return;
+        }
+
+        if (!TimeOnly.TryParse(_settings.SchedulerStartTime, out var start) ||
+            !TimeOnly.TryParse(_settings.SchedulerStopTime, out var stop))
+        {
+            return;
+        }
+
+        var now = TimeOnly.FromDateTime(DateTime.Now);
+        bool inWindow = start <= stop
+            ? (now >= start && now < stop)
+            : (now >= start || now < stop); // overnight span e.g. 23:00 to 06:00
+
+        if (inWindow && !_schedulerWasInWindow)
+        {
+            _schedulerWasInWindow = true;
+            if (_settings.SchedulerAutoResume)
+            {
+                _manager.ResumeAll();
+                if (_settings.NotificationsEnabled)
+                    _tray?.ShowBalloonTip(3000, "Zamanlayıcı", "Planlanan indirme saatine girildi. İndirmeler başlatıldı.", Forms.ToolTipIcon.Info);
+            }
+        }
+        else if (!inWindow && _schedulerWasInWindow)
+        {
+            _schedulerWasInWindow = false;
+            if (_settings.SchedulerAutoPause)
+            {
+                _manager.PauseAll();
+                if (_settings.NotificationsEnabled)
+                    _tray?.ShowBalloonTip(3000, "Zamanlayıcı", "Planlanan indirme saati sona erdi. İndirmeler duraklatıldı.", Forms.ToolTipIcon.Info);
+            }
+        }
+    }
+
     private void ShowWindow()
     {
         if (_quitting) return;
@@ -275,8 +348,10 @@ public partial class App : System.Windows.Application
         _showEvent?.Set();
         _clipboardTimer?.Stop();
         _trayTooltipTimer?.Stop();
+        _schedulerTimer?.Stop();
         if (_tray != null) { _tray.Visible = false; _tray.Dispose(); }
         _manager?.Dispose();
+        _torrentEngine?.Dispose();
         if (_bridge != null) await _bridge.DisposeAsync();
         _window?.AllowClose();
         Shutdown();

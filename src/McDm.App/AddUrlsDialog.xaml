@@ -43,8 +43,8 @@
                 <!-- Multi-line URL TextBox (Consolas, Bg2, 1px Line) -->
                 <Border Grid.Row="1" Background="{DynamicResource Bg2Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="10">
                     <TextBox x:Name="UrlsBox"
-                             AcceptsReturn="True" TextWrapping="NoWrap"
-                             VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                             AcceptsReturn="True" TextWrapping="Wrap"
+                             VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                              Background="Transparent" BorderThickness="0"
                              FontFamily="{DynamicResource MonoFont}" FontSize="12"
                              Foreground="{DynamicResource TextBrush}"
@@ -63,7 +63,7 @@
             <Border Grid.Row="2" Background="{DynamicResource Bg1Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="16,0">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                     <Button x:Name="CancelButton" Style="{DynamicResource SecondaryButton}" Content="CANCEL" Width="90" Margin="0,0,8,0" Click="Cancel_Click" />
-                    <Button x:Name="OkButton" Style="{DynamicResource PrimaryButton}" Content="DOWNLOAD" Width="110" Click="Ok_Click" />
+                    <Button x:Name="OkButton" Style="{DynamicResource PrimaryButton}" Content="DOWNLOAD" MinWidth="135" Padding="16,0" Click="Ok_Click" />
                 </StackPanel>
             </Border>
         </Grid>

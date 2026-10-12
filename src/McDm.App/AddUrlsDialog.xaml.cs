@@ -34,11 +34,19 @@ public partial class AddUrlsDialog : Window
         UpdateValidCount();
     }
 
+    private static bool IsValidLink(string l)
+    {
+        if (string.IsNullOrWhiteSpace(l)) return false;
+        if (l.StartsWith("magnet:?", StringComparison.OrdinalIgnoreCase)) return true;
+        if (l.EndsWith(".torrent", StringComparison.OrdinalIgnoreCase)) return true;
+        return Uri.TryCreate(l, UriKind.Absolute, out var uri) && (uri.Scheme == "http" || uri.Scheme == "https");
+    }
+
     private void UpdateValidCount()
     {
         if (UrlsBox == null || ValidLinksCountText == null) return;
         var lines = UrlsBox.Text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        int valid = lines.Count(l => Uri.TryCreate(l, UriKind.Absolute, out var uri) && (uri.Scheme == "http" || uri.Scheme == "https"));
+        int valid = lines.Count(IsValidLink);
         bool isTr = Strings.Culture?.TwoLetterISOLanguageName == "tr";
         ValidLinksCountText.Text = isTr ? $"{valid} geçerli bağlantı" : $"{valid} valid links";
         if (OkButton != null) OkButton.IsEnabled = valid > 0;
@@ -49,7 +57,7 @@ public partial class AddUrlsDialog : Window
         var lines = UrlsBox.Text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         foreach (var line in lines)
         {
-            if (Uri.TryCreate(line, UriKind.Absolute, out var uri) && (uri.Scheme == "http" || uri.Scheme == "https"))
+            if (IsValidLink(line))
             {
                 ResultUrls.Add(line);
             }
@@ -57,7 +65,7 @@ public partial class AddUrlsDialog : Window
 
         if (ResultUrls.Count == 0)
         {
-            DarkMessageBox.Show(this, "Please enter at least one valid http(s) URL.", Strings.AppTitle, MessageBoxButton.OK, MessageBoxImage.Warning);
+            DarkMessageBox.Show(this, "Lütfen geçerli en az bir indirme bağlantısı girin.", Strings.AppTitle, MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 

@@ -47,8 +47,10 @@ async function refresh() {
   if (reachable && !paired) {
     try {
       const clip = (await navigator.clipboard.readText()).trim().toLowerCase();
-      if (/^[0-9a-f]{64}$/.test(clip) && !$('pairCode').value) {
+      if (/^[0-9a-f]{64}$/.test(clip)) {
         $('pairCode').value = clip;
+        const r = await send({ type: 'setToken', token: clip });
+        if (r && r.ok) { refresh(); }
       }
     } catch {}
   }

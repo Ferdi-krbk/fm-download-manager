@@ -106,6 +106,7 @@ public partial class MainWindow : Window
         int done = _manager.Items.Count(i => i.Status == DownloadStatus.Completed);
 
         TotalSpeedText.Text = active > 0 ? $"{BytesConverter.Format(totalSpeed)}/s" : "0 B/s";
+        SidebarSpeedGraph.PushSample(totalSpeed);
         bool isTr = Strings.Culture?.TwoLetterISOLanguageName == "tr";
         ActiveCountText.Text = isTr ? $"{active} aktif indirme" : $"{active} active";
         StatusCountsText.Text = isTr
@@ -140,9 +141,10 @@ public partial class MainWindow : Window
             "apps" => AppExts.Contains(ext),
             "documents" => DocExts.Contains(ext),
             "archives" => ArcExts.Contains(ext),
+            "torrents" => item.Request?.Kind == DownloadKind.Torrent || ext.Equals(".torrent", StringComparison.OrdinalIgnoreCase),
             "other" => !ImgExts.Contains(ext) && !MusicExts.Contains(ext) && !VideoExts.Contains(ext) &&
                        !AppExts.Contains(ext) && !DocExts.Contains(ext) && !ArcExts.Contains(ext) &&
-                       item.Request?.Kind != DownloadKind.Video,
+                       item.Request?.Kind != DownloadKind.Video && item.Request?.Kind != DownloadKind.Torrent,
             _ => true
         };
     }
@@ -175,9 +177,22 @@ public partial class MainWindow : Window
     private void PasteUrl_Click(object sender, RoutedEventArgs e)
     {
         var text = Clipboard.ContainsText() ? Clipboard.GetText().Trim() : "";
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            StatusText.Text = "Panoda bağlantı bulunamadı.";
+            return;
+        }
+
+        if (text.StartsWith("magnet:?", StringComparison.OrdinalIgnoreCase) || text.EndsWith(".torrent", StringComparison.OrdinalIgnoreCase))
+        {
+            _manager.Add(new DownloadRequest { Url = text, Kind = DownloadKind.Torrent });
+            StatusText.Text = "Torrent indirmesi eklendi.";
+            return;
+        }
+
         if (!Uri.TryCreate(text, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https"))
         {
-            StatusText.Text = "Clipboard does not contain an http(s) link.";
+            StatusText.Text = "Geçersiz indirme bağlantısı.";
             return;
         }
         var kind = VideoDownloader.IsVideoUrl(text) ? DownloadKind.Video : DownloadKind.File;

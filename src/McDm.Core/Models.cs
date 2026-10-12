@@ -5,7 +5,7 @@ using System.Text.Json.Serialization;
 namespace McDm.Core;
 
 public enum DownloadStatus { Queued, Downloading, Paused, Completed, Failed, Cancelled }
-public enum DownloadKind { File, Video }
+public enum DownloadKind { File, Video, Torrent }
 
 public sealed class BrowserCookie
 {
@@ -74,7 +74,41 @@ public sealed class DownloadItem : ObservableBase
     public bool SupportsRanges { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    public string FileName { get => _fileName; set => Set(ref _fileName, value); }
+    public string FileName
+    {
+        get => _fileName;
+        set
+        {
+            if (Set(ref _fileName, value)) Raise(nameof(DisplayName));
+        }
+    }
+
+    [JsonIgnore]
+    public string DisplayName
+    {
+        get
+        {
+            if (!string.IsNullOrWhiteSpace(_fileName)) return _fileName;
+            if (!string.IsNullOrWhiteSpace(Request?.FileName)) return Request.FileName;
+            if (!string.IsNullOrWhiteSpace(Request?.Url))
+            {
+                if (Request.Url.StartsWith("magnet:?", StringComparison.OrdinalIgnoreCase))
+                {
+                    var m = System.Text.RegularExpressions.Regex.Match(Request.Url, @"dn=([^&]+)");
+                    if (m.Success) return Uri.UnescapeDataString(m.Groups[1].Value);
+                    return "Magnet (" + Id[..6] + ")";
+                }
+                if (Uri.TryCreate(Request.Url, UriKind.Absolute, out var u))
+                {
+                    var seg = Path.GetFileName(u.AbsolutePath);
+                    if (!string.IsNullOrWhiteSpace(seg)) return Uri.UnescapeDataString(seg);
+                    return u.Host;
+                }
+                return Request.Url;
+            }
+            return "İsimsiz İndirme";
+        }
+    }
     public string SavePath { get => _savePath; set => Set(ref _savePath, value); }
     public long TotalBytes
     {

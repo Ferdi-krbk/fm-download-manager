@@ -1,6 +1,7 @@
 <Window x:Class="McDm.App.DownloadDetailWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:McDm.App"
         Title="DOWNLOAD PROPERTIES" Width="600" Height="480" MinWidth="500" MinHeight="380"
         WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
         Background="{DynamicResource Bg0Brush}"
@@ -32,6 +33,7 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />  <!-- File name & URL -->
                     <RowDefinition Height="Auto" />  <!-- Key stats row -->
+                    <RowDefinition Height="Auto" />  <!-- Speed Graph -->
                     <RowDefinition Height="Auto" />  <!-- Overall Progress -->
                     <RowDefinition Height="*" />     <!-- Segments DataGrid -->
                 </Grid.RowDefinitions>
@@ -45,7 +47,7 @@
                 </StackPanel>
 
                 <!-- Key stats row (SIZE, DOWNLOADED, SPEED, STATUS) -->
-                <Border Grid.Row="1" Background="{DynamicResource Bg1Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="10" Padding="14,10" Margin="0,0,0,14">
+                <Border Grid.Row="1" Background="{DynamicResource Bg1Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="10" Padding="14,10" Margin="0,0,0,10">
                     <UniformGrid Columns="4">
                         <StackPanel>
                             <TextBlock x:Name="LblDownloaded" Text="DOWNLOADED" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="10" Foreground="{DynamicResource TextDimBrush}" />
@@ -66,11 +68,16 @@
                     </UniformGrid>
                 </Border>
 
+                <!-- Real-time Speed Graph -->
+                <Border Grid.Row="2" Background="{DynamicResource Bg1Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="10" Padding="8,6" Margin="0,0,0,12" Height="68">
+                    <local:SpeedGraphControl x:Name="DetailSpeedGraph" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+                </Border>
+
                 <!-- Overall Progress -->
-                <ProgressBar x:Name="PrgOverall" Grid.Row="2" Height="6" Minimum="0" Maximum="1" Margin="0,0,0,14" />
+                <ProgressBar x:Name="PrgOverall" Grid.Row="3" Height="6" Minimum="0" Maximum="1" Margin="0,0,0,14" />
 
                 <!-- Segments DataGrid -->
-                <GroupBox x:Name="GrpSegments" Grid.Row="3" Header="SEGMENT CONNECTIONS"
+                <GroupBox x:Name="GrpSegments" Grid.Row="4" Header="SEGMENT CONNECTIONS"
                           FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource TextDimBrush}"
                           BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" Background="{DynamicResource Bg1Brush}" Padding="6">
                     <DataGrid x:Name="GridSegments" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column"

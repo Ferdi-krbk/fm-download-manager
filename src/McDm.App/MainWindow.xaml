@@ -140,6 +140,9 @@
                                     <TextBlock x:Name="LblTotalSpeed" Text="Toplam Hız" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource TextDimBrush}" />
                                     <TextBlock x:Name="TotalSpeedText" Text="0 B/s" FontFamily="{DynamicResource MonoFont}" FontWeight="Bold" FontSize="19" Foreground="{DynamicResource AccentBrush}" Margin="0,3,0,1" />
                                     <TextBlock x:Name="ActiveCountText" Text="0 aktif indirme" FontFamily="{DynamicResource UiFont}" FontSize="11" Foreground="{DynamicResource TextMuteBrush}" />
+                                    <Border Margin="0,8,0,0" CornerRadius="6" Background="{DynamicResource Bg1Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" Height="50" Padding="2">
+                                        <local:SpeedGraphControl x:Name="SidebarSpeedGraph" Height="46" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+                                    </Border>
                                 </StackPanel>
                             </Border>
                         </Border>
@@ -222,6 +225,12 @@
                                     <TextBlock x:Name="CatArchivesText" Text="Arşivler" FontSize="12" VerticalAlignment="Center" />
                                 </StackPanel>
                             </ListBoxItem>
+                            <ListBoxItem x:Name="CatTorrents" Tag="torrents">
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="{StaticResource GeoLink}" Width="13" Height="13" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" Margin="0,0,10,0" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="CatTorrentsText" Text="Torrent / Magnet" FontSize="12" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </ListBoxItem>
                             <ListBoxItem x:Name="CatOther" Tag="other">
                                 <StackPanel Orientation="Horizontal">
                                     <Path Data="{StaticResource GeoCatOther}" Width="13" Height="13" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" Margin="0,0,10,0" VerticalAlignment="Center" />
@@ -257,12 +266,12 @@
                             </ContextMenu>
                         </DataGrid.ContextMenu>
                         <DataGrid.Columns>
-                            <DataGridTextColumn x:Name="ColHeaderName" Header="Dosya Adı" Binding="{Binding FileName}" Width="2*">
+                            <DataGridTextColumn x:Name="ColHeaderName" Header="Dosya Adı" Binding="{Binding DisplayName}" Width="2*">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="VerticalAlignment" Value="Center" />
                                         <Setter Property="TextTrimming" Value="CharacterEllipsis" />
-                                        <Setter Property="ToolTip" Value="{Binding FileName}" />
+                                        <Setter Property="ToolTip" Value="{Binding DisplayName}" />
                                     </Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>

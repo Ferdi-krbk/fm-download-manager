@@ -260,105 +260,150 @@ public sealed class VideoDownloader
                 await File.WriteAllTextAsync(cookieFile, cookieText, new UTF8Encoding(false), ct);
             }
 
-            var psi = new ProcessStartInfo(tool.FileName)
-            {
-                RedirectStandardOutput = true, RedirectStandardError = true, RedirectStandardInput = true,
-                UseShellExecute = false, CreateNoWindow = true,
-                StandardOutputEncoding = Encoding.UTF8, StandardErrorEncoding = Encoding.UTF8,
-            };
-            foreach (var l in tool.Lead) psi.ArgumentList.Add(l);
-            foreach (var a in BuildArguments(item.Request.Url, opt, outDir, item.WorkDir, cookieFile, _ffmpeg()))
-                psi.ArgumentList.Add(a);
-            psi.Environment["PYTHONUNBUFFERED"] = "1";
-            psi.Environment["PYTHONIOENCODING"] = "utf-8";
-
-            using var proc = new Process { StartInfo = psi };
-            string? finalPath = null;
-            string? lastError = null;
-            var acc = new ProgressAccumulator();
-            var clock = Stopwatch.StartNew();
-            item.Stage = null;
-            item.ActiveConnections = 1;
-
-            void OnLine(string? line)
-            {
-                if (string.IsNullOrEmpty(line)) return;
-                if (VideoDownloader.ParseProgress(line) is { } p)
-                {
-                    var (done, total) = acc.Apply(p);
-                    item.TotalBytes = total;
-                    item.DownloadedBytes = done;
-                    item.Speed = p.Speed;
-                    item.Stage = null;
-                }
-                else if (line.StartsWith(TitlePrefix + "|", StringComparison.Ordinal))
-                {
-                    var title = FileNames.Sanitize(line[(TitlePrefix.Length + 1)..].Trim());
-                    if (string.IsNullOrEmpty(item.SavePath)) item.FileName = title;
-                }
-                else if (line.StartsWith(FilePrefix + "|", StringComparison.Ordinal))
-                {
-                    finalPath = line[(FilePrefix.Length + 1)..].Trim();
-                }
-                else if (line.StartsWith("[Merger]", StringComparison.Ordinal) || line.StartsWith("[VideoConvertor]", StringComparison.Ordinal)
-                         || line.StartsWith("[ExtractAudio]", StringComparison.Ordinal) || line.StartsWith("[FixupM3u8]", StringComparison.Ordinal))
-                {
-                    item.Stage = "Merging";
-                    item.Speed = 0;
-                }
-                else if (line.StartsWith("ERROR:", StringComparison.Ordinal))
-                {
-                    lastError = line[6..].Trim();
-                }
-                else
-                {
-                    lastError ??= line.Trim();
-                }
-            }
-            proc.OutputDataReceived += (_, e) => OnLine(e.Data);
-            proc.ErrorDataReceived += (_, e) => { if (!string.IsNullOrWhiteSpace(e.Data)) lastError = e.Data.Trim(); };
-
-            if (!proc.Start()) throw new FatalDownloadException("Could not start yt-dlp");
-            try { proc.StandardInput.Close(); } catch { }
-            proc.BeginOutputReadLine();
-            proc.BeginErrorReadLine();
-
-            using var reg = ct.Register(() => { try { if (!proc.HasExited) proc.Kill(entireProcessTree: true); } catch { } });
             try
             {
-                await proc.WaitForExitAsync(ct);
+                await ExecuteYtDlpOnceAsync(item, opt, outDir, cookieFile, tool, ct);
             }
-            catch (OperationCanceledException)
+            catch (FatalDownloadException ex) when (cookieFile != null && !ct.IsCancellationRequested &&
+                   (ex.Message.Contains("reload", StringComparison.OrdinalIgnoreCase) ||
+                    ex.Message.Contains("cookie", StringComparison.OrdinalIgnoreCase) ||
+                    ex.Message.Contains("sign in", StringComparison.OrdinalIgnoreCase) ||
+                    ex.Message.Contains("bot", StringComparison.OrdinalIgnoreCase) ||
+                    ex.Message.Contains("403", StringComparison.OrdinalIgnoreCase)))
             {
-                try { if (!proc.HasExited) proc.Kill(entireProcessTree: true); } catch { }
-                throw;
+                // Browser cookies triggered YouTube's reload/bot check. Retry cleanly without cookies.
+                await ExecuteYtDlpOnceAsync(item, opt, outDir, null, tool, ct);
             }
-            proc.WaitForExit();     // flush the async readers
-            if (ct.IsCancellationRequested)
-                throw new OperationCanceledException(ct);
-
-            if (proc.ExitCode != 0)
-                throw new FatalDownloadException("yt-dlp failed" + (lastError != null ? ": " + Trim(lastError) : $" (exit code {proc.ExitCode})"));
-            if (finalPath == null || !File.Exists(finalPath))
-                throw new FatalDownloadException("yt-dlp finished but reported no output file");
-
-            var full = Path.GetFullPath(finalPath);
-            var root = Path.GetFullPath(outDir).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
-            if (!full.StartsWith(root, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
-                throw new FatalDownloadException("yt-dlp reported a file outside the download folder");
-
-            item.SavePath = full;
-            item.FileName = Path.GetFileName(full);
-            long size = new FileInfo(full).Length;
-            item.TotalBytes = size; item.DownloadedBytes = size;
-            item.Stage = null; item.Speed = 0; item.ActiveConnections = 0;
-            try { Directory.Delete(item.WorkDir, recursive: true); } catch { }
-            item.WorkDir = null;
         }
         finally
         {
-            if (cookieFile != null) SegmentedDownloader.TryDelete(cookieFile);   // cookies never outlive the run
+            if (cookieFile != null) SegmentedDownloader.TryDelete(cookieFile);
         }
+    }
+
+    private async Task ExecuteYtDlpOnceAsync(DownloadItem item, VideoOptions opt, string outDir, string? cookieFile,
+                                             ToolLauncher tool, CancellationToken ct)
+    {
+        var psi = new ProcessStartInfo(tool.FileName)
+        {
+            RedirectStandardOutput = true, RedirectStandardError = true, RedirectStandardInput = true,
+            UseShellExecute = false, CreateNoWindow = true,
+            StandardOutputEncoding = Encoding.UTF8, StandardErrorEncoding = Encoding.UTF8,
+        };
+        foreach (var l in tool.Lead) psi.ArgumentList.Add(l);
+        foreach (var a in BuildArguments(item.Request.Url, opt, outDir, item.WorkDir!, cookieFile, _ffmpeg()))
+            psi.ArgumentList.Add(a);
+        psi.Environment["PYTHONUNBUFFERED"] = "1";
+        psi.Environment["PYTHONIOENCODING"] = "utf-8";
+
+        using var proc = new Process { StartInfo = psi };
+        string? finalPath = null;
+        string? lastError = null;
+        var acc = new ProgressAccumulator();
+        var clock = Stopwatch.StartNew();
+        item.Stage = null;
+        item.ActiveConnections = 1;
+
+        void OnLine(string? line)
+        {
+            if (string.IsNullOrEmpty(line)) return;
+            if (VideoDownloader.ParseProgress(line) is { } p)
+            {
+                var (done, total) = acc.Apply(p);
+                item.TotalBytes = total;
+                item.DownloadedBytes = done;
+                item.Speed = p.Speed;
+                item.Stage = null;
+            }
+            else if (line.StartsWith(TitlePrefix + "|", StringComparison.Ordinal))
+            {
+                var title = FileNames.Sanitize(line[(TitlePrefix.Length + 1)..].Trim());
+                if (string.IsNullOrEmpty(item.SavePath)) item.FileName = title;
+            }
+            else if (line.StartsWith(FilePrefix + "|", StringComparison.Ordinal))
+            {
+                var fp = line[(FilePrefix.Length + 1)..].Trim();
+                if (!string.IsNullOrEmpty(fp) && fp != "NA") finalPath = fp;
+            }
+            else if (line.StartsWith("[Merger] Merging formats into \"", StringComparison.Ordinal))
+            {
+                item.Stage = "Merging";
+                item.Speed = 0;
+                var fp = line.Substring("[Merger] Merging formats into \"".Length).TrimEnd('"').Trim();
+                if (!string.IsNullOrEmpty(fp)) finalPath = fp;
+            }
+            else if (line.StartsWith("[download] Destination: ", StringComparison.Ordinal))
+            {
+                var fp = line.Substring("[download] Destination: ".Length).Trim();
+                if (!string.IsNullOrEmpty(fp) && string.IsNullOrEmpty(finalPath)) finalPath = fp;
+            }
+            else if (line.StartsWith("[Merger]", StringComparison.Ordinal) || line.StartsWith("[VideoConvertor]", StringComparison.Ordinal)
+                     || line.StartsWith("[ExtractAudio]", StringComparison.Ordinal) || line.StartsWith("[FixupM3u8]", StringComparison.Ordinal))
+            {
+                item.Stage = "Merging";
+                item.Speed = 0;
+            }
+            else if (line.StartsWith("ERROR:", StringComparison.Ordinal))
+            {
+                lastError = line[6..].Trim();
+            }
+            else
+            {
+                lastError ??= line.Trim();
+            }
+        }
+        proc.OutputDataReceived += (_, e) => OnLine(e.Data);
+        proc.ErrorDataReceived += (_, e) => { if (!string.IsNullOrWhiteSpace(e.Data)) lastError = e.Data.Trim(); };
+
+        if (!proc.Start()) throw new FatalDownloadException("Could not start yt-dlp");
+        try { proc.StandardInput.Close(); } catch { }
+        proc.BeginOutputReadLine();
+        proc.BeginErrorReadLine();
+
+        using var reg = ct.Register(() => { try { if (!proc.HasExited) proc.Kill(entireProcessTree: true); } catch { } });
+        try
+        {
+            await proc.WaitForExitAsync(ct);
+        }
+        catch (OperationCanceledException)
+        {
+            try { if (!proc.HasExited) proc.Kill(entireProcessTree: true); } catch { }
+            throw;
+        }
+        proc.WaitForExit();     // flush the async readers
+        if (ct.IsCancellationRequested)
+            throw new OperationCanceledException(ct);
+
+        if (proc.ExitCode != 0)
+            throw new FatalDownloadException("yt-dlp failed" + (lastError != null ? ": " + Trim(lastError) : $" (exit code {proc.ExitCode})"));
+
+        if ((finalPath == null || !File.Exists(finalPath)) && Directory.Exists(outDir))
+        {
+            var candidates = Directory.GetFiles(outDir)
+                .Where(f => !f.EndsWith(".part", StringComparison.OrdinalIgnoreCase) &&
+                            !f.EndsWith(".ytdl", StringComparison.OrdinalIgnoreCase) &&
+                            !f.EndsWith(".mcdm-part", StringComparison.OrdinalIgnoreCase))
+                .Select(f => new FileInfo(f))
+                .OrderByDescending(fi => fi.LastWriteTimeUtc)
+                .ToList();
+            if (candidates.Count > 0) finalPath = candidates[0].FullName;
+        }
+
+        if (finalPath == null || !File.Exists(finalPath))
+            throw new FatalDownloadException("yt-dlp finished but reported no output file");
+
+        var full = Path.GetFullPath(finalPath);
+        var root = Path.GetFullPath(outDir).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        if (!full.StartsWith(root, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+            throw new FatalDownloadException("yt-dlp reported a file outside the download folder");
+
+        item.SavePath = full;
+        item.FileName = Path.GetFileName(full);
+        long size = new FileInfo(full).Length;
+        item.TotalBytes = size; item.DownloadedBytes = size;
+        item.Stage = null; item.Speed = 0; item.ActiveConnections = 0;
+        try { Directory.Delete(item.WorkDir!, recursive: true); } catch { }
+        item.WorkDir = null;
     }
 
     private static string Trim(string s) => s.Length > 300 ? s[..300] + "…" : s;

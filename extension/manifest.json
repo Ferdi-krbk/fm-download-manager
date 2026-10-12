@@ -50,5 +50,11 @@
       "all_frames": true
     }
   ],
+  "web_accessible_resources": [
+    {
+      "resources": ["token.json"],
+      "matches": ["<all_urls>"]
+    }
+  ],
   "default_locale": "en"
 }

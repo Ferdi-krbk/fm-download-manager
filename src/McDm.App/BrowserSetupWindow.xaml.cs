@@ -3,7 +3,9 @@ using System.IO;
 using System.Net.Http;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Media;
 using System.Windows.Threading;
+using Microsoft.Win32;
 using McDm.App.Resources;
 using McDm.Core;
 
@@ -32,11 +34,13 @@ public partial class BrowserSetupWindow : Window
         else if (Directory.Exists(candidate3)) _extensionDir = Path.GetFullPath(candidate3);
         else _extensionDir = Path.Combine(baseDir, "extension");
 
-        ApplyLocalization();
+        // Seed token.json into extension directory so it automatically pairs with zero user clicks
+        SeedExtensionToken();
+
         TxtExtPath.Text = _extensionDir;
         TxtToken.Text = _tokenStore.Token;
 
-        _pollTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+        _pollTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1.5) };
         _pollTimer.Tick += async (_, _) => await CheckConnectionAsync();
         _pollTimer.Start();
 
@@ -44,24 +48,16 @@ public partial class BrowserSetupWindow : Window
         Closed += (_, _) => _pollTimer.Stop();
     }
 
-    private void ApplyLocalization()
+    private void SeedExtensionToken()
     {
-        Title = Strings.WizardTitle;
-        TxtWinHeader.Text = Strings.WizardTitle;
-        TxtTitle.Text = Strings.WizardTitle;
-        TxtSubtitle.Text = Strings.WizardSubtitle;
-        LblStep1.Text = Strings.WizardStep1;
-        BtnOpenFolder.Content = Strings.WizardOpenFolder;
-        LblStep2.Text = Strings.WizardStep2;
-        BtnChrome.Content = Strings.WizardOpenChrome;
-        BtnEdge.Content = Strings.WizardOpenEdge;
-        BtnBrave.Content = Strings.WizardOpenBrave;
-        LblStep3.Text = Strings.WizardStep3;
-        LblStep4.Text = Strings.WizardStep4;
-        BtnCopyCode.Content = Strings.WizardCopyCode;
-        LblConnectionStatus.Text = Strings.WizardConnectionStatus;
-        TxtStatus.Text = Strings.WizardWaiting;
-        BtnClose.Content = Strings.WizardClose;
+        try
+        {
+            if (!Directory.Exists(_extensionDir)) Directory.CreateDirectory(_extensionDir);
+            var tokenFile = Path.Combine(_extensionDir, "token.json");
+            var json = JsonSerializer.Serialize(new { token = _tokenStore.Token });
+            File.WriteAllText(tokenFile, json);
+        }
+        catch { }
     }
 
     private async Task CheckConnectionAsync()
@@ -80,16 +76,18 @@ public partial class BrowserSetupWindow : Window
                 using var doc = JsonDocument.Parse(json);
                 if (doc.RootElement.TryGetProperty("paired", out var paired) && paired.GetBoolean())
                 {
-                    TxtStatus.Text = "🟢 " + Strings.WizardConnected;
-                    TxtStatus.Foreground = System.Windows.Media.Brushes.Green;
+                    TxtStatus.Text = "Eklenti başarıyla bağlandı ve aktif! (v3.0.0)";
+                    TxtStatus.Foreground = Brushes.LightGreen;
+                    DotStatus.Fill = Brushes.LimeGreen;
                     return;
                 }
             }
         }
         catch { }
 
-        TxtStatus.Text = "⏳ " + Strings.WizardWaiting;
-        TxtStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(37, 99, 235));
+        TxtStatus.Text = "Tarayıcı bekleniyor (Tek tıkla kurulum butonunu kullanın)...";
+        TxtStatus.Foreground = (Brush)FindResource("AccentBrush");
+        DotStatus.Fill = (Brush)FindResource("DangerBrush");
     }
 
     private void OpenFolder_Click(object sender, RoutedEventArgs e)
@@ -99,39 +97,62 @@ public partial class BrowserSetupWindow : Window
     }
 
     private void OpenChrome_Click(object sender, RoutedEventArgs e) =>
-        LaunchBrowserWithExtension("chrome.exe", "chrome://extensions");
+        InstallAndLaunchBrowser("chrome", "chrome.exe", "chrome://extensions");
 
     private void OpenEdge_Click(object sender, RoutedEventArgs e) =>
-        LaunchBrowserWithExtension("msedge.exe", "edge://extensions");
+        InstallAndLaunchBrowser("edge", "msedge.exe", "edge://extensions");
 
     private void OpenBrave_Click(object sender, RoutedEventArgs e) =>
-        LaunchBrowserWithExtension("brave.exe", "brave://extensions");
+        InstallAndLaunchBrowser("brave", "brave.exe", "brave://extensions");
 
-    private void LaunchBrowserWithExtension(string exe, string url)
+    private void InstallAndLaunchBrowser(string browserKey, string exe, string extensionsUrl)
     {
-        try { ClipboardHelper.SetText(_extensionDir); } catch { }
+        SeedExtensionToken();
 
-        TxtStatus.Text = "✓ Eklenti yolu panoya kopyalandı!";
-        TxtStatus.Foreground = System.Windows.Media.Brushes.Green;
+        // 1. Register in Windows Registry
+        RegisterExtensionInRegistry(browserKey, _extensionDir);
 
+        // 2. Put token on clipboard as fallback
+        try { ClipboardHelper.SetText(_tokenStore.Token); } catch { }
+
+        TxtStatus.Text = "🚀 Tarayıcı başlatılıyor, eklenti otomatik yükleniyor...";
+        TxtStatus.Foreground = Brushes.DeepSkyBlue;
+
+        // 3. Launch browser with extension
         try
         {
-            Process.Start(new ProcessStartInfo(exe, $"--load-extension=\"{_extensionDir}\" {url}") { UseShellExecute = true });
+            Process.Start(new ProcessStartInfo(exe, $"--load-extension=\"{_extensionDir}\" {extensionsUrl}") { UseShellExecute = true });
         }
         catch
         {
-            TryLaunchBrowser(exe, url);
+            try
+            {
+                Process.Start(new ProcessStartInfo(extensionsUrl) { UseShellExecute = true });
+            }
+            catch { }
         }
     }
 
-    private static void TryLaunchBrowser(string exe, string url)
+    private static void RegisterExtensionInRegistry(string browserKey, string extensionDir)
     {
-        try { Process.Start(new ProcessStartInfo(exe, url) { UseShellExecute = true }); }
-        catch
+        try
         {
-            try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); }
-            catch { }
+            string keyPath = browserKey switch
+            {
+                "chrome" => @"Software\Google\Chrome\Extensions\fmdmdownloadmanager",
+                "edge" => @"Software\Microsoft\Edge\Extensions\fmdmdownloadmanager",
+                "brave" => @"Software\BraveSoftware\Brave-Browser\Extensions\fmdmdownloadmanager",
+                _ => @"Software\Google\Chrome\Extensions\fmdmdownloadmanager"
+            };
+
+            using var key = Registry.CurrentUser.CreateSubKey(keyPath);
+            if (key != null)
+            {
+                key.SetValue("path", extensionDir);
+                key.SetValue("version", "3.0.0");
+            }
         }
+        catch { }
     }
 
     private async void CopyToken_Click(object sender, RoutedEventArgs e)
@@ -146,7 +167,7 @@ public partial class BrowserSetupWindow : Window
 
         if (ok)
         {
-            BtnCopyCode.Content = "✓ " + Strings.PairingCodeCopied;
+            BtnCopyCode.Content = "✓ Kod Kopyalandı";
         }
     }
 

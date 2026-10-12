@@ -186,11 +186,28 @@ public partial class App : System.Windows.Application
         Icon icon = SystemIcons.Application;
         try
         {
-            var iconUri = new Uri("pack://application:,,,/Resources/app.ico");
-            using var iconStream = System.Windows.Application.GetResourceStream(iconUri)?.Stream;
-            if (iconStream != null) icon = new Icon(iconStream);
+            string? exe = Environment.ProcessPath;
+            if (!string.IsNullOrEmpty(exe) && File.Exists(exe))
+            {
+                using var assoc = Icon.ExtractAssociatedIcon(exe);
+                if (assoc != null) icon = (Icon)assoc.Clone();
+            }
         }
         catch { }
+
+        if (icon == SystemIcons.Application)
+        {
+            try
+            {
+                string diskIco = Path.Combine(AppContext.BaseDirectory, "Resources", "app.ico");
+                if (File.Exists(diskIco))
+                {
+                    using var fs = File.OpenRead(diskIco);
+                    icon = new Icon(fs);
+                }
+            }
+            catch { }
+        }
 
         _tray = new Forms.NotifyIcon
         {

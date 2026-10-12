@@ -10,6 +10,7 @@ public sealed class SpeedGraphControl : FrameworkElement
     private readonly double[] _history = new double[HistoryCount];
     private int _head = 0;
     private double _peakSpeed = 0;
+    private double _smoothedSpeed = 0;
 
     public static readonly DependencyProperty LineBrushProperty =
         DependencyProperty.Register(nameof(LineBrush), typeof(Brush), typeof(SpeedGraphControl),
@@ -28,7 +29,19 @@ public sealed class SpeedGraphControl : FrameworkElement
 
     public void PushSample(double speedBytesPerSec)
     {
-        _history[_head] = Math.Max(0, speedBytesPerSec);
+        double val = Math.Max(0, speedBytesPerSec);
+        
+        // Exponential Moving Average filter (alpha = 0.35) removes network burst jitter
+        if (_smoothedSpeed <= 0 || val <= 0)
+        {
+            _smoothedSpeed = val;
+        }
+        else
+        {
+            _smoothedSpeed = (_smoothedSpeed * 0.65) + (val * 0.35);
+        }
+
+        _history[_head] = _smoothedSpeed;
         _head = (_head + 1) % HistoryCount;
 
         double max = 0;
@@ -46,6 +59,7 @@ public sealed class SpeedGraphControl : FrameworkElement
         Array.Clear(_history, 0, _history.Length);
         _head = 0;
         _peakSpeed = 0;
+        _smoothedSpeed = 0;
         InvalidateVisual();
     }
 
@@ -72,36 +86,38 @@ public sealed class SpeedGraphControl : FrameworkElement
         }
 
         double maxScale = Math.Max(_peakSpeed * 1.15, 1024 * 512); // minimum 512 KB/s scale
-
-        // Build geometric path
-        var figure = new PathFigure();
         double stepX = w / (HistoryCount - 1);
 
-        double firstY = h - (samples[0] / maxScale * (h - 6));
-        firstY = Math.Clamp(firstY, 4, h - 2);
-        figure.StartPoint = new Point(0, firstY);
-
-        var points = new PointCollection(HistoryCount);
-        for (int i = 1; i < HistoryCount; i++)
+        var pts = new Point[HistoryCount];
+        for (int i = 0; i < HistoryCount; i++)
         {
             double x = i * stepX;
-            double y = h - (samples[i] / maxScale * (h - 6));
+            double y = h - (samples[i] / maxScale * (h - 8));
             y = Math.Clamp(y, 4, h - 2);
-            points.Add(new Point(x, y));
+            pts[i] = new Point(x, y);
         }
 
-        figure.Segments.Add(new PolyLineSegment(points, true));
+        // Build smooth cubic Bezier path
+        var figure = new PathFigure { StartPoint = pts[0] };
+        var fillFigure = new PathFigure { StartPoint = new Point(0, h), IsClosed = true };
+        fillFigure.Segments.Add(new LineSegment(pts[0], true));
 
-        // Create fill geometry (closed to bottom)
-        var fillFigure = new PathFigure
+        for (int i = 1; i < HistoryCount; i++)
         {
-            StartPoint = new Point(0, h),
-            IsClosed = true,
-        };
-        fillFigure.Segments.Add(new LineSegment(new Point(0, firstY), true));
-        fillFigure.Segments.Add(new PolyLineSegment(points, true));
+            var p0 = pts[i - 1];
+            var p1 = pts[i];
+            double dx = (p1.X - p0.X) * 0.5;
+            var cp1 = new Point(p0.X + dx, p0.Y);
+            var cp2 = new Point(p1.X - dx, p1.Y);
+
+            var bz = new BezierSegment(cp1, cp2, p1, true);
+            figure.Segments.Add(bz);
+            fillFigure.Segments.Add(bz);
+        }
+
         fillFigure.Segments.Add(new LineSegment(new Point(w, h), true));
 
+        // Fill Geometry
         var fillGeo = new PathGeometry();
         fillGeo.Figures.Add(fillFigure);
 
@@ -114,10 +130,10 @@ public sealed class SpeedGraphControl : FrameworkElement
         fillBrush.Freeze();
         dc.DrawGeometry(fillBrush, null, fillGeo);
 
-        // Draw line on top
+        // Line Geometry
         var lineGeo = new PathGeometry();
         lineGeo.Figures.Add(figure);
-        var linePen = new Pen(LineBrush, 2) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round };
+        var linePen = new Pen(LineBrush, 2.2) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round };
         linePen.Freeze();
         dc.DrawGeometry(null, linePen, lineGeo);
 

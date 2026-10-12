@@ -288,6 +288,7 @@ public sealed class SegmentedDownloader
         public required string? Validator;
         public required List<Chunk> Chunks;
         public required SafeFileHandle Handle;
+        public readonly object StateLock = new();
         public ConcurrentQueue<int> Queue = new();
         public int[] Throttles = Array.Empty<int>();
         public int Active;
@@ -326,7 +327,12 @@ public sealed class SegmentedDownloader
             while (!ct.IsCancellationRequested)
             {
                 if (c.TryRetire()) { counted = false; return; }
-                if (!c.Queue.TryDequeue(out int idx)) return;
+                if (!c.Queue.TryDequeue(out int idx))
+                {
+                    // Dynamic re-segmentation: steal the trailing half of the largest chunk
+                    if (!c.UseRange || !TrySplitLargestChunk(c, out idx))
+                        return;
+                }
                 try
                 {
                     await DownloadChunkAsync(c, idx, ct);
@@ -345,6 +351,53 @@ public sealed class SegmentedDownloader
         {
             if (counted) Interlocked.Decrement(ref c.Active);
         }
+    }
+
+    private static bool TrySplitLargestChunk(RunCtx c, out int newIdx)
+    {
+        newIdx = -1;
+        if (!c.UseRange) return false;
+
+        lock (c.StateLock)
+        {
+            int bestIdx = -1;
+            long maxRemaining = 4 * 1024 * 1024; // At least 4 MB remaining to justify a split
+
+            for (int i = 0; i < c.Chunks.Count; i++)
+            {
+                var ch = c.Chunks[i];
+                if (ch.End < 0) continue;
+
+                long remaining = ch.Length - ch.Done;
+                if (remaining > maxRemaining)
+                {
+                    maxRemaining = remaining;
+                    bestIdx = i;
+                }
+            }
+
+            if (bestIdx >= 0)
+            {
+                var target = c.Chunks[bestIdx];
+                long remaining = target.Length - target.Done;
+                long half = remaining / 2;
+                long splitPoint = target.Start + target.Done + half;
+
+                var newChunk = new Chunk
+                {
+                    Start = splitPoint,
+                    End = target.End,
+                    Done = 0
+                };
+
+                target.End = splitPoint - 1;
+                newIdx = c.Chunks.Count;
+                c.Chunks.Add(newChunk);
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private async Task DownloadChunkAsync(RunCtx c, int idx, CancellationToken ct)

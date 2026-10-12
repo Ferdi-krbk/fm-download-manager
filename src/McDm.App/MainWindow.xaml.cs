@@ -91,6 +91,13 @@ public partial class MainWindow : Window
         TxtEmptyTitle.Text = isTr ? "Henüz indirme yok" : "No downloads yet";
         TxtEmptySubtitle.Text = isTr ? "İndirme başlatmak için bir bağlantı yapıştırın veya tarayıcı eklentisini kullanın." : "Paste a link to start downloading or use the browser extension.";
 
+        if (_settings.SpeedLimitKbps > 0)
+        {
+            SldSpeedLimit.Value = Math.Round((double)_settings.SpeedLimitKbps / 1024);
+            _manager.SpeedLimiter.BytesPerSecond = (long)_settings.SpeedLimitKbps * 1024;
+            TxtSpeedLimitVal.Text = $"{_settings.SpeedLimitKbps / 1024} MB/s";
+        }
+
         StatusText.Text = Strings.StatusReady;
     }
 
@@ -195,9 +202,54 @@ public partial class MainWindow : Window
             StatusText.Text = "Geçersiz indirme bağlantısı.";
             return;
         }
-        var kind = VideoDownloader.IsVideoUrl(text) ? DownloadKind.Video : DownloadKind.File;
+
+        if (VideoDownloader.IsVideoUrl(text))
+        {
+            var qDlg = new VideoQualityDialog(text) { Owner = this };
+            if (qDlg.ShowDialog() == true)
+            {
+                _manager.Add(new DownloadRequest { Url = text, Kind = DownloadKind.Video });
+                StatusText.Text = qDlg.AudioOnly ? "Ses indirmesi eklendi." : "Video indirmesi eklendi.";
+            }
+            return;
+        }
+
+        var kind = DownloadKind.File;
         _manager.Add(new DownloadRequest { Url = text, Kind = kind });
         StatusText.Text = "Added " + uri.Host;
+    }
+
+    private void SldSpeedLimit_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (TxtSpeedLimitVal == null) return;
+        int mb = (int)Math.Round(SldSpeedLimit.Value);
+        if (mb <= 0)
+        {
+            TxtSpeedLimitVal.Text = "Sınırsız";
+            _manager.SpeedLimiter.BytesPerSecond = 0;
+            _settings.SpeedLimitKbps = 0;
+        }
+        else
+        {
+            TxtSpeedLimitVal.Text = $"{mb} MB/s";
+            _manager.SpeedLimiter.BytesPerSecond = (long)mb * 1024 * 1024;
+            _settings.SpeedLimitKbps = mb * 1024;
+        }
+        _settings.Save();
+    }
+
+    private void SpeedPreset_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement fe && int.TryParse(fe.Tag?.ToString(), out int val))
+        {
+            SldSpeedLimit.Value = val;
+        }
+    }
+
+    private void ToggleTheme_Click(object sender, RoutedEventArgs e)
+    {
+        ThemeManager.ToggleTheme();
+        StatusText.Text = ThemeManager.IsAmoled ? "Tema: Derin Siyah AMOLED aktif." : "Tema: Modern Koyu Bordo aktif.";
     }
 
     private void AddUrls_Click(object sender, RoutedEventArgs e)

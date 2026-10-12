@@ -35,7 +35,18 @@ const BRIDGE_ID_HEADERS = { 'X-MCDM-Extension': BROWSER, 'X-MCDM-Extension-Id': 
 // that the app shows in "Browser setup"; the user pastes it once in the popup.
 async function getToken() {
   const s = await api.storage.local.get('token');
-  return s.token || '';
+  if (s.token) return s.token;
+  try {
+    const res = await fetch(api.runtime.getURL('token.json'));
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.token) {
+        await api.storage.local.set({ token: data.token });
+        return data.token;
+      }
+    }
+  } catch {}
+  return '';
 }
 async function bridgeHeaders(extra) {
   const token = await getToken();

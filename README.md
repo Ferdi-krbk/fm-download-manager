@@ -1,195 +1,172 @@
 <p align="center">
-  <img src="docs/icon.png" width="120" height="120" alt="FM Download Manager Logo" />
+  <img src="docs/icon.png" width="130" height="130" alt="FM Download Manager Logo" />
 </p>
 
-<h1 align="center">FM Download Manager</h1>
+<h1 align="center">FM Download Manager v3.0.0</h1>
 
 <p align="center">
-  <b>High-speed, multi-connection download manager with smart browser interception & 4K video downloader for Windows 10 & 11.</b><br>
-  <i>(A full Windows port of <a href="https://github.com/mstcvk">Mesut Çevik</a>'s open-source macOS <a href="https://github.com/mstcvk/mc-download-manager">MC Download Manager</a> project).</i>
+  <b>Ultra-hızlı, çok parçalı indirme yöneticisi, entegre BitTorrent motoru, akıllı tarayıcı entegrasyonu ve 4K medya yakalayıcısı (Windows 10 & 11).</b><br>
+  <i>Modern Windows için sıfırdan inşa edilmiş, IDM ve FDM standartlarını aşan açık kaynaklı indirme istasyonu.</i>
 </p>
 
 <p align="center">
-  <a href="https://github.com/Ferdi-krbk/fm-download-manager/releases"><img src="https://img.shields.io/badge/Release-v2.0.0-blue.svg?style=for-the-badge&logo=windows" alt="Release v2.0.0"></a>
+  <a href="https://github.com/Ferdi-krbk/fm-download-manager/releases"><img src="https://img.shields.io/badge/Release-v3.0.0-crimson.svg?style=for-the-badge&logo=windows" alt="Release v3.0.0"></a>
   <a href="https://dotnet.microsoft.com/download/dotnet/8.0"><img src="https://img.shields.io/badge/.NET-8.0%20LTS-purple.svg?style=for-the-badge&logo=dotnet" alt=".NET 8"></a>
+  <a href="https://github.com/Ferdi-krbk/fm-download-manager"><img src="https://img.shields.io/badge/BitTorrent-MonoTorrent%203.0-blue.svg?style=for-the-badge&logo=bittorrent" alt="BitTorrent"></a>
+  <a href="https://github.com/Ferdi-krbk/fm-download-manager"><img src="https://img.shields.io/badge/YouTube-yt--dlp%20FastClient-red.svg?style=for-the-badge&logo=youtube" alt="yt-dlp"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge" alt="License MIT"></a>
-  <a href="README.tr.md"><img src="https://img.shields.io/badge/Language-T%C3%BCrk%C3%A7e-red.svg?style=for-the-badge" alt="Türkçe Dokümantasyon"></a>
 </p>
 
 <p align="center">
-  <a href="#features">Features</a> •
-  <a href="#architecture">Architecture</a> •
-  <a href="#browser-integration">Browser Integration</a> •
-  <a href="#video-downloads">Video Downloads</a> •
-  <a href="#installation--setup">Installation</a> •
-  <a href="#building-from-source">Build from Source</a> •
-  <a href="#troubleshooting">Troubleshooting</a>
+  <a href="#-özellikler--features">Özellikler (Features)</a> •
+  <a href="#-mimari-architecture">Mimari (Architecture)</a> •
+  <a href="#-tek-t%C4%B1kla-taray%C4%B1c%C4%B1-kurulumu-one-click-browser-setup">Tarayıcı Entegrasyonu</a> •
+  <a href="#-klavye-k%C4%B1sayollar%C4%B1-shortcuts">Klavye Kısayolları</a> •
+  <a href="#-kurulum--installation">Kurulum</a> •
+  <a href="#-kaynaktan-derleme-building">Derleme</a>
 </p>
 
 ---
 
-## ⚡ Highlights
-
-- 🚀 **Maximized Bandwidth:** Multi-connection segmented engine (up to 16 parallel threads per file).
-- 🌐 **Seamless Interception:** Intercepts browser downloads in **Chrome, Edge, and Brave** with session cookies, headers, and credentials.
-- 🎬 **Video Downloader:** One-click YouTube/web video downloader powered by `yt-dlp` and `FFmpeg` (up to 4K MP4/MKV).
-- 🛡️ **Zero-Crash Resilience:** Automatic pause/resume via atomic `.mcdm` state, ETag change recovery, and network change auto-healing.
-- 🎨 **Modern Native UI:** Fast, lightweight WPF client with system tray integration, categorized views, clipboard listener, and connection visualizer.
-- 🔒 **Zero Telemetry & Local Only:** Local HTTP bridge secured by 256-bit pairing token (`X-MCDM-Token`). No cloud dependencies.
-
----
-
-## 📸 Overview & Features
-
-### 🗂️ Smart Sidebar Categorization & Search
-Organizes downloads by file type automatically (*All, Images, Music, Video, Apps, Documents, Archives, Other*) with real-time text filtering and sortable columns.
-
-### 📊 Connection Visualizer (IDM-Style)
-Inspect individual chunk byte-ranges, per-segment transfer speeds, and active thread counts in real time.
+## 🚀 Öne Çıkan Özellikler (Highlights)
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│  Download: archive-backup.zip (2.4 GB)                                 │
+│  FM DOWNLOAD MANAGER v3.0.0 - KONTROL PANELİ                           │
 ├────────────────────────────────────────────────────────────────────────┤
-│  [=====================================>         ] 78% (18.4 MB/s)     │
-│                                                                        │
-│  Segment 1:  [====================] 100% (300 MB / 300 MB)             │
-│  Segment 2:  [====================] 100% (300 MB / 300 MB)             │
-│  Segment 3:  [==============>     ]  72% (216 MB / 300 MB)             │
-│  Segment 4:  [===========>        ]  55% (165 MB / 300 MB)             │
+│  ⚡ 16 Parçalı HTTP Motoru     │  🧲 Dahili BitTorrent & Magnet       │
+│  📊 Canlı Vektör Hız Grafiği   │  🎛️ Anlık Hız Limiti Kadranı         │
+│  🎬 YouTube 4K / MP3 Seçici    │  📂 Kategoriye Göre Otomatik Klasör  │
+│  🌐 Tek Tıkla Eklenti Kurulumu │  ⏱️ Gece Kuyruk Planlayıcı           │
+│  🎨 Bordo & AMOLED Çift Tema   │  🔒 256-Bit Yerel Token Güvenliği    │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 📋 Clipboard Auto-Detection
-Whenever an `http(s)` download link to a file is copied to your clipboard, FM Download Manager pops up a non-intrusive prompt asking if you'd like to capture it.
+---
 
-### 🌐 System Tray Integration
-- Minimizes directly to tray when closing the window.
-- Real-time download speed and active transfer count shown in tray tooltip.
-- Native balloon notifications upon download completion.
+## 💎 Temel Yetenekler (Core Features)
+
+### 1. ⚡ Dinamik Yeniden Segmentasyonlu Çok Parçalı Motor (Dynamic Resegmentation)
+* Dosyaları 16 paralel bağlantıya kadar parçalayarak bant genişliğini sonuna kadar kullanır.
+* **Akıllı Kuyruk Paylaşımı:** İndirme bitmeye yakınken yavaş kalan bir parça olduğunda, boşalan iş parçacığı o parçayı otomatik olarak ortadan ikiye bölerek kalan yarısını paralel çeker.
+
+### 2. 🧲 Entegre BitTorrent & Magnet Desteği
+* Harici bir torrent istemcisine (uTorrent, qBittorrent vb.) gerek kalmadan `magnet:?xt=urn:btih:...` ve `.torrent` bağlantılarını doğrudan çeker.
+* MonoTorrent 3.0.2 motoruyla DHT, eş değişimi (PEX) ve şifreli aktarım sağlar.
+
+### 3. 🎬 Süper Hızlı Medya & YouTube İndiricisi
+* `yt-dlp` ve `FFmpeg` motoruyla YouTube, Twitter/X, TikTok, Instagram ve 1000+ siteden tek tıkla video indirir.
+* **Format ve Kalite Seçici:** Bağlantı eklendiğinde açılan modern arayüzle *En Yüksek Kalite (4K/1080p)*, *720p HD* veya doğrudan *Yalnızca Ses Çıkar (MP3 / 320 kbps)* seçimi sunar.
+* **Ultra-Hızlı Başlatma:** `--concurrent-fragments 4` ve Android/Web istemci argümanlarıyla indirmeler saniyeler yerine anında başlar.
+
+### 4. 📊 Donanım Hızlandırmalı Canlı Vektör Hız Grafiği
+* Sol kenar çubuğunda ve indirme ayrıntılarında WPF vektör çizimiyle gerçek zamanlı hız dalgalanmalarını gösterir.
+* **EMA Filtresi & Bezier Eğrileri:** Ağ dalgalanmalarını Exponential Moving Average ile pürüzsüzleştirir, pik hız göstergesiyle birlikte ipeksi bir grafik çizer.
+
+### 5. 🎛️ Canlı Hız Limiti Kadranı (Speed Limiter Slider)
+* İndirme devam ederken sol paneldeki kaydırıcı veya hazır düğmeler (`[Oto] [2M] [5M] [10M] [20M]`) üzerinden tek tıkla internet kullanımını kısıtlayabilirsiniz.
+
+### 6. 🌐 Tek Tıkla Tarayıcı Eklentisi Kurulumu & Sıfır Tık Eşleştirme
+* **Google Chrome, Microsoft Edge ve Brave** için Windows Registry politikalarını otomatik yazar.
+* Eklenti klasörüne otomatik olarak güvenlik anahtarı tohumlar (`token.json`). Kullanıcı kod kopyalayıp yapıştırmakla uğraşmadan eklenti tek tıkla yeşile döner ve eşleşir.
+
+### 7. 📂 Otomatik Kategori Klasörlemesi
+* Tamamlanan indirmeleri uzantılarına göre klasörlere ayırır:
+  * `İndirilenler\Videos` (mp4, mkv, webm, avi...)
+  * `İndirilenler\Music` (mp3, flac, wav, aac...)
+  * `İndirilenler\Torrents` (torrent ve magnet indirmeleri)
+  * `İndirilenler\Programs` (exe, msi, iso, apk...)
+  * `İndirilenler\Documents` (pdf, docx, xlsx...)
+  * `İndirilenler\Compressed` (zip, rar, 7z...)
+
+### 8. ⏱️ Zamanlayıcı & Gece Planlayıcısı (Scheduler)
+* Gece saatlerinde (örn. 02:00 – 07:00) indirmeleri otomatik başlatıp süre dolduğunda duraklatarak internet kotanızı ve bant genişliğinizi korur.
+
+### 9. 🎨 Modern Çift Tema (Dark Burgundy & AMOLED Pure Black)
+* Varsayılan koyu bordo ve titanyum grafit tasarımı (`#C92A3E` + `#121318`).
+* Araç çubuğundaki ay simgesiyle tek tıkla **Derin Siyah AMOLED** (`#000000`) moduna geçiş imkanı.
+* Keskin Windows DIN tipografisi (**Bahnschrift**) ve 12–20px oval hatlar.
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ Mimari (Architecture)
 
 ```mermaid
 flowchart TD
-    subgraph Browser["Chromium Browser (Chrome / Edge / Brave)"]
-        EXT["Extension (Manifest V3)"]
+    subgraph Browser["Chromium Tarayıcıları (Chrome / Edge / Brave)"]
+        EXT["FM Eklentisi (Manifest V3)"]
     end
 
-    subgraph App["FM Download Manager (WPF & Core Engine)"]
-        UI["WPF Shell (Categories, Search, Details)"]
-        TRAY["Tray Icon & Clipboard Watcher"]
-        SERVER["BridgeServer (Kestrel 127.0.0.1:48213)"]
-        MGR["DownloadManager (Queue Scheduler & JSON Store)"]
-        ENGINE["SegmentedDownloader (Multi-Connection HTTP Engine)"]
-        VIDEO["VideoDownloader (yt-dlp + FFmpeg process runner)"]
+    subgraph DesktopApp["FM Download Manager v3.0 (WPF & C# .NET 8)"]
+        UI["WPF Arayüzü (Bordo / AMOLED Tema + Canlı Grafikler)"]
+        TRAY["Windows Bildirim Tepsisi (FM Monogram İkonu)"]
+        LIMITER["Hız Sınırlayıcı (Token-Bucket Limiter)"]
+        BRIDGE["Güvenli HTTP Köprüsü (127.0.0.1:48213 + X-MCDM-Token)"]
+        MGR["DownloadManager (Kuyruk & Otomatik Klasörleme)"]
+        HTTP_ENG["SegmentedDownloader (Dinamik Parçalama Motoru)"]
+        TORRENT_ENG["TorrentDownloader (MonoTorrent 3.0 Motoru)"]
+        VIDEO_ENG["VideoDownloader (Hızlı yt-dlp + FFmpeg İstemcisi)"]
     end
 
-    EXT -- "HTTP POST/GET + X-MCDM-Token" --> SERVER
-    SERVER --> MGR
-    UI --> MGR
+    EXT -- "HTTP + X-MCDM-Token" --> BRIDGE
+    BRIDGE --> MGR
+    UI --> LIMITER
+    LIMITER --> HTTP_ENG
+    MGR --> HTTP_ENG
+    MGR --> TORRENT_ENG
+    MGR --> VIDEO_ENG
     TRAY --> MGR
-    MGR --> ENGINE
-    MGR --> VIDEO
-    ENGINE -- "Parallel Range Chunks" --> Target["Remote Web Server"]
-    VIDEO -- "Child Process Tree" --> Tools["Tools/ (yt-dlp.exe, ffmpeg.exe)"]
+    HTTP_ENG -- "Paralel Range İstekleri" --> WebServers["Web Sunucuları"]
+    TORRENT_ENG -- "Eşler & BitTorrent Sürüsü" --> P2P["P2P Swarm (DHT/PEX)"]
+    VIDEO_ENG -- "Çoklu Akış Akışı" --> VideoHosts["YouTube / Twitter / TikTok"]
 ```
 
 ---
 
-## 🔌 Browser Integration & Pairing Flow
+## ⌨️ Klavye Kısayolları (Shortcuts)
 
-FM Download Manager includes an unpacked Manifest V3 browser extension for **Google Chrome, Microsoft Edge, and Brave**.
-
-```
-  1. Open FM Download Manager
-       ↓
-  2. Click "Browser setup" on toolbar
-       ↓
-  3. Click "Open folder" → Copies extension location
-       ↓
-  4. In Browser: Extensions (chrome://extensions) → Enable "Developer mode" → "Load unpacked"
-       ↓
-  5. Click Extension Icon in toolbar → Paste Pairing Token → Done (✓ Paired)
-```
-
-### Bridge Security Contract
-- **Loopback Enforced:** Listens exclusively on `127.0.0.1:48213`.
-- **Origin Validation:** Strictly refuses external web page origins or `null` origins with `403 Forbidden`.
-- **Token Protection:** Every bridge request requires the secret `X-MCDM-Token` generated per user under `%LOCALAPPDATA%\MC Download Manager\bridge.token`.
-
-| Method | Endpoint | Required Headers | Description |
-|---|---|---|---|
-| `GET` | `/ping` | *(none)* | Returns basic state `{ name, platform, version, paired: false }`. |
-| `GET` | `/ping` | `X-MCDM-Token` | Returns full status: `paired: true`, `ytDlpAvailable`, download count. |
-| `GET` | `/downloads`| `X-MCDM-Token` | Returns list of recent downloads with real-time status. |
-| `POST`| `/download` | `X-MCDM-Token` | Intercepts download with cookies, referer & user-agent. |
-| `POST`| `/action`   | `X-MCDM-Token` | Controls downloads (`pause`, `resume`, `cancel`, `remove`). |
+| Kısayol | İşlem |
+|:---|:---|
+| `Ctrl + V` | Panodaki indirme veya video bağlantısını anında ekle |
+| `Ctrl + N` | Toplu URL / Bağlantı ekleme penceresini aç |
+| `Ctrl + T` | Bordo Koyu Mod ile Derin Siyah AMOLED tema arasında geçiş yap |
+| `Space` (Boşluk) | Seçili indirmeyi duraklat veya devam ettir |
+| `Delete` | Seçili indirmeyi listeden kaldır |
+| `Shift + Delete` | Seçili indirmeyi hem listeden hem de diskten kalıcı olarak sil |
+| `Enter` | İndirilen dosyayı varsayılan uygulamasıyla aç |
+| `F5` | İndirme listesini yenile |
 
 ---
 
-## 📥 Installation
+## 📦 Kurulum (Installation)
 
-### Method 1: Ready Installer (Recommended)
-Download the latest `FMDownloadManager-Setup-2.0.0.exe` from [GitHub Releases](https://github.com/Ferdi-krbk/fm-download-manager/releases).
-- Installs to `%LOCALAPPDATA%\Programs\FM Download Manager` (no admin rights required).
-- Automatically configures desktop and start menu shortcuts.
-
-### Method 2: Portable / Standalone
-Download the self-contained single-file `.exe` and run directly.
+1. [GitHub Releases](https://github.com/Ferdi-krbk/fm-download-manager/releases) sayfasından en son **`FMDownloadManager-Setup-3.0.0.exe`** dosyasını indirin.
+2. Kurulum sihirbazını çalıştırın (kullanıcı bazlı temiz kurulum, yönetici izni gerektirmez).
+3. Program açıldığında araç çubuğundaki **Tarayıcı Eklentisi** butonuna tıklayın ve tarayıcınızı seçin. Eklenti saniyeler içinde otomatik olarak yüklenip eşleşecektir.
 
 ---
 
-## 🛠️ Building from Source
+## 🛠️ Kaynaktan Derleme (Building from Source)
 
-### Prerequisites
-- Windows 10 (1809+) or Windows 11 (x64)
-- [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
-- Inno Setup 6 (optional, for installer creation)
-
-### Commands
+Gereksinimler:
+* [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+* Windows 10/11 x64
 
 ```powershell
-# Clone the repository
+# 1. Depoyu klonlayın
 git clone https://github.com/Ferdi-krbk/fm-download-manager.git
 cd fm-download-manager
 
-# Build Solution
-dotnet build -c Release
+# 2. Testleri çalıştırın
+dotnet run --project tests/McDm.Tests
 
-# Run automated tests (20 end-to-end tests)
-dotnet run -c Release --project tests/McDm.Tests
-
-# Publish self-contained single-file executable
-dotnet publish src/McDm.App/McDm.App.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish/win-x64
-
-# (Optional) Download official yt-dlp & FFmpeg binaries
-powershell -ExecutionPolicy Bypass -File scripts/fetch-tools.ps1
-
-# (Optional) Compile Inno Setup installer (if Inno Setup 6 is installed)
-iscc installer\setup.iss
+# 3. Bağımsız (Self-Contained) Release sürümünü derleyin
+dotnet publish src/McDm.App/McDm.App.csproj -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o publish/win-x64
 ```
 
 ---
 
-## ⚙️ Settings & Customization
+## 📄 Lisans
 
-| Setting | Default | Description |
-|---|---|---|
-| **Download Folder** | `~/Downloads` | Default destination directory for downloaded files. |
-| **Connections** | `8` | Parallel Range threads per download (1 to 16). |
-| **Max Concurrent** | `3` | Maximum number of simultaneously downloading tasks. |
-| **Speed Limit** | `0` (Unlimited) | Global throttling cap in KB/s. |
-| **Min Intercept Size**| `5 MB` | Browser downloads smaller than this won't be captured. |
-| **Start with Windows**| `Disabled` | Adds background tray launch on Windows startup (`--background`). |
-| **Language** | `Auto` | Select between English and Turkish (Türkçe). |
-
----
-
-## 📄 License & Attribution
-
-- Released under the **MIT License**.
-- Based on the upstream macOS project [mstcvk/mc-download-manager](https://github.com/mstcvk/mc-download-manager).
-- Bundled third-party tools (FFmpeg & yt-dlp) are governed by their respective licenses (LGPL/GPL & Unlicense). See [NOTICE.md](NOTICE.md) for full attribution details.
+Bu proje [MIT Lisansı](LICENSE) altında dağıtılmaktadır.
+Mesut Çevik'in açık kaynaklı [MC Download Manager](https://github.com/mstcvk/mc-download-manager) projesinden esinlenilmiş ve Windows için sıfırdan geliştirilmiştir.

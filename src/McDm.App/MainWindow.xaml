@@ -112,6 +112,9 @@
                                 <TextBlock x:Name="TxtBtnExtension" Text="Tarayıcı Eklentisi" FontWeight="Medium" FontSize="12" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
+                        <Button x:Name="BtnToggleTheme" Style="{DynamicResource IconButton}" Margin="0,0,4,0" Click="ToggleTheme_Click" ToolTip="Tema Değiştir (Bordo / AMOLED Siyah)">
+                            <Path Data="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z" Width="13" Height="13" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" />
+                        </Button>
                         <Button x:Name="BtnSettings" Style="{DynamicResource IconButton}" Margin="0,0,4,0" Click="Settings_Click" ToolTip="Ayarlar">
                             <Path Data="{StaticResource GeoSettings}" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" />
                         </Button>
@@ -142,6 +145,24 @@
                                     <TextBlock x:Name="ActiveCountText" Text="0 aktif indirme" FontFamily="{DynamicResource UiFont}" FontSize="11" Foreground="{DynamicResource TextMuteBrush}" />
                                     <Border Margin="0,8,0,0" CornerRadius="6" Background="{DynamicResource Bg1Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" Height="50" Padding="2">
                                         <local:SpeedGraphControl x:Name="SidebarSpeedGraph" Height="46" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+                                    </Border>
+
+                                    <!-- Speed Limiter Quick Controls -->
+                                    <Border Margin="0,10,0,0" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="0,8,0,0">
+                                        <StackPanel>
+                                            <DockPanel LastChildFill="True">
+                                                <TextBlock Text="Hız Limiti:" FontFamily="{DynamicResource UiFont}" FontSize="11" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" />
+                                                <TextBlock x:Name="TxtSpeedLimitVal" Text="Sınırsız" FontFamily="{DynamicResource MonoFont}" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                            </DockPanel>
+                                            <Slider x:Name="SldSpeedLimit" Margin="0,5,0,6" Minimum="0" Maximum="50" TickFrequency="5" IsSnapToTickEnabled="False" ValueChanged="SldSpeedLimit_ValueChanged" />
+                                            <WrapPanel HorizontalAlignment="Center">
+                                                <Button Content="Oto" Style="{DynamicResource ChipButton}" Margin="2,1" Click="SpeedPreset_Click" Tag="0" />
+                                                <Button Content="2M" Style="{DynamicResource ChipButton}" Margin="2,1" Click="SpeedPreset_Click" Tag="2" />
+                                                <Button Content="5M" Style="{DynamicResource ChipButton}" Margin="2,1" Click="SpeedPreset_Click" Tag="5" />
+                                                <Button Content="10M" Style="{DynamicResource ChipButton}" Margin="2,1" Click="SpeedPreset_Click" Tag="10" />
+                                                <Button Content="20M" Style="{DynamicResource ChipButton}" Margin="2,1" Click="SpeedPreset_Click" Tag="20" />
+                                            </WrapPanel>
+                                        </StackPanel>
                                     </Border>
                                 </StackPanel>
                             </Border>

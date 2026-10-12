@@ -147,6 +147,11 @@ public sealed class VideoDownloader
             "--windows-filenames",
             "--trim-filenames", "150",
             "--no-mtime",
+            "--concurrent-fragments", "4",
+            "--buffer-size", "64K",
+            "--no-check-certificates",
+            "--socket-timeout", "10",
+            "--extractor-args", "youtube:player_client=android,web;player_skip=configs,webpage",
             "-c",                                  // continue partial downloads (resume)
             "--no-part-if-exists-placeholder-never-used".Length > 0 ? "--no-overwrites" : "",
             "-f", FormatSelector(o),

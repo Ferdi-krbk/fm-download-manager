@@ -31,7 +31,7 @@ public sealed class AppSettings
 
     /// <summary>null/empty = the user's Downloads folder.</summary>
     public string? DownloadFolder { get; set; }
-    public int Connections { get; set; } = 8;
+    public int Connections { get; set; } = 16;
     public int MaxConcurrentDownloads { get; set; } = 3;
     public List<string> CaptureExtensions { get; set; } = new(DefaultCaptureExtensions);
     /// <summary>Browser downloads smaller than this (MB) stay in the browser. 0 = take everything.</summary>
@@ -57,7 +57,7 @@ public sealed class AppSettings
     /// <summary>Clamps every field into its valid range (settings.json can be hand-edited).</summary>
     public void Normalize()
     {
-        Connections = Math.Clamp(Connections, 1, 16);
+        Connections = Math.Clamp(Connections, 1, 32);
         MaxConcurrentDownloads = Math.Clamp(MaxConcurrentDownloads, 1, 32);
         MinCaptureSizeMB = Math.Max(0, MinCaptureSizeMB);
         SpeedLimitKBps = Math.Max(0, SpeedLimitKBps);

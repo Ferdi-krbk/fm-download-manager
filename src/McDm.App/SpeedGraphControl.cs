@@ -31,14 +31,15 @@ public sealed class SpeedGraphControl : FrameworkElement
     {
         double val = Math.Max(0, speedBytesPerSec);
         
-        // Exponential Moving Average filter (alpha = 0.35) removes network burst jitter
-        if (_smoothedSpeed <= 0 || val <= 0)
+        // Exponential Moving Average filter (alpha = 0.3) removes momentary connection handover jitter
+        if (_smoothedSpeed <= 0)
         {
             _smoothedSpeed = val;
         }
         else
         {
-            _smoothedSpeed = (_smoothedSpeed * 0.65) + (val * 0.35);
+            _smoothedSpeed = (_smoothedSpeed * 0.70) + (val * 0.30);
+            if (_smoothedSpeed < 1024 && val <= 0) _smoothedSpeed = 0;
         }
 
         _history[_head] = _smoothedSpeed;

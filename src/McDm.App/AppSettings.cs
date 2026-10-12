@@ -10,7 +10,7 @@ public sealed class AppSettings
     public string DownloadDirectory { get; set; } =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
 
-    public int ConnectionsPerDownload { get; set; } = 8;
+    public int ConnectionsPerDownload { get; set; } = 16;
     public int MaxConcurrentDownloads { get; set; } = 3;
     public int SpeedLimitKbps { get; set; } = 0; // 0 = unlimited
     public int MinCaptureSizeBytes { get; set; } = 0; // 0 = capture all downloads (like IDM)
@@ -46,7 +46,11 @@ public sealed class AppSettings
             {
                 var json = File.ReadAllText(path);
                 var loaded = JsonSerializer.Deserialize<AppSettings>(json);
-                if (loaded != null) return loaded;
+                if (loaded != null)
+                {
+                    if (loaded.ConnectionsPerDownload < 16) loaded.ConnectionsPerDownload = 16;
+                    return loaded;
+                }
             }
         }
         catch { }

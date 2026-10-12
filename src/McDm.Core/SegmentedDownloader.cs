@@ -13,11 +13,11 @@ public sealed class EngineOptions
 {
     public int MaxRetries { get; set; } = 6;
     public TimeSpan ReadTimeout { get; set; } = TimeSpan.FromSeconds(30);
-    public int BufferSize { get; set; } = 64 * 1024;
+    public int BufferSize { get; set; } = 256 * 1024;
     /// <summary>Files smaller than this are fetched as a single stream.</summary>
     public long MinSplitBytes { get; set; } = 2 * 1024 * 1024;
     public long MinChunkBytes { get; set; } = 1024 * 1024;
-    public long MaxChunkBytes { get; set; } = 32L * 1024 * 1024;
+    public long MaxChunkBytes { get; set; } = 64L * 1024 * 1024;
     public TimeSpan ThrottleBackoff { get; set; } = TimeSpan.FromSeconds(2);
     public SpeedLimiter? Limiter { get; set; }
 }
@@ -73,7 +73,8 @@ public sealed class SegmentedDownloader
             UseCookies = false,
             AutomaticDecompression = DecompressionMethods.None, // Range + Content-Encoding do not mix
             PooledConnectionLifetime = TimeSpan.FromMinutes(5),
-            MaxConnectionsPerServer = 32,
+            MaxConnectionsPerServer = 64,
+            EnableMultipleHttp2Connections = true,
             ConnectTimeout = TimeSpan.FromSeconds(20),
         };
         return new HttpClient(handler, disposeHandler: true) { Timeout = Timeout.InfiniteTimeSpan };
@@ -83,7 +84,7 @@ public sealed class SegmentedDownloader
 
     public async Task RunAsync(DownloadItem item, int maxConnections, CancellationToken ct)
     {
-        maxConnections = Math.Clamp(maxConnections, 1, 16);
+        maxConnections = Math.Clamp(maxConnections, 1, 32);
 
         var probe = await RetryAsync(() => ProbeAsync(item, ct), ct);
         item.SupportsRanges = probe.Ranges;

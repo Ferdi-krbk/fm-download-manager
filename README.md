@@ -33,7 +33,7 @@
 <p align="center">
   <img src="docs/ui/dashboard_dark.png" width="900" alt="FM Download Manager Ana Ekran" style="border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);" />
   <br>
-  <i>FM Download Manager v3.1.0 — Modern Koyu Bordo Tema, Canlı Vektör Hız Grafiği ve Çok Parçalı İndirme Kuyruğu</i>
+  <i>FM Download Manager v3.2.0 — 1 Gbps Turbo Motor, Modern Koyu Bordo Tema, Canlı Vektör Hız Grafiği ve Çok Parçalı İndirme Kuyruğu</i>
 </p>
 
 <br>
@@ -67,13 +67,13 @@
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│  FM DOWNLOAD MANAGER v3.1.0 - KONTROL PANELİ                           │
+│  FM DOWNLOAD MANAGER v3.2.0 - TURBO PERFORMANCE EDITION                │
 ├────────────────────────────────────────────────────────────────────────┤
-│  ⚡ 16 Parçalı HTTP Motoru     │  🧲 Dahili BitTorrent & Magnet       │
-│  📊 Canlı Vektör Hız Grafiği   │  🎛️ Anlık Hız Limiti Kadranı         │
-│  🎬 YouTube 4K / MP3 Seçici    │  📂 Kategoriye Göre Otomatik Klasör  │
-│  🌐 Tek Tıkla Eklenti Kurulumu │  ⏱️ Gece Kuyruk Planlayıcı           │
-│  🎨 Bordo & AMOLED Çift Tema   │  🔒 256-Bit Yerel Token Güvenliği    │
+│  ⚡ 1 Gbps Turbo Motor (32 Segment) │  🧲 Dahili BitTorrent & Magnet   │
+│  📊 Canlı Vektör Hız Grafiği (EMA)  │  🎛️ Anlık Hız Limiti Kadranı     │
+│  🎬 YouTube 4K / MP3 & Hız Kalkanı  │  📂 Kategoriye Göre Otomatik Dizin│
+│  🌐 Tek Tıkla Eklenti Kurulumu      │  ⏱️ Gece Kuyruk Planlayıcı       │
+│  🎨 Bordo & AMOLED Çift Tema        │  🔒 256-Bit Yerel Token Güvenliği│
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -175,7 +175,7 @@ flowchart TD
 
 ## 📦 Kurulum (Installation)
 
-1. [GitHub Releases](https://github.com/Ferdi-krbk/fm-download-manager/releases) sayfasından en son **`FMDownloadManager-Setup-3.1.0.exe`** dosyasını indirin.
+1. [GitHub Releases](https://github.com/Ferdi-krbk/fm-download-manager/releases) sayfasından en son **`FMDownloadManager-Setup-3.2.0.exe`** dosyasını indirin.
 2. Kurulum sihirbazını çalıştırın (kullanıcı bazlı temiz kurulum, yönetici izni gerektirmez).
 3. Program açıldığında araç çubuğundaki **Tarayıcı Eklentisi** butonuna tıklayın ve tarayıcınızı seçin. Eklenti saniyeler içinde otomatik olarak yüklenip eşleşecektir.
 

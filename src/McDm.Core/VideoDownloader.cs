@@ -151,8 +151,10 @@ public sealed class VideoDownloader
             "--windows-filenames",
             "--trim-filenames", "150",
             "--no-mtime",
-            "--concurrent-fragments", "4",
-            "--buffer-size", "64K",
+            "--concurrent-fragments", "8",
+            "--buffer-size", "1024K",
+            "--http-chunk-size", "10M",
+            "--throttled-rate", "100K",
             "--no-check-certificates",
             "--socket-timeout", "10",
             "-c",                                  // continue partial downloads (resume)

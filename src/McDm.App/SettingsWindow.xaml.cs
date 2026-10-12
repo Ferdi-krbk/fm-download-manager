@@ -121,7 +121,7 @@ public partial class SettingsWindow : Window
             _settings.DownloadDirectory = TxtDlFolder.Text;
 
         if (int.TryParse(TxtConnections.Text, out int conn))
-            _settings.ConnectionsPerDownload = Math.Clamp(conn, 1, 16);
+            _settings.ConnectionsPerDownload = Math.Clamp(conn, 1, 32);
 
         if (int.TryParse(TxtMaxConcurrent.Text, out int maxConc))
             _settings.MaxConcurrentDownloads = Math.Clamp(maxConc, 1, 10);

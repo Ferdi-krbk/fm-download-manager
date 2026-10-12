@@ -262,7 +262,7 @@ public sealed class DownloadManager : IDisposable
     private async Task RunItemAsync(DownloadItem item)
     {
         var cts = item.Cts!;
-        int connections = Math.Clamp(item.Request.Segments ?? DefaultConnections, 1, 16);
+        int connections = Math.Clamp(item.Request.Segments ?? DefaultConnections, 1, 32);
         try
         {
             if (item.Request.Kind == DownloadKind.Video)

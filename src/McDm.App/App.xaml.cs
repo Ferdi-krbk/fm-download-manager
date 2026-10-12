@@ -35,7 +35,11 @@ public partial class App : System.Windows.Application
 
     protected override async void OnStartup(StartupEventArgs e)
     {
-        base.OnStartup(e);
+        if (e.Args.Contains("--gallery"))
+        {
+            new GalleryWindow().Show();
+            return;
+        }
 
         _singleInstance = new Mutex(true, @"Local\MCDownloadManager.SingleInstance", out bool first);
         bool quitRequested = e.Args.Contains("--quit");

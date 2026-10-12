@@ -35,6 +35,27 @@ public partial class App : System.Windows.Application
 
     protected override async void OnStartup(StartupEventArgs e)
     {
+        AppDomain.CurrentDomain.UnhandledException += (s, args) =>
+        {
+            try
+            {
+                var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MC Download Manager");
+                Directory.CreateDirectory(dir);
+                File.AppendAllText(Path.Combine(dir, "crash.log"), $"[{DateTime.UtcNow}] Domain: {args.ExceptionObject}\n");
+            }
+            catch { }
+        };
+        DispatcherUnhandledException += (s, args) =>
+        {
+            try
+            {
+                var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MC Download Manager");
+                Directory.CreateDirectory(dir);
+                File.AppendAllText(Path.Combine(dir, "crash.log"), $"[{DateTime.UtcNow}] Dispatcher: {args.Exception}\n");
+            }
+            catch { }
+        };
+
         if (e.Args.Contains("--gallery"))
         {
             new GalleryWindow().Show();
@@ -56,7 +77,9 @@ public partial class App : System.Windows.Application
         }
         if (quitRequested) { Shutdown(); return; }
 
-        _settings = AppSettings.Load();
+        try
+        {
+            _settings = AppSettings.Load();
         if (_settings.Language == "tr") Strings.Culture = new System.Globalization.CultureInfo("tr");
         else if (_settings.Language == "en") Strings.Culture = new System.Globalization.CultureInfo("en");
 
@@ -109,7 +132,10 @@ public partial class App : System.Windows.Application
         };
 
         _bridge = new BridgeServer(_manager, _tokenStore, hooks);
-        try { await _bridge.StartAsync(); }
+        try 
+        { 
+            await _bridge.StartAsync(); 
+        }
         catch (Exception ex)
         {
             DarkMessageBox.Show(null, $"Browser bridge could not start on port {BridgeServer.DefaultPort}:\n{ex.Message}\n\n" +
@@ -122,6 +148,18 @@ public partial class App : System.Windows.Application
 
         _window = new MainWindow(_manager, _tokenStore, _settings);
         if (!e.Args.Contains("--background")) _window.Show();
+        }
+        catch (Exception ex)
+        {
+            try
+            {
+                var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MC Download Manager");
+                Directory.CreateDirectory(dir);
+                File.AppendAllText(Path.Combine(dir, "crash.log"), $"[{DateTime.UtcNow}] Startup fatal: {ex}\n");
+            }
+            catch { }
+            DarkMessageBox.Show(null, "Hata oluştu:\n" + ex.Message, Strings.AppTitle, MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private void BuildTray()

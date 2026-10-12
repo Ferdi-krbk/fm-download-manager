@@ -177,16 +177,50 @@ $('pageVideo').onclick = async () => {
   $('pageVideo').textContent = t('popupSending');
 
   let targetUrl = tab.url;
-  try {
-    const res = await new Promise((resolve) => {
-      api.tabs.sendMessage(tab.id, { type: 'getActiveMedia' }, (r) => {
-        resolve(api.runtime.lastError ? null : r);
-      });
-    });
-    if (res && res.url) targetUrl = res.url;
-  } catch {}
+  let kind = 'video';
+  let filename = '';
 
-  const r = await send({ type: 'download', url: targetUrl, referer: tab.url, kind: 'video' });
+  const isKnownVideoHost = /(youtube\.com|youtu\.be|tiktok\.com|twitter\.com|x\.com|vimeo\.com|dailymotion\.com|instagram\.com|twitch\.tv|reddit\.com)/i.test(tab.url);
+
+  // If this is a generic site (e.g. NotebookLM, hdfilmcehennemi, podcast, etc.),
+  // check if active media was already captured in the tab!
+  const mediaList = (await send({ type: 'getMedia', tabId: tab.id })) || [];
+
+  if (!isKnownVideoHost && mediaList.length > 0) {
+    // Universal Download: Prefer the active media stream that was captured from the page!
+    const best = mediaList[0];
+    targetUrl = best.url;
+    filename = best.name || '';
+    kind = best.kind === 'hls' || best.kind === 'dash' || best.kind === 'video' ? 'video' : 'file';
+  } else {
+    // Ask content script for active video/tweet/embed URL
+    try {
+      const res = await new Promise((resolve) => {
+        api.tabs.sendMessage(tab.id, { type: 'getActiveMedia' }, (r) => {
+          resolve(api.runtime.lastError ? null : r);
+        });
+      });
+      if (res && res.url) targetUrl = res.url;
+    } catch {}
+
+    // If still a generic site with no captured media yet, check if there is a playing audio/video element directly
+    if (!isKnownVideoHost && mediaList.length === 0) {
+      try {
+        const res = await new Promise((resolve) => {
+          api.tabs.sendMessage(tab.id, { type: 'getDirectMediaUrl' }, (r) => {
+            resolve(api.runtime.lastError ? null : r);
+          });
+        });
+        if (res && res.url) {
+          targetUrl = res.url;
+          filename = res.name || '';
+          kind = 'file';
+        }
+      } catch {}
+    }
+  }
+
+  const r = await send({ type: 'download', url: targetUrl, filename, referer: tab.url, kind });
   if (r && r.ok) {
     $('pageVideo').textContent = t('popupStarted');
   } else {

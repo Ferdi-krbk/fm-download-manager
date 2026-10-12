@@ -340,7 +340,20 @@ async function addMedia(tabId, info) {
   const list = await readMedia(tabId);
   const key = normalizeKey(info.url);
   const idx = list.findIndex((m) => m.key === key);
-  const entry = { ...info, key, name: info.name || guessName(info.url, info.type) };
+  let name = info.name || guessName(info.url, info.type);
+  if (!info.name || /^(master|index|playlist|video|audio|stream)\.(m3u8|mp4|mpd|ts)$/i.test(name)) {
+    try {
+      const tab = await api.tabs.get(tabId);
+      if (tab?.title) {
+        const clean = tab.title.replace(/[\\/:*?"<>|]/g, '').trim().slice(0, 80);
+        if (clean) {
+          const ext = info.kind === 'hls' ? '.mp4' : (guessExt(info.type) || '');
+          name = clean + (ext && !clean.endsWith(ext) ? ext : '');
+        }
+      }
+    } catch {}
+  }
+  const entry = { ...info, key, name };
   if (idx >= 0) {
     if ((info.size || 0) > (list[idx].size || 0)) list[idx] = { ...list[idx], ...entry };
     return;
@@ -348,6 +361,16 @@ async function addMedia(tabId, info) {
   list.unshift(entry);
   if (list.length > 40) list.length = 40;
   await writeMedia(tabId, list);
+}
+
+function guessExt(type) {
+  const t = (type || '').toLowerCase();
+  if (t.includes('mp4')) return '.mp4';
+  if (t.includes('mpeg') || t.includes('mp3')) return '.mp3';
+  if (t.includes('webm')) return '.webm';
+  if (t.includes('wav')) return '.wav';
+  if (t.includes('ogg')) return '.ogg';
+  return '';
 }
 
 function guessName(url, type) {
@@ -428,13 +451,26 @@ function createMenus() {
 }
 api.runtime.onInstalled.addListener(() => { createMenus(); ping(); });
 api.runtime.onStartup?.addListener(() => { createMenus(); ping(); });
-menus?.onClicked.addListener((info, tab) => {
+menus?.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId === 'dm-link') {
     const url = info.linkUrl || info.srcUrl;
     if (url) sendToApp({ url, referer: info.pageUrl || tab?.url, kind: 'file' });
   } else if (info.menuItemId === 'dm-page-video') {
-    const url = info.pageUrl || tab?.url;
-    if (url) sendToApp({ url, referer: url, kind: 'video' });
+    let url = info.pageUrl || tab?.url;
+    let kind = 'video';
+    let filename = '';
+    if (tab && tab.id) {
+      const isKnown = /(youtube\.com|youtu\.be|tiktok\.com|twitter\.com|x\.com|vimeo\.com|dailymotion\.com|instagram\.com|twitch\.tv|reddit\.com)/i.test(url || '');
+      if (!isKnown) {
+        const list = await readMedia(tab.id);
+        if (list && list.length > 0) {
+          url = list[0].url;
+          filename = list[0].name || '';
+          kind = list[0].kind === 'hls' || list[0].kind === 'dash' || list[0].kind === 'video' ? 'video' : 'file';
+        }
+      }
+    }
+    if (url) sendToApp({ url, filename, referer: tab?.url || url, kind });
   }
 });
 

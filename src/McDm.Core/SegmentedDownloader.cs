@@ -153,9 +153,13 @@ public sealed class SegmentedDownloader
             progress = ProgressLoopAsync(ctx, stop.Token);
 
             using var wcts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            var tasks = Enumerable.Range(0, workers).Select(_ => Task.Run(async () =>
+            var tasks = Enumerable.Range(0, workers).Select(workerIdx => Task.Run(async () =>
             {
-                try { await WorkerAsync(ctx, wcts.Token); }
+                try
+                {
+                    if (workerIdx > 0) await Task.Delay(Math.Min(250, workerIdx * 15), wcts.Token);
+                    await WorkerAsync(ctx, wcts.Token);
+                }
                 catch (OperationCanceledException) when (wcts.IsCancellationRequested) { }
                 catch (Exception ex)
                 {
@@ -565,9 +569,10 @@ public sealed class SegmentedDownloader
 
     private async Task ProgressLoopAsync(RunCtx c, CancellationToken token)
     {
-        using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(250));
+        using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(200));
         var clock = Stopwatch.StartNew();
-        long lastBytes = c.Chunks.Sum(x => x.Done);
+        long initialBytes = c.Chunks.Sum(x => x.Done);
+        long lastBytes = initialBytes;
         double lastT = 0, speed = 0;
         int ticks = 0;
         try
@@ -577,10 +582,21 @@ public sealed class SegmentedDownloader
                 long bytes = c.Chunks.Sum(x => x.Done);
                 double now = clock.Elapsed.TotalSeconds;
                 double inst = (bytes - lastBytes) / Math.Max(0.001, now - lastT);
-                speed = speed <= 0 ? inst : speed * 0.7 + inst * 0.3;
+
+                // Monotonic warmup ramp in first 1.5s prevents fake spikes and socket handshake dips
+                if (now < 1.5)
+                {
+                    double cumulative = (bytes - initialBytes) / Math.Max(0.05, now);
+                    speed = Math.Max(speed, cumulative);
+                }
+                else
+                {
+                    speed = speed <= 0 ? inst : (speed * 0.75) + (inst * 0.25);
+                }
+
                 lastBytes = bytes; lastT = now;
                 UpdateProgress(c, speed);
-                if (++ticks % 8 == 0) Persist(c, flush: true);
+                if (++ticks % 10 == 0) Persist(c, flush: true);
             }
         }
         catch (OperationCanceledException) { }

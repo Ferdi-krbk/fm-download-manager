@@ -1,0 +1,54 @@
+====================================================================
+           FM DOWNLOAD MANAGER - TARAYICI EKLENTİSİ KURULUMU
+====================================================================
+
+FM Download Manager tarayıcı eklentisi açık kaynak kodlu ve tamamen
+ücretsizdir. Henüz Chrome Web Mağazası resmi onay sürecinde olduğu 
+için tarayıcınıza manuel olarak 10 saniyede kolayca kurabilirsiniz.
+
+--------------------------------------------------------------------
+  CHROME / EDGE / BRAVE / OPERA İÇİN 3 ADIMDA KURULUM:
+--------------------------------------------------------------------
+
+1. TARAYICINIZIN EKLENTİLER SAYFASINI AÇIN:
+   * Google Chrome için:  chrome://extensions
+   * Microsoft Edge için: edge://extensions
+   * Brave Tarayıcı için: brave://extensions
+   (Bu adresi tarayıcınızın adres çubuğuna yazıp Enter'a basın)
+
+2. GELİŞTİRİCİ MODUNU AÇIN:
+   * Sayfanın sağ üst köşesinde bulunan "Geliştirici modu" 
+     (Developer mode) anahtarını AÇIK konuma getirin.
+
+3. EKLENTİYİ YÜKLEYİN:
+   * Sol üst köşede beliren "Paketlenmemiş öge yükle" 
+     (Load unpacked) butonuna tıklayın.
+   * Açılan pencerede uygulamanın "extension" klasörünü seçin:
+     Kurulum Klasörü:
+     {app}\extension
+
+TEBRİKLER!
+Eklenti tarayıcınıza yüklendiğinde masaüstü uygulaması ile otomatik
+olarak eşleşir (hiçbir token veya kod girmenize gerek yoktur).
+Tarayıcınızın sağ üstündeki yapboz simgesine tıklayarak FM Download 
+Manager'ı araç çubuğuna sabitlemeyi (pinlemeyi) unutmayın!
+
+====================================================================
+           ENGLISH: BROWSER EXTENSION SETUP GUIDE
+====================================================================
+
+The extension is open-source and free. Since it is currently pending
+Chrome Web Store review, you can install it manually in 10 seconds:
+
+1. Open your browser extensions page:
+   * Chrome: chrome://extensions
+   * Edge:   edge://extensions
+   * Brave:  brave://extensions
+
+2. Toggle "Developer mode" in the top-right corner to ON.
+
+3. Click "Load unpacked" in the top-left and select:
+   {app}\extension
+
+Done! The extension pairs with FM Download Manager automatically.
+====================================================================

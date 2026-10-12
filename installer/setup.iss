@@ -24,10 +24,17 @@ SetupIconFile=..\src\McDm.App\Resources\app.ico
 Compression=lzma2/normal
 SolidCompression=yes
 WizardStyle=modern
+InfoAfterFile=extension_guide.txt
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "turkish"; MessagesFile: "compiler:Languages\Turkish.isl"
+
+[CustomMessages]
+english.OpenExtFolder=Open browser extension folder (for Chrome / Edge)
+turkish.OpenExtFolder=Tarayıcı eklentisi klasörünü aç (Chrome / Edge için)
+english.OpenExtGuide=Open visual Extension Setup Guide (HTML)
+turkish.OpenExtGuide=Resimli Eklenti Kurulum Rehberini Aç (HTML)
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
@@ -45,6 +52,8 @@ Name: "{userstartup}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Parameter
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+Filename: "explorer.exe"; Parameters: """{app}\extension"""; Description: "{cm:OpenExtFolder}"; Flags: postinstall skipifsilent
+Filename: "{app}\EKLENTI_KURULUMU.html"; Description: "{cm:OpenExtGuide}"; Flags: postinstall shellexec skipifsilent
 
 [UninstallDelete]
 ; Clean up runtime artifacts while preserving user downloads

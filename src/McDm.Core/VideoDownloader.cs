@@ -138,7 +138,8 @@ public sealed class VideoDownloader
 
     /// <summary>Everything after the executable. Public so tests can assert on it.</summary>
     public static List<string> BuildArguments(string url, VideoOptions o, string outputDir, string workDir,
-                                              string? cookiesFile, string? ffmpegLocation)
+                                              string? cookiesFile, string? ffmpegLocation,
+                                              string? userAgent = null, string? referer = null)
     {
         var a = new List<string>
         {
@@ -157,11 +158,22 @@ public sealed class VideoDownloader
             "--throttled-rate", "100K",
             "--no-check-certificates",
             "--socket-timeout", "10",
+            "--impersonate", "chrome",
             "-c",                                  // continue partial downloads (resume)
             "--no-part-if-exists-placeholder-never-used".Length > 0 ? "--no-overwrites" : "",
             "-f", FormatSelector(o),
         };
         a.RemoveAll(string.IsNullOrEmpty);
+        if (!string.IsNullOrWhiteSpace(userAgent))
+        {
+            a.Add("--user-agent");
+            a.Add(userAgent);
+        }
+        if (!string.IsNullOrWhiteSpace(referer))
+        {
+            a.Add("--referer");
+            a.Add(referer);
+        }
         var sort = FormatSort(o);
         if (sort.Length > 0) { a.Add("-S"); a.Add(sort); }
         if (o.AudioOnly || o.Container == "mp3")
@@ -317,7 +329,7 @@ public sealed class VideoDownloader
             StandardOutputEncoding = Encoding.UTF8, StandardErrorEncoding = Encoding.UTF8,
         };
         foreach (var l in tool.Lead) psi.ArgumentList.Add(l);
-        foreach (var a in BuildArguments(item.Request.Url, opt, outDir, item.WorkDir!, cookieFile, _ffmpeg()))
+        foreach (var a in BuildArguments(item.Request.Url, opt, outDir, item.WorkDir!, cookieFile, _ffmpeg(), item.Request.UserAgent, item.Request.Referer))
             psi.ArgumentList.Add(a);
         psi.Environment["PYTHONUNBUFFERED"] = "1";
         psi.Environment["PYTHONIOENCODING"] = "utf-8";

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FM Download Manager - Tarayıcı Eklentisi Kurulum Rehberi</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: #111827;
+      --card-border: #1f2937;
+      --accent: #e11d48;
+      --accent-glow: rgba(225, 29, 72, 0.25);
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --code-bg: #1e293b;
+      --blue: #38bdf8;
+      --green: #10b981;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); line-height: 1.6; padding: 40px 20px; }
+    .container { max-width: 860px; margin: 0 auto; }
+    
+    .header { text-align: center; margin-bottom: 40px; }
+    .logo-pill { display: inline-flex; align-items: center; gap: 8px; background: rgba(225, 29, 72, 0.15); border: 1px solid var(--accent); padding: 6px 16px; border-radius: 999px; color: #fda4af; font-size: 13px; font-weight: 600; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px; }
+    h1 { font-size: 32px; font-weight: 800; margin-bottom: 12px; background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    p.lead { color: var(--text-muted); font-size: 16px; max-width: 600px; margin: 0 auto; }
+
+    .notice-banner { background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 12px; padding: 16px 20px; margin-bottom: 32px; display: flex; align-items: flex-start; gap: 14px; }
+    .notice-banner svg { flex-shrink: 0; width: 22px; height: 22px; fill: var(--blue); margin-top: 2px; }
+    .notice-banner p { font-size: 14px; color: #bae6fd; }
+
+    .steps-grid { display: flex; flex-direction: column; gap: 20px; margin-bottom: 40px; }
+    .step-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 24px; position: relative; transition: border-color 0.2s, box-shadow 0.2s; }
+    .step-card:hover { border-color: rgba(225, 29, 72, 0.4); box-shadow: 0 8px 24px var(--accent-glow); }
+    
+    .step-header { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+    .step-badge { width: 32px; height: 32px; border-radius: 8px; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 16px; }
+    .step-title { font-size: 18px; font-weight: 700; color: #fff; }
+
+    .step-content { padding-left: 46px; font-size: 15px; color: var(--text-muted); }
+    .step-content p { margin-bottom: 12px; }
+
+    .action-box { display: flex; align-items: center; justify-content: space-between; background: var(--code-bg); border: 1px solid rgba(255,255,255,0.06); padding: 10px 16px; border-radius: 10px; margin-top: 10px; }
+    .code-text { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; color: #38bdf8; font-size: 14px; font-weight: 600; }
+    .btn-copy { background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-copy:hover { background: var(--accent); }
+
+    .tip-box { background: rgba(16, 185, 129, 0.08); border-left: 3px solid var(--green); padding: 10px 14px; border-radius: 0 8px 8px 0; margin-top: 12px; font-size: 13px; color: #a7f3d0; }
+
+    .browser-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 12px; }
+    .browser-item { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); padding: 12px; border-radius: 10px; text-align: center; }
+    .browser-name { font-weight: 700; color: #fff; font-size: 14px; margin-bottom: 4px; }
+    .browser-url { font-size: 12px; color: var(--blue); font-family: monospace; }
+
+    .footer-help { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 14px; padding: 20px; text-align: center; color: var(--text-muted); font-size: 14px; }
+    .footer-help a { color: var(--blue); text-decoration: none; }
+    .footer-help a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="header">
+      <div class="logo-pill">🚀 FM Download Manager</div>
+      <h1>Tarayıcı Eklentisi Kurulum Rehberi</h1>
+      <p class="lead">FM Download Manager eklentisi açık kaynaklıdır. Chrome Web Mağazası onay sürecinde olduğu için tarayıcınıza 3 kolay adımda (10 saniye) kurabilirsiniz.</p>
+    </div>
+
+    <div class="notice-banner">
+      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+      <div>
+        <strong>Eşleşme Token'ı Gerekmez:</strong>
+        <p>Eklenti kurulduğunda arka plandaki FM Download Manager masaüstü uygulaması ile otomatik olarak bağlanır. Kod veya token kopyalamanıza gerek yoktur!</p>
+      </div>
+    </div>
+
+    <div class="steps-grid">
+      <!-- ADIM 1 -->
+      <div class="step-card">
+        <div class="step-header">
+          <div class="step-badge">1</div>
+          <div class="step-title">Tarayıcınızın Eklentiler Sayfasını Açın</div>
+        </div>
+        <div class="step-content">
+          <p>Kullandığınız tarayıcının adres çubuğuna ilgili adresi yazıp Enter tuşuna basın:</p>
+          <div class="browser-list">
+            <div class="browser-item">
+              <div class="browser-name">Google Chrome</div>
+              <div class="browser-url">chrome://extensions</div>
+            </div>
+            <div class="browser-item">
+              <div class="browser-name">Microsoft Edge</div>
+              <div class="browser-url">edge://extensions</div>
+            </div>
+            <div class="browser-item">
+              <div class="browser-name">Brave Tarayıcı</div>
+              <div class="browser-url">brave://extensions</div>
+            </div>
+            <div class="browser-item">
+              <div class="browser-name">Opera</div>
+              <div class="browser-url">opera://extensions</div>
+            </div>
+          </div>
+          <div class="action-box">
+            <span class="code-text" id="chromeUrl">chrome://extensions</span>
+            <button class="btn-copy" onclick="copyText('chromeUrl')">Kopyala</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ADIM 2 -->
+      <div class="step-card">
+        <div class="step-header">
+          <div class="step-badge">2</div>
+          <div class="step-title">Geliştirici Modunu (Developer Mode) Açın</div>
+        </div>
+        <div class="step-content">
+          <p>Açılan Eklentiler sayfasının <strong>sağ üst köşesinde</strong> yer alan <strong>"Geliştirici modu" (Developer mode)</strong> anahtarını aktif hale getirin.</p>
+          <div class="tip-box">
+            💡 Geliştirici modu açıldığında sol üstte yeni yönetim butonları belirecektir.
+          </div>
+        </div>
+      </div>
+
+      <!-- ADIM 3 -->
+      <div class="step-card">
+        <div class="step-header">
+          <div class="step-badge">3</div>
+          <div class="step-title">Paketlenmemiş Öge Yükle Butonuna Tıklayın</div>
+        </div>
+        <div class="step-content">
+          <p>Sol üstteki <strong>"Paketlenmemiş öge yükle" (Load unpacked)</strong> butonuna tıklayın ve FM Download Manager'ın kurulu olduğu dizindeki <code>extension</code> klasörünü seçin:</p>
+          <div class="action-box">
+            <span class="code-text" id="extPath">%LOCALAPPDATA%\Programs\FM Download Manager\extension</span>
+            <button class="btn-copy" onclick="copyText('extPath')">Yolu Kopyala</button>
+          </div>
+          <div class="tip-box">
+            ✨ Klasörü seçtiğiniz anda eklenti ikonunuz tarayıcı araç çubuğuna eklenir ve FM Download Manager'a bağlanır.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-help">
+      <p>💡 <strong>İpucu:</strong> Tarayıcınızın araç çubuğundaki yapboz simgesine tıklayıp <strong>FM Download Manager</strong>'ın yanındaki 📌 (Sabitle) butonuna basarak eklentiyi her zaman görünür yapabilirsiniz.</p>
+      <p style="margin-top: 8px;">Açık kaynak proje deposu: <a href="https://github.com/mstcvk/mc-download-manager" target="_blank">github.com/mstcvk/mc-download-manager</a></p>
+    </div>
+  </div>
+
+  <script>
+    function copyText(id) {
+      const text = document.getElementById(id).textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        alert('Panoya kopyalandı: ' + text);
+      });
+    }
+  </script>
+</body>
+</html>

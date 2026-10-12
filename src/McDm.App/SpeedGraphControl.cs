@@ -38,7 +38,7 @@ public sealed class SpeedGraphControl : FrameworkElement
         }
         else
         {
-            _smoothedSpeed = (_smoothedSpeed * 0.70) + (val * 0.30);
+            _smoothedSpeed = (_smoothedSpeed * 0.80) + (val * 0.20);
             if (_smoothedSpeed < 1024 && val <= 0) _smoothedSpeed = 0;
         }
 

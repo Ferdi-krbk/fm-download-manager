@@ -88,13 +88,38 @@
     return null;
   }
 
+  function findActiveMovieEmbedUrl() {
+    const iframes = Array.from(document.querySelectorAll('iframe'));
+    for (const f of iframes) {
+      const src = f.src || f.getAttribute('src') || '';
+      if (/vidmoly|rapid|streamtape|dood|filemoon|player|embed|vidspeed/i.test(src) && /^https?:/i.test(src)) {
+        return src;
+      }
+    }
+    return null;
+  }
+
   // Allow popup.js to ask for the active video URL directly
   api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg?.type === 'getActiveMedia') {
       let url = location.href;
       if (isTwitter) url = findActiveTweetUrl() || location.href;
       else if (isTikTok) url = findActiveTikTokUrl() || location.href;
+      else {
+        const embed = findActiveMovieEmbedUrl();
+        if (embed) url = embed;
+      }
       sendResponse({ url, ok: true });
+    } else if (msg?.type === 'getDirectMediaUrl') {
+      const mediaEl = Array.from(document.querySelectorAll('video, audio')).find(el => !el.paused || el.currentTime > 0) || document.querySelector('video, audio');
+      if (mediaEl) {
+        const src = mediaEl.currentSrc || mediaEl.src || mediaEl.querySelector('source')?.src;
+        if (src && /^https?:/i.test(src)) {
+          sendResponse({ url: src, name: (document.title || 'media').slice(0, 100), ok: true });
+          return;
+        }
+      }
+      sendResponse({ ok: false });
     }
   });
 

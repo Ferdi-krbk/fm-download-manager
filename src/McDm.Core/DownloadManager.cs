@@ -15,6 +15,7 @@ public sealed class DownloadManager : IDisposable
     private readonly object _gate = new();
     private readonly List<DownloadItem> _all = new();
     private readonly SegmentedDownloader _engine;
+    private readonly VideoDownloader? _videoEngine;
     private readonly SynchronizationContext? _ui;
     private readonly string _dbPath;
 
@@ -28,11 +29,13 @@ public sealed class DownloadManager : IDisposable
     public event Action<DownloadItem>? ItemCompleted;
 
     public DownloadManager(string dataDirectory, string? downloadDirectory = null,
-                           SegmentedDownloader? engine = null, SynchronizationContext? uiContext = null)
+                           SegmentedDownloader? engine = null, SynchronizationContext? uiContext = null,
+                           VideoDownloader? videoEngine = null)
     {
         Directory.CreateDirectory(dataDirectory);
         _dbPath = Path.Combine(dataDirectory, "downloads.json");
         _engine = engine ?? new SegmentedDownloader();
+        _videoEngine = videoEngine;
         _ui = uiContext;
         DefaultDownloadDirectory = downloadDirectory
             ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
@@ -45,8 +48,8 @@ public sealed class DownloadManager : IDisposable
     {
         if (!Uri.TryCreate(request.Url, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https"))
             throw new ArgumentException("Only http(s) URLs are supported");
-        if (request.Kind == DownloadKind.Video)
-            throw new NotSupportedException("Video downloads are not implemented yet");
+        if (request.Kind == DownloadKind.Video && (_videoEngine == null || !_videoEngine.Available))
+            throw new NotSupportedException("Video downloads are not available (yt-dlp missing)");
 
         var item = new DownloadItem
         {
@@ -154,7 +157,15 @@ public sealed class DownloadManager : IDisposable
         int connections = Math.Clamp(item.Request.Segments ?? DefaultConnections, 1, 16);
         try
         {
-            await _engine.RunAsync(item, connections, cts.Token);
+            if (item.Request.Kind == DownloadKind.Video)
+            {
+                if (_videoEngine == null) throw new FatalDownloadException("Video engine is not configured");
+                await _videoEngine.RunAsync(item, cts.Token);
+            }
+            else
+            {
+                await _engine.RunAsync(item, connections, cts.Token);
+            }
             item.Status = DownloadStatus.Completed;
             item.Error = null;
             ItemCompleted?.Invoke(item);
@@ -185,6 +196,10 @@ public sealed class DownloadManager : IDisposable
 
     private static void CleanupPartial(DownloadItem item)
     {
+        if (!string.IsNullOrEmpty(item.WorkDir))
+        {
+            try { if (Directory.Exists(item.WorkDir)) Directory.Delete(item.WorkDir, recursive: true); } catch { }
+        }
         if (string.IsNullOrEmpty(item.SavePath)) return;
         SegmentedDownloader.TryDelete(item.SavePath + ".mcdm-part");
         SegmentedDownloader.TryDelete(item.SavePath + ".mcdm");

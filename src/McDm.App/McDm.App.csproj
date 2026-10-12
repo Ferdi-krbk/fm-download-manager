@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
@@ -19,5 +19,9 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\McDm.Core\McDm.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Tools\**\*" Condition="Exists('..\..\Tools')" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Link="Tools\%(RecursiveDir)%(Filename)%(Extension)" />
+    <None Include="..\..\extension\**\*" Condition="Exists('..\..\extension')" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Link="extension\%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>

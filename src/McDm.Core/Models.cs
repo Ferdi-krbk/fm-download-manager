@@ -70,6 +70,7 @@ public sealed class DownloadItem : ObservableBase
     public string Id { get; set; } = Guid.NewGuid().ToString("N")[..12];
     public DownloadRequest Request { get; set; } = new();
     public string Directory { get; set; } = "";
+    public string? WorkDir { get; set; }
     public bool SupportsRanges { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

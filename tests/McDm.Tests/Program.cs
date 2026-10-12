@@ -477,6 +477,8 @@ await Test("extension: real background.js intercepts, cancels browser download a
     Check(it.Status == DownloadStatus.Completed && HashFile(it.SavePath) == Hash(Big), "intercepted download content");
 });
 
+await McDm.Tests.VideoTests.RunAsync(Test, Check, Tmp);
+
 Console.WriteLine($"\n{passed} passed, {failed} failed");
 await origin.StopAsync();
 return failed == 0 ? 0 : 1;

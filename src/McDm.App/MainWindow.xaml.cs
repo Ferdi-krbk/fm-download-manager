@@ -49,27 +49,8 @@ public partial class MainWindow : Window
     public void ApplyLocalization()
     {
         Title = Strings.AppTitle;
-        BtnAddFromClipboard.Content = Strings.AddFromClipboard;
-        BtnAddUrls.Content = Strings.AddUrls;
-        BtnPause.Content = Strings.Pause;
-        BtnResume.Content = Strings.Resume;
-        BtnCancel.Content = Strings.Cancel;
-        BtnRemove.Content = Strings.Remove;
-        BtnOpenFolder.Content = Strings.OpenFolder;
-        BtnBrowserSetup.Content = Strings.BrowserSetup;
-        BtnSettings.Content = Strings.Settings;
-        BtnUpdateYtDlp.Content = Strings.UpdateYtDlp;
 
-        CatAll.Content = Strings.CategoryAll;
-        CatImages.Content = Strings.CategoryImages;
-        CatMusic.Content = Strings.CategoryMusic;
-        CatVideo.Content = Strings.CategoryVideo;
-        CatApps.Content = Strings.CategoryApps;
-        CatDocuments.Content = Strings.CategoryDocuments;
-        CatArchives.Content = Strings.CategoryArchives;
-        CatOther.Content = Strings.CategoryOther;
-
-        TxtSearchWatermark.Text = Strings.SearchPlaceholder;
+        TxtSearchWatermark.Text = "🔍 " + Strings.SearchPlaceholder;
 
         CtxOpen.Header = Strings.Open;
         CtxOpenFolder.Header = Strings.OpenFolder;

@@ -338,9 +338,16 @@ async function addMedia(tabId, info) {
   const settings = await getSettings();
   if (!settings.sniff) return;
   const list = await readMedia(tabId);
-  const key = normalizeKey(info.url);
+
+  // Upgrade sublist_vid to master.m3u8 so yt-dlp gets both video and audio
+  let targetUrl = info.url;
+  if (info.kind === 'hls' && /sublist_vid\d*\.m3u8/i.test(targetUrl)) {
+    targetUrl = targetUrl.replace(/sublist_vid\d*\.m3u8/i, 'master.m3u8');
+  }
+
+  const key = normalizeKey(targetUrl);
   const idx = list.findIndex((m) => m.key === key);
-  let name = info.name || guessName(info.url, info.type);
+  let name = info.name || guessName(targetUrl, info.type);
   if (!info.name || /^(master|index|playlist|video|audio|stream)\.(m3u8|mp4|mpd|ts)$/i.test(name)) {
     try {
       const tab = await api.tabs.get(tabId);
@@ -353,7 +360,7 @@ async function addMedia(tabId, info) {
       }
     } catch {}
   }
-  const entry = { ...info, key, name };
+  const entry = { ...info, url: targetUrl, key, name };
   if (idx >= 0) {
     if ((info.size || 0) > (list[idx].size || 0)) list[idx] = { ...list[idx], ...entry };
     return;
@@ -361,6 +368,25 @@ async function addMedia(tabId, info) {
   list.unshift(entry);
   if (list.length > 40) list.length = 40;
   await writeMedia(tabId, list);
+}
+
+function pickBestMedia(list) {
+  if (!list || !list.length) return null;
+  const masterHls = list.find((m) =>
+    m.kind === 'hls' &&
+    (/master|playlist|manifest|index\.m3u8/i.test(m.url) || !/sublist|chunk|aud|vid\d/i.test(m.url))
+  );
+  if (masterHls) return masterHls;
+  const directVideo = list.find((m) =>
+    (m.kind === 'video' || m.kind === 'media') &&
+    !/aud/i.test(m.url) &&
+    !/sublist/i.test(m.url)
+  );
+  if (directVideo) return directVideo;
+  const videoHls = list.find((m) => m.kind === 'hls' && !/aud|audio/i.test(m.url));
+  if (videoHls) return videoHls;
+  const nonAudio = list.find((m) => !/sublist_aud|audio[_-]track/i.test(m.url));
+  return nonAudio || list[0];
 }
 
 function guessExt(type) {
@@ -393,7 +419,10 @@ function headerVal(headers, name) {
 }
 function classify(url, ct) {
   ct = (ct || '').toLowerCase();
-  if (/\.m3u8(\?|#|$)/i.test(url) || /mpegurl/.test(ct)) return 'hls';
+  if (/\.m3u8(\?|#|$)/i.test(url) || /mpegurl/.test(ct)) {
+    if (/sublist_aud|audio[_-]?track|audio[_-]\d+\.m3u8/i.test(url)) return null;
+    return 'hls';
+  }
   if (/\.mpd(\?|#|$)/i.test(url) || /dash\+xml/.test(ct)) return 'dash';
   if (FRAGMENT.test(url)) return null;
   if (/^(video|audio)\//.test(ct)) {
@@ -418,7 +447,14 @@ if (api.webRequest?.onHeadersReceived) {
       const cr = headerVal(d.responseHeaders, 'content-range').match(/\/(\d+)/);
       if (cr) size = parseInt(cr[1], 10);
       if (kind === 'media' && size > 0 && size < 300 * 1024) return;
-      addMedia(d.tabId, { url: d.url, type: ct.split(';')[0], size, kind, time: Date.now() });
+      addMedia(d.tabId, {
+        url: d.url,
+        type: ct.split(';')[0],
+        size,
+        kind,
+        time: Date.now(),
+        initiator: d.initiator || d.documentUrl || '',
+      });
     },
     { urls: ['<all_urls>'], types: ['media', 'xmlhttprequest', 'other', 'object', 'main_frame'] },
     ['responseHeaders']
@@ -458,19 +494,23 @@ menus?.onClicked.addListener(async (info, tab) => {
   } else if (info.menuItemId === 'dm-page-video') {
     let url = info.pageUrl || tab?.url;
     let kind = 'video';
-    let filename = '';
+    let referer = tab?.url || url;
     if (tab && tab.id) {
       const isKnown = /(youtube\.com|youtu\.be|tiktok\.com|twitter\.com|x\.com|vimeo\.com|dailymotion\.com|instagram\.com|twitch\.tv|reddit\.com)/i.test(url || '');
       if (!isKnown) {
         const list = await readMedia(tab.id);
-        if (list && list.length > 0) {
-          url = list[0].url;
-          filename = list[0].name || '';
-          kind = list[0].kind === 'hls' || list[0].kind === 'dash' || list[0].kind === 'video' ? 'video' : 'file';
+        const best = pickBestMedia(list);
+        if (best) {
+          url = best.url;
+          filename = best.name || '';
+          kind = best.kind === 'hls' || best.kind === 'dash' || best.kind === 'video' ? 'video' : 'file';
+          if (best.initiator && !best.initiator.startsWith('chrome-extension://')) {
+            referer = best.initiator.endsWith('/') ? best.initiator : best.initiator + '/';
+          }
         }
       }
     }
-    if (url) sendToApp({ url, filename, referer: tab?.url || url, kind });
+    if (url) sendToApp({ url, filename, referer, kind });
   }
 });
 
@@ -511,7 +551,17 @@ api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             for (const m of msg.items || []) {
               const kind = m.kind || classify(m.url, m.type || '');
               if (kind || MEDIA_EXT.test(m.url)) {
-                await addMedia(sender.tab.id, { url: m.url, type: m.type || '', size: 0, kind: kind || 'media', time: Date.now(), name: m.name });
+                let init = sender.origin || '';
+                try { if (!init && sender.url) init = new URL(sender.url).origin; } catch {}
+                await addMedia(sender.tab.id, {
+                  url: m.url,
+                  type: m.type || '',
+                  size: 0,
+                  kind: kind || 'media',
+                  time: Date.now(),
+                  name: m.name,
+                  initiator: init,
+                });
               }
             }
           }

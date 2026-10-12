@@ -91,10 +91,21 @@
   function findActiveMovieEmbedUrl() {
     const iframes = Array.from(document.querySelectorAll('iframe'));
     for (const f of iframes) {
-      const src = f.src || f.getAttribute('src') || '';
-      if (/vidmoly|rapid|streamtape|dood|filemoon|player|embed|vidspeed/i.test(src) && /^https?:/i.test(src)) {
+      let src = f.src || f.getAttribute('src') || f.getAttribute('data-src') || '';
+      if (src.startsWith('//')) src = location.protocol + src;
+      if (/vidmoly|rapid|streamtape|dood|filemoon|player|embed|vidspeed|supervideo|upstream|mixdrop|streamwish/i.test(src) && /^https?:/i.test(src)) {
         return src;
       }
+    }
+    for (const f of iframes) {
+      let src = f.src || f.getAttribute('src') || f.getAttribute('data-src') || '';
+      if (src.startsWith('//')) src = location.protocol + src;
+      try {
+        const rect = f.getBoundingClientRect();
+        if (rect.width > 300 && rect.height > 200 && /^https?:/i.test(src)) {
+          return src;
+        }
+      } catch {}
     }
     return null;
   }

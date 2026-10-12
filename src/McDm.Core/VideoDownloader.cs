@@ -173,6 +173,11 @@ public sealed class VideoDownloader
         {
             a.Add("--referer");
             a.Add(referer);
+            if (Uri.TryCreate(referer, UriKind.Absolute, out var refUri))
+            {
+                a.Add("--add-header");
+                a.Add($"Origin:{refUri.Scheme}://{refUri.Authority}");
+            }
         }
         var sort = FormatSort(o);
         if (sort.Length > 0) { a.Add("-S"); a.Add(sort); }

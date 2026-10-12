@@ -92,7 +92,8 @@ async function loadMedia() {
     btn.onclick = async () => {
       btn.disabled = true; btn.textContent = '…';
       const k = m.kind === 'video' || m.kind === 'hls' || m.kind === 'dash' ? 'video' : 'file';
-      const r = await send({ type: 'download', url: m.url, filename: k === 'file' ? m.name : '', referer: tab.url, kind: k });
+      const ref = (m.initiator && !m.initiator.startsWith('chrome-extension://')) ? (m.initiator.endsWith('/') ? m.initiator : m.initiator + '/') : tab.url;
+      const r = await send({ type: 'download', url: m.url, filename: k === 'file' ? m.name : '', referer: ref, kind: k });
       if (r && r.ok) {
         btn.textContent = '✓ ' + t('popupSent');
         btn.classList.add('success');
@@ -171,29 +172,48 @@ function updateRow(d) {
   cancel.title = terminal ? t('popupRemove') : t('popupCancel');
 }
 
+function pickBestMedia(list) {
+  if (!list || !list.length) return null;
+  const masterHls = list.find((m) =>
+    m.kind === 'hls' &&
+    (/master|playlist|manifest|index\.m3u8/i.test(m.url) || !/sublist|chunk|aud|vid\d/i.test(m.url))
+  );
+  if (masterHls) return masterHls;
+  const directVideo = list.find((m) =>
+    (m.kind === 'video' || m.kind === 'media') &&
+    !/aud/i.test(m.url) &&
+    !/sublist/i.test(m.url)
+  );
+  if (directVideo) return directVideo;
+  const videoHls = list.find((m) => m.kind === 'hls' && !/aud|audio/i.test(m.url));
+  if (videoHls) return videoHls;
+  const nonAudio = list.find((m) => !/sublist_aud|audio[_-]track/i.test(m.url));
+  return nonAudio || list[0];
+}
+
 $('pageVideo').onclick = async () => {
   tab = tab || (await currentTab());
   if (!tab?.url) return;
-  $('pageVideo').textContent = t('popupSending');
+
+  const isKnownVideoHost = /(youtube\.com|youtu\.be|tiktok\.com|twitter\.com|x\.com|vimeo\.com|dailymotion\.com|instagram\.com|twitch\.tv|reddit\.com)/i.test(tab.url);
+
+  const mediaList = (await send({ type: 'getMedia', tabId: tab.id })) || [];
+  const best = pickBestMedia(mediaList);
 
   let targetUrl = tab.url;
   let kind = 'video';
   let filename = '';
+  let referer = tab.url;
 
-  const isKnownVideoHost = /(youtube\.com|youtu\.be|tiktok\.com|twitter\.com|x\.com|vimeo\.com|dailymotion\.com|instagram\.com|twitch\.tv|reddit\.com)/i.test(tab.url);
-
-  // If this is a generic site (e.g. NotebookLM, hdfilmcehennemi, podcast, etc.),
-  // check if active media was already captured in the tab!
-  const mediaList = (await send({ type: 'getMedia', tabId: tab.id })) || [];
-
-  if (!isKnownVideoHost && mediaList.length > 0) {
-    // Universal Download: Prefer the active media stream that was captured from the page!
-    const best = mediaList[0];
+  if (best) {
     targetUrl = best.url;
     filename = best.name || '';
     kind = best.kind === 'hls' || best.kind === 'dash' || best.kind === 'video' ? 'video' : 'file';
-  } else {
-    // Ask content script for active video/tweet/embed URL
+    if (best.initiator && !best.initiator.startsWith('chrome-extension://')) {
+      referer = best.initiator.endsWith('/') ? best.initiator : best.initiator + '/';
+    }
+  } else if (isKnownVideoHost) {
+    // Known video platform (YouTube, TikTok, Twitter): ask content script for active video/tweet
     try {
       const res = await new Promise((resolve) => {
         api.tabs.sendMessage(tab.id, { type: 'getActiveMedia' }, (r) => {
@@ -202,25 +222,32 @@ $('pageVideo').onclick = async () => {
       });
       if (res && res.url) targetUrl = res.url;
     } catch {}
-
-    // If still a generic site with no captured media yet, check if there is a playing audio/video element directly
-    if (!isKnownVideoHost && mediaList.length === 0) {
-      try {
-        const res = await new Promise((resolve) => {
-          api.tabs.sendMessage(tab.id, { type: 'getDirectMediaUrl' }, (r) => {
-            resolve(api.runtime.lastError ? null : r);
-          });
+  } else {
+    // Generic website with no captured media yet: check for playing video/audio element
+    let direct = null;
+    try {
+      direct = await new Promise((resolve) => {
+        api.tabs.sendMessage(tab.id, { type: 'getDirectMediaUrl' }, (r) => {
+          resolve(api.runtime.lastError ? null : r);
         });
-        if (res && res.url) {
-          targetUrl = res.url;
-          filename = res.name || '';
-          kind = 'file';
-        }
-      } catch {}
+      });
+    } catch {}
+
+    if (direct && direct.url && !direct.url.startsWith('blob:')) {
+      targetUrl = direct.url;
+      filename = direct.name || '';
+      kind = 'file';
+    } else {
+      // No media detected on generic page (e.g. NotebookLM before clicking play):
+      // Alert user instead of sending unsupported webpage URL to yt-dlp
+      $('pageVideo').textContent = t('popupPlayFirst') || 'Önce medyayı oynatın';
+      setTimeout(() => ($('pageVideo').textContent = t('popupPageVideo')), 2500);
+      return;
     }
   }
 
-  const r = await send({ type: 'download', url: targetUrl, filename, referer: tab.url, kind });
+  $('pageVideo').textContent = t('popupSending');
+  const r = await send({ type: 'download', url: targetUrl, filename, referer, kind });
   if (r && r.ok) {
     $('pageVideo').textContent = t('popupStarted');
   } else {

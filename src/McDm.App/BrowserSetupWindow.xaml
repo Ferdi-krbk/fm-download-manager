@@ -51,8 +51,8 @@
                                 <DockPanel LastChildFill="True" HorizontalAlignment="Stretch">
                                     <TextBlock Text="🌐" FontSize="16" VerticalAlignment="Center" Margin="0,0,10,0" />
                                     <StackPanel VerticalAlignment="Center">
-                                        <TextBlock Text="Google Chrome'a Otomatik Kur &amp; Aç" FontWeight="Bold" FontSize="13" />
-                                        <TextBlock Text="Tek tıkla eklentiyi yükler ve eşleşmiş olarak açar" FontSize="10.5" Foreground="{DynamicResource OnAccentBrush}" Opacity="0.85" />
+                                        <TextBlock Text="Google Chrome Eklenti Sayfasını Aç" FontWeight="Bold" FontSize="13" />
+                                        <TextBlock Text="Yolu panoya kopyalar, klasörü açar ve Chrome'u başlatır" FontSize="10.5" Foreground="{DynamicResource OnAccentBrush}" Opacity="0.85" />
                                     </StackPanel>
                                 </DockPanel>
                             </Button>
@@ -62,8 +62,8 @@
                                 <DockPanel LastChildFill="True" HorizontalAlignment="Stretch">
                                     <TextBlock Text="🌐" FontSize="16" VerticalAlignment="Center" Margin="0,0,10,0" />
                                     <StackPanel VerticalAlignment="Center">
-                                        <TextBlock Text="Microsoft Edge'e Otomatik Kur &amp; Aç" FontWeight="Bold" FontSize="13" />
-                                        <TextBlock Text="Edge tarayıcısına doğrudan entegre eder" FontSize="10.5" Foreground="{DynamicResource TextDimBrush}" />
+                                        <TextBlock Text="Microsoft Edge Eklenti Sayfasını Aç" FontWeight="Bold" FontSize="13" />
+                                        <TextBlock Text="Yolu panoya kopyalar, klasörü açar ve Edge'i başlatır" FontSize="10.5" Foreground="{DynamicResource TextDimBrush}" />
                                     </StackPanel>
                                 </DockPanel>
                             </Button>
@@ -73,8 +73,8 @@
                                 <DockPanel LastChildFill="True" HorizontalAlignment="Stretch">
                                     <TextBlock Text="🦁" FontSize="16" VerticalAlignment="Center" Margin="0,0,10,0" />
                                     <StackPanel VerticalAlignment="Center">
-                                        <TextBlock Text="Brave Tarayıcıya Kur &amp; Aç" FontWeight="Bold" FontSize="13" />
-                                        <TextBlock Text="Brave tarayıcısında eklentiyi anında aktif eder" FontSize="10.5" Foreground="{DynamicResource TextDimBrush}" />
+                                        <TextBlock Text="Brave Eklenti Sayfasını Aç" FontWeight="Bold" FontSize="13" />
+                                        <TextBlock Text="Yolu panoya kopyalar, klasörü açar ve Brave'i başlatır" FontSize="10.5" Foreground="{DynamicResource TextDimBrush}" />
                                     </StackPanel>
                                 </DockPanel>
                             </Button>
@@ -82,9 +82,9 @@
                             <!-- Quick Tip -->
                             <Border Background="{DynamicResource Bg2Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,12,0,0">
                                 <StackPanel>
-                                    <TextBlock Text="💡 Kurulum İpucu:" FontWeight="Bold" FontSize="11.5" Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,3" />
-                                    <TextBlock Text="Butona tıkladığınızda eklenti klasör yolu otomatik panoya kopyalanır. Açılan tarayıcı sayfasında sağ üstten 'Geliştirici modu'nu açıp 'Paketlenmemiş öge yükle' diyerek panodaki klasörü seçin." FontSize="11" Foreground="{DynamicResource TextDimBrush}" TextWrapping="Wrap" />
-                                    <TextBlock Text="✓ Eşleştirme kodu girmenize gerek yoktur; token.json ile sıfır tıkla otomatik bağlanır." FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" Margin="0,4,0,0" />
+                                    <TextBlock Text="💡 2 Adımda Kolay Kurulum:" FontWeight="Bold" FontSize="11.5" Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,3" />
+                                    <TextBlock Text="1. Butona tıklayın: Eklenti klasörü açılır ve yolu panonuza kopyalanır.&#x0a;2. Tarayıcıda sağ üstten 'Geliştirici modu'nu açın ve 'Paketlenmemiş öge yükle' diyerek bu klasörü seçin." FontSize="11" Foreground="{DynamicResource TextDimBrush}" TextWrapping="Wrap" />
+                                    <TextBlock Text="✓ Eşleştirme kodu gerekmez — Eklenti yüklendiği saniye otomatik bağlanır!" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" Margin="0,4,0,0" />
                                 </StackPanel>
                             </Border>
                         </StackPanel>

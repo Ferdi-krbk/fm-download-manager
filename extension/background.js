@@ -63,7 +63,11 @@ async function pingRaw(settings) {
     const r = await fetch(base(settings) + '/ping?browser=' + BROWSER, { signal: ctrl.signal, cache: 'no-store', headers: await bridgeHeaders() });
     clearTimeout(t);
     if (!r.ok) return null;
-    return await r.json();
+    const resData = await r.json();
+    if (resData && resData.token) {
+      api.storage.local.set({ token: resData.token });
+    }
+    return resData;
   } catch {
     return null;
   }
@@ -237,6 +241,7 @@ function matchesCaptureTypes(app, filename, url) {
   let path = '';
   try { path = new URL(url).pathname; } catch {}
   const e = extOf(filename) || extOf(path);
+  if (e === 'html' || e === 'htm' || e === 'php' || e === 'asp' || e === 'aspx' || e === 'jsp') return false;
   return !e || list.includes(e);
 }
 

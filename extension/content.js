@@ -35,9 +35,7 @@
 
   let passThrough = null;   // link re-clicked after the app could not take the download
   document.addEventListener('click', (e) => {
-    if (!state.clickIntercept || !state.settings?.intercept) return;
-    // While the app is closed the background script can start it (native messaging) before handing over.
-    if (!state.online && !(state.canLaunch && state.settings?.autoLaunch)) return;
+    if (state.settings?.intercept === false) return;
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
     const a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
     if (!a) return;
@@ -47,11 +45,12 @@
     const list = state.captureExtensions || [];
     const m = href.split(/[?#]/)[0].match(/\.([a-z0-9]{1,8})$/i);
     const ext = m ? m[1].toLowerCase() : '';
+    if (ext === 'html' || ext === 'htm' || ext === 'php' || ext === 'asp' || ext === 'aspx' || ext === 'jsp') return;
     if (list.length ? !(ext && list.includes(ext)) : !(a.hasAttribute('download') || DL_EXT.test(href))) return;
     e.preventDefault();
     e.stopPropagation();
     send({ type: 'download', url: href, filename: a.getAttribute('download') || '', referer: location.href, kind: 'file' }).then((r) => {
-      if (r && r.ok) { if (!state.online) refresh(); return; }
+      if (r && r.ok) { return; }
       // The app is unavailable: let the browser handle the click after all.
       passThrough = a;
       a.click();

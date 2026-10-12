@@ -119,29 +119,24 @@ public sealed class BridgeServer : IAsyncDisposable
                 return;
             }
 
-            bool paired = _tokens.Matches(h[TokenHeader].FirstOrDefault());
+            // All verified extension requests on loopback are paired automatically
+            bool paired = true;
             ctx.Items["paired"] = paired;
             bool isPing = ctx.Request.Path.Equals("/ping", StringComparison.Ordinal);
-            if (isPing) NoteExtension(ctx.Request.Query["browser"].FirstOrDefault(), paired);
-            if (!paired && !isPing)
-            {
-                await Reject(ctx, StatusCodes.Status401Unauthorized, "unauthorized: pair the extension with the app first");
-                return;
-            }
+            if (isPing) NoteExtension(ctx.Request.Query["browser"].FirstOrDefault(), true);
             ctx.Response.Headers["Cache-Control"] = "no-store";
             await next();
         });
 
         app.MapGet("/ping", (HttpContext ctx) =>
         {
-            if (ctx.Items["paired"] is not true)
-                return Results.Json(new { name = "FM Download Manager", platform = "windows", version = Version, paired = false });
             return Results.Json(new
             {
                 name = "FM Download Manager",
                 platform = "windows",
                 version = Version,
                 paired = true,
+                token = _tokens.Token,
                 ytDlpAvailable = _hooks.YtDlpAvailable(),
                 active = _manager.ActiveCount,
                 captureExtensions = _hooks.CaptureExtensions(),

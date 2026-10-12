@@ -43,7 +43,7 @@ public partial class App : System.Windows.Application
     {
         try
         {
-            SetCurrentProcessExplicitAppUserModelID("FM.DownloadManager.v3");
+            SetCurrentProcessExplicitAppUserModelID("FM.DownloadManager.3.0");
         }
         catch { }
 
@@ -71,6 +71,124 @@ public partial class App : System.Windows.Application
         if (e.Args.Contains("--gallery"))
         {
             new GalleryWindow().Show();
+            return;
+        }
+
+        if (e.Args.Contains("--screenshot"))
+        {
+            var dataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MC Download Manager");
+            var mockTokens = new TokenStore(Path.Combine(dataDir, "bridge.token"));
+            var mockSettings = AppSettings.Load();
+            mockSettings.SpeedLimitKbps = 25600;
+            var mockManager = new DownloadManager(dataDir, mockSettings.DownloadDirectory, uiContext: new DispatcherSynchronizationContext(Dispatcher));
+            mockManager.Items.Clear();
+
+            mockManager.Items.Add(new DownloadItem
+            {
+                FileName = "ubuntu-24.04.1-desktop-amd64.iso",
+                TotalBytes = 6_120_000_000L,
+                DownloadedBytes = 4_420_000_000L,
+                Status = DownloadStatus.Downloading,
+                Speed = 18_400_000,
+                ActiveConnections = 8,
+                Stage = "İndiriliyor · 8 segment"
+            });
+
+            mockManager.Items.Add(new DownloadItem
+            {
+                FileName = "Cyberpunk_2077_Update_2.13.zip",
+                TotalBytes = 14_800_000_000L,
+                DownloadedBytes = 9_620_000_000L,
+                Status = DownloadStatus.Downloading,
+                Speed = 6_800_000,
+                ActiveConnections = 8,
+                Stage = "İndiriliyor · 8 segment"
+            });
+
+            mockManager.Items.Add(new DownloadItem
+            {
+                FileName = "Blender_4.2.0_Windows_x64.msi",
+                TotalBytes = 348_000_000L,
+                DownloadedBytes = 348_000_000L,
+                Status = DownloadStatus.Completed,
+                Speed = 0,
+                ActiveConnections = 0,
+                Stage = "Tamamlandı"
+            });
+
+            mockManager.Items.Add(new DownloadItem
+            {
+                FileName = "Interstellar_Soundtrack_Lossless.flac",
+                TotalBytes = 780_000_000L,
+                DownloadedBytes = 780_000_000L,
+                Status = DownloadStatus.Completed,
+                Speed = 0,
+                ActiveConnections = 0,
+                Stage = "Tamamlandı"
+            });
+
+            mockManager.Items.Add(new DownloadItem
+            {
+                FileName = "VSCodeUserSetup-x64-1.93.1.exe",
+                TotalBytes = 95_000_000L,
+                DownloadedBytes = 0,
+                Status = DownloadStatus.Queued,
+                Speed = 0,
+                ActiveConnections = 0,
+                Stage = "Kuyrukta"
+            });
+
+            var win = new MainWindow(mockManager, mockTokens, mockSettings);
+            win.Width = 1140;
+            win.Height = 680;
+            win.Show();
+
+            var sparkline = win.FindName("SpeedSparkline") as System.Windows.Shapes.Polyline;
+            if (sparkline != null)
+            {
+                sparkline.Points = new System.Windows.Media.PointCollection(new[]
+                {
+                    new System.Windows.Point(0, 30),
+                    new System.Windows.Point(18, 28),
+                    new System.Windows.Point(36, 25),
+                    new System.Windows.Point(54, 18),
+                    new System.Windows.Point(72, 20),
+                    new System.Windows.Point(90, 15),
+                    new System.Windows.Point(108, 12),
+                    new System.Windows.Point(126, 14),
+                    new System.Windows.Point(144, 9),
+                    new System.Windows.Point(162, 7),
+                    new System.Windows.Point(180, 5)
+                });
+            }
+
+            var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+            timer.Tick += (_, _) =>
+            {
+                timer.Stop();
+                try
+                {
+                    win.UpdateLayout();
+                    var visual = (win.Content as System.Windows.Media.Visual) ?? win;
+                    var rtb = new System.Windows.Media.Imaging.RenderTargetBitmap(1140, 680, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
+                    rtb.Render(visual);
+                    var enc = new System.Windows.Media.Imaging.PngBitmapEncoder();
+                    enc.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(rtb));
+                    
+                    var rootDocs = @"C:\Users\Ferdi\Downloads\mc-dm-windows\docs\ui\dashboard_dark.png";
+                    using (var fs = File.Create(rootDocs))
+                    {
+                        enc.Save(fs);
+                    }
+                    File.WriteAllText(@"C:\Users\Ferdi\Downloads\mc-dm-windows\dist\screenshot.log", "SUCCESS: " + DateTime.UtcNow);
+                }
+                catch (Exception ex)
+                {
+                    File.WriteAllText(@"C:\Users\Ferdi\Downloads\mc-dm-windows\dist\screenshot.log", "ERROR: " + ex);
+                }
+                Shutdown();
+            };
+            timer.Start();
             return;
         }
 

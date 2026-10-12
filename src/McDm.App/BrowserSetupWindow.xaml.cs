@@ -51,14 +51,27 @@ public partial class BrowserSetupWindow : Window
 
     private void SeedExtensionToken()
     {
-        try
+        var locations = new[]
         {
-            if (!Directory.Exists(_extensionDir)) Directory.CreateDirectory(_extensionDir);
-            var tokenFile = Path.Combine(_extensionDir, "token.json");
-            var json = JsonSerializer.Serialize(new { token = _tokenStore.Token });
-            File.WriteAllText(tokenFile, json);
+            _extensionDir,
+            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "extension"),
+            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "extension"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "FM Download Manager", "extension")
+        };
+
+        foreach (var loc in locations)
+        {
+            try
+            {
+                if (Directory.Exists(loc))
+                {
+                    var tokenFile = Path.Combine(loc, "token.json");
+                    var json = JsonSerializer.Serialize(new { token = _tokenStore.Token });
+                    File.WriteAllText(tokenFile, json);
+                }
+            }
+            catch { }
         }
-        catch { }
     }
 
     private void CheckConnection()
@@ -90,7 +103,7 @@ public partial class BrowserSetupWindow : Window
     }
 
     private void OpenChrome_Click(object sender, RoutedEventArgs e) =>
-        InstallAndLaunchBrowser("chrome", "chrome.exe", "chrome://extensions");
+        InstallAndLaunchBrowser("chrome", "chrome.exe", "https://chrome.google.com");
 
     private void OpenEdge_Click(object sender, RoutedEventArgs e) =>
         InstallAndLaunchBrowser("edge", "msedge.exe", "edge://extensions");
@@ -102,27 +115,40 @@ public partial class BrowserSetupWindow : Window
     {
         SeedExtensionToken();
 
-        // 1. Copy extension path to clipboard for 1-click folder selection
+        // 1. Copy extension path to clipboard for 1-click paste
         try { ClipboardHelper.SetText(_extensionDir); } catch { }
 
-        // 2. Register in Windows Registry
-        RegisterExtensionInRegistry(browserKey, _extensionDir);
-
-        TxtStatus.Text = "Tarayıcı açıldı. 'Paketlenmemiş öge yükle' diyerek panodaki klasörü seçin (Yol panoda)...";
-        TxtStatus.Foreground = (Brush)FindResource("AccentHoverBrush");
-
-        // 3. Launch browser
+        // 2. Open extension folder in Explorer so the user can easily see/drag it
         try
         {
-            Process.Start(new ProcessStartInfo(exe, $"--load-extension=\"{_extensionDir}\" {extensionsUrl}") { UseShellExecute = true });
+            if (!Directory.Exists(_extensionDir)) Directory.CreateDirectory(_extensionDir);
+            Process.Start("explorer.exe", $"\"{_extensionDir}\"");
+        }
+        catch { }
+
+        // 3. Register in Windows Registry
+        RegisterExtensionInRegistry(browserKey, _extensionDir);
+
+        TxtStatus.Text = "Klasör ve tarayıcı açıldı. 'Paketlenmemiş öge yükle' diyerek panodaki klasörü seçin...";
+        TxtStatus.Foreground = (Brush)FindResource("AccentHoverBrush");
+
+        // 4. Launch browser directly to extensions management page
+        try
+        {
+            if (browserKey == "chrome")
+            {
+                // Chrome blocks chrome://extensions from cmdline in some versions; open with new window
+                try { Process.Start(new ProcessStartInfo(exe, "chrome://extensions") { UseShellExecute = true }); }
+                catch { Process.Start(new ProcessStartInfo("chrome://extensions") { UseShellExecute = true }); }
+            }
+            else
+            {
+                Process.Start(new ProcessStartInfo(exe, extensionsUrl) { UseShellExecute = true });
+            }
         }
         catch
         {
-            try
-            {
-                Process.Start(new ProcessStartInfo(extensionsUrl) { UseShellExecute = true });
-            }
-            catch { }
+            try { Process.Start(new ProcessStartInfo(extensionsUrl) { UseShellExecute = true }); } catch { }
         }
     }
 

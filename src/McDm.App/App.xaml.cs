@@ -262,6 +262,60 @@ public partial class App : System.Windows.Application
             YtDlpAvailable = () => toolPaths.YtDlpAvailable,
             CaptureExtensions = () => (_settings?.CapturedExtensions ?? "").Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
             MinCaptureSizeMB = () => (int)((_settings?.MinCaptureSizeBytes ?? 0) / (1024 * 1024)),
+            ConfirmDownloadAsync = async (req) =>
+            {
+                var tcs = new TaskCompletionSource<bool>();
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    try
+                    {
+                        bool isVideo = req.Kind == DownloadKind.Video || VideoDownloader.IsVideoUrl(req.Url);
+                        if (isVideo)
+                        {
+                            var qDlg = new VideoQualityDialog(req.Url, req.FileName)
+                            {
+                                Topmost = true,
+                                WindowStartupLocation = WindowStartupLocation.CenterScreen
+                            };
+                            qDlg.Activate();
+                            qDlg.Focus();
+                            bool? res = qDlg.ShowDialog();
+                            if (res == true)
+                            {
+                                req.Kind = DownloadKind.Video;
+                                req.CustomFormat = qDlg.SelectedFormat;
+                                if (qDlg.AudioOnly)
+                                {
+                                    req.Container = "mp3";
+                                    req.AudioOnly = true;
+                                }
+                                tcs.SetResult(true);
+                            }
+                            else
+                            {
+                                tcs.SetResult(false);
+                            }
+                        }
+                        else
+                        {
+                            var pDlg = new DownloadPromptDialog(req, _settings?.DownloadDirectory ?? "")
+                            {
+                                Topmost = true,
+                                WindowStartupLocation = WindowStartupLocation.CenterScreen
+                            };
+                            pDlg.Activate();
+                            pDlg.Focus();
+                            bool? res = pDlg.ShowDialog();
+                            tcs.SetResult(res == true);
+                        }
+                    }
+                    catch
+                    {
+                        tcs.SetResult(true);
+                    }
+                });
+                return await tcs.Task;
+            }
         };
 
         _bridge = new BridgeServer(_manager, _tokenStore, hooks);

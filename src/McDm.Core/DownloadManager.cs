@@ -110,9 +110,11 @@ public sealed class DownloadManager : IDisposable
         if (request.Kind == DownloadKind.Video && (_videoEngine == null || !_videoEngine.Available))
             throw new NotSupportedException("Video downloads are not available (yt-dlp missing)");
 
-        string targetDir = AutoCategorizeSubfolders
-            ? CategoryHelper.ResolveDestinationDirectory(DefaultDownloadDirectory, request.FileName, request.Url, request.Kind, true)
-            : DefaultDownloadDirectory;
+        string targetDir = !string.IsNullOrWhiteSpace(request.Directory)
+            ? request.Directory
+            : (AutoCategorizeSubfolders
+                ? CategoryHelper.ResolveDestinationDirectory(DefaultDownloadDirectory, request.FileName, request.Url, request.Kind, true)
+                : DefaultDownloadDirectory);
 
         string initialFileName = "";
         if (!string.IsNullOrWhiteSpace(request.FileName))

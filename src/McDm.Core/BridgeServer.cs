@@ -18,6 +18,7 @@ public sealed class BridgeHooks
     public Func<IReadOnlyList<string>> CaptureExtensions { get; set; } = () => AppSettings.DefaultCaptureExtensions;
     public Func<int> MinCaptureSizeMB { get; set; } = () => 0;
     public Func<bool> YtDlpAvailable { get; set; } = () => false;
+    public Func<DownloadRequest, Task<bool>>? ConfirmDownloadAsync { get; set; }
 }
 
 /// <summary>Raised whenever a browser extension reaches the bridge.</summary>
@@ -56,7 +57,7 @@ public sealed class BridgeServer : IAsyncDisposable
     public event Action<ExtensionSeenEventArgs>? ExtensionSeen;
 
     public static string Version =>
-        typeof(BridgeServer).Assembly.GetName().Version?.ToString(3) ?? "3.0.0";
+        typeof(BridgeServer).Assembly.GetName().Version?.ToString(3) ?? "3.1.0";
 
     public BridgeServer(DownloadManager manager, TokenStore tokens, BridgeHooks? hooks = null)
     {
@@ -146,7 +147,7 @@ public sealed class BridgeServer : IAsyncDisposable
 
         app.MapGet("/downloads", () => Results.Json(new { items = _manager.Snapshot(50).Select(ToDto) }));
 
-        app.MapPost("/download", (DownloadRequest? req) =>
+        app.MapPost("/download", async (DownloadRequest? req) =>
         {
             if (req == null || string.IsNullOrWhiteSpace(req.Url))
                 return Results.Json(new { ok = false, error = "url required" }, statusCode: 400);
@@ -156,6 +157,14 @@ public sealed class BridgeServer : IAsyncDisposable
             {
                 if (req.Kind == DownloadKind.Video && !_hooks.YtDlpAvailable())
                     return Results.Json(new { ok = false, error = "yt-dlp is not available" }, statusCode: 501);
+
+                if (_hooks.ConfirmDownloadAsync != null)
+                {
+                    bool confirmed = await _hooks.ConfirmDownloadAsync(req);
+                    if (!confirmed)
+                        return Results.Json(new { ok = false, error = "cancelled by user" });
+                }
+
                 var item = _manager.Add(req);
                 return Results.Json(new { ok = true, id = item.Id, status = StateOf(item) });
             }

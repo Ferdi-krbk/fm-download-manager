@@ -29,6 +29,10 @@ public sealed class DownloadRequest
     public List<BrowserCookie>? Cookies { get; set; }
     public DownloadKind Kind { get; set; } = DownloadKind.File;
     public int? Segments { get; set; }
+    public string? Directory { get; set; }
+    public string? CustomFormat { get; set; }
+    public string? Container { get; set; }
+    public bool AudioOnly { get; set; }
 }
 
 public sealed class Chunk

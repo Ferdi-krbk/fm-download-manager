@@ -168,7 +168,7 @@ public partial class BrowserSetupWindow : Window
             if (key != null)
             {
                 key.SetValue("path", extensionDir);
-                key.SetValue("version", "3.0.0");
+                key.SetValue("version", "3.1.0");
             }
         }
         catch { }

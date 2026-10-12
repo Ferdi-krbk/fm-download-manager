@@ -57,33 +57,66 @@
     });
   }, true);
 
+  // Only top window scans media (blocks iframes from reporting 'YouTube Frame')
+  if (window.top !== window.self) return;
+
+  const isYouTube = /(youtube\.com|youtu\.be)/i.test(location.hostname);
+  const isTwitter = /(twitter\.com|x\.com)/i.test(location.hostname);
+  const isTikTok = /tiktok\.com/i.test(location.hostname);
+
   const reported = new Set();
   function scanMedia() {
     const items = [];
-    document.querySelectorAll('video, audio, source').forEach((el) => {
-      const src = el.currentSrc || el.src || el.getAttribute('src');
-      if (src && /^https?:/i.test(src) && !reported.has(src)) {
-        reported.add(src);
-        items.push({ url: src, type: el.getAttribute('type') || '', name: document.title ? document.title.slice(0, 80) : '' });
-      }
-    });
 
-    // Detect streaming video players (YouTube, Vimeo, etc. or any page with a HTML5 video element)
-    const hasVideo = document.querySelector('video') !== null;
-    const isVideoSite = /(youtube\.com|youtu\.be|vimeo\.com|twitter\.com|x\.com|tiktok\.com|instagram\.com|twitch\.tv|facebook\.com|dailymotion\.com)/i.test(location.hostname);
-    if ((hasVideo || isVideoSite) && !reported.has(location.href) && /^https?:/i.test(location.href)) {
-      reported.add(location.href);
-      const cleanTitle = (document.title || 'Video')
-        .replace(/\s*-\s*YouTube$/i, '')
-        .replace(/\s*\|\s*X$/i, '')
-        .replace(/\s*\|\s*TikTok$/i, '')
-        .trim();
-      items.push({
-        url: location.href,
-        type: 'video/mp4',
-        name: cleanTitle.slice(0, 100),
-        kind: 'video'
+    // On standard websites (not YouTube), scan direct audio/video elements
+    if (!isYouTube) {
+      document.querySelectorAll('video, audio, source').forEach((el) => {
+        let src = el.currentSrc || el.src || el.getAttribute('src');
+        if (src && !src.startsWith('blob:') && /^https?:/i.test(src) && !reported.has(src)) {
+          reported.add(src);
+          let title = document.title ? document.title.slice(0, 80) : '';
+          items.push({ url: src, type: el.getAttribute('type') || 'video/mp4', name: title, kind: 'video' });
+        }
       });
+    }
+
+    // YouTube: strictly report active video/short URL with clean title (never preview blobs or frames)
+    if (isYouTube) {
+      const isWatch = location.pathname.startsWith('/watch') || location.pathname.startsWith('/shorts/');
+      if (isWatch && !reported.has(location.href)) {
+        reported.add(location.href);
+        const cleanTitle = (document.title || 'YouTube Video')
+          .replace(/\s*-\s*YouTube$/i, '')
+          .trim();
+        items.push({
+          url: location.href,
+          type: 'video/mp4',
+          name: cleanTitle.slice(0, 100),
+          kind: 'video'
+        });
+      }
+    } else if (isTwitter) {
+      const hasVideo = document.querySelector('video') !== null;
+      if (hasVideo) {
+        let tweetUrl = location.href;
+        if (!tweetUrl.includes('/status/')) {
+          const v = document.querySelector('video');
+          const a = v ? v.closest('article')?.querySelector('a[href*="/status/"]') : null;
+          if (a && a.href) tweetUrl = a.href;
+        }
+        if (tweetUrl.includes('/status/') && !reported.has(tweetUrl)) {
+          reported.add(tweetUrl);
+          const cleanTitle = (document.title || 'Twitter Video').replace(/\s*\|\s*X$/i, '').trim();
+          items.push({ url: tweetUrl, type: 'video/mp4', name: cleanTitle.slice(0, 100), kind: 'video' });
+        }
+      }
+    } else if (isTikTok) {
+      const hasVideo = document.querySelector('video') !== null;
+      if (hasVideo && !reported.has(location.href)) {
+        reported.add(location.href);
+        const cleanTitle = (document.title || 'TikTok Video').replace(/\s*\|\s*TikTok$/i, '').trim();
+        items.push({ url: location.href, type: 'video/mp4', name: cleanTitle.slice(0, 100), kind: 'video' });
+      }
     }
 
     if (items.length) {

@@ -286,7 +286,15 @@ public partial class MainWindow : Window
             var qDlg = new VideoQualityDialog(text) { Owner = this };
             if (qDlg.ShowDialog() == true)
             {
-                _manager.Add(new DownloadRequest { Url = text, Kind = DownloadKind.Video });
+                var req = new DownloadRequest
+                {
+                    Url = text,
+                    Kind = DownloadKind.Video,
+                    CustomFormat = qDlg.SelectedFormat,
+                    Container = qDlg.AudioOnly ? "mp3" : "mp4",
+                    AudioOnly = qDlg.AudioOnly
+                };
+                _manager.Add(req);
                 StatusText.Text = qDlg.AudioOnly ? "Ses indirmesi eklendi." : "Video indirmesi eklendi.";
             }
             return;

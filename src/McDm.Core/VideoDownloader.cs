@@ -76,10 +76,12 @@ public sealed class ToolPaths
 
 public sealed class VideoOptions
 {
-    /// <summary>"mp4" | "mkv" | "webm".</summary>
+    /// <summary>"mp4" | "mkv" | "webm" | "mp3".</summary>
     public string Container { get; set; } = "mp4";
     /// <summary>0 = best available.</summary>
     public int MaxHeight { get; set; } = 1080;
+    public string? CustomFormat { get; set; }
+    public bool AudioOnly { get; set; }
 }
 
 /// <summary>One parsed --progress-template line.</summary>
@@ -122,10 +124,12 @@ public sealed class VideoDownloader
 
     // ───────────────────────── argument construction ─────────────────────────
 
-    public static string FormatSelector(VideoOptions o) => "bv*+ba/b";
+    public static string FormatSelector(VideoOptions o) =>
+        !string.IsNullOrWhiteSpace(o.CustomFormat) ? o.CustomFormat : "bv*+ba/b/best";
 
     public static string FormatSort(VideoOptions o)
     {
+        if (!string.IsNullOrWhiteSpace(o.CustomFormat)) return "";
         var parts = new List<string>();
         if (o.MaxHeight > 0) parts.Add("res:" + o.MaxHeight.ToString(CultureInfo.InvariantCulture));
         if (o.Container == "mp4") parts.Add("ext:mp4:m4a");   // prefer streams that can be merged into MP4 without re-encoding
@@ -151,7 +155,6 @@ public sealed class VideoDownloader
             "--buffer-size", "64K",
             "--no-check-certificates",
             "--socket-timeout", "10",
-            "--extractor-args", "youtube:player_client=android,web;player_skip=configs,webpage",
             "-c",                                  // continue partial downloads (resume)
             "--no-part-if-exists-placeholder-never-used".Length > 0 ? "--no-overwrites" : "",
             "-f", FormatSelector(o),
@@ -159,7 +162,16 @@ public sealed class VideoDownloader
         a.RemoveAll(string.IsNullOrEmpty);
         var sort = FormatSort(o);
         if (sort.Length > 0) { a.Add("-S"); a.Add(sort); }
-        a.Add("--merge-output-format"); a.Add(o.Container is "mkv" or "webm" ? o.Container : "mp4");
+        if (o.AudioOnly || o.Container == "mp3")
+        {
+            a.Add("-x");
+            a.Add("--audio-format");
+            a.Add("mp3");
+        }
+        else
+        {
+            a.Add("--merge-output-format"); a.Add(o.Container is "mkv" or "webm" ? o.Container : "mp4");
+        }
         if (ffmpegLocation != null) { a.Add("--ffmpeg-location"); a.Add(ffmpegLocation); }
         if (cookiesFile != null) { a.Add("--cookies"); a.Add(cookiesFile); }
         a.Add("-P"); a.Add(outputDir);
@@ -248,7 +260,14 @@ public sealed class VideoDownloader
     public async Task RunAsync(DownloadItem item, CancellationToken ct)
     {
         var tool = _ytDlp() ?? throw new FatalDownloadException("yt-dlp is not installed");
-        var opt = _options();
+        var baseOpt = _options();
+        var opt = new VideoOptions
+        {
+            Container = !string.IsNullOrWhiteSpace(item.Request.Container) ? item.Request.Container : baseOpt.Container,
+            MaxHeight = baseOpt.MaxHeight,
+            CustomFormat = item.Request.CustomFormat,
+            AudioOnly = item.Request.AudioOnly || item.Request.Container == "mp3"
+        };
         string outDir = string.IsNullOrEmpty(item.Directory) ? Directory.GetCurrentDirectory() : item.Directory;
         Directory.CreateDirectory(outDir);
         item.Directory = outDir;

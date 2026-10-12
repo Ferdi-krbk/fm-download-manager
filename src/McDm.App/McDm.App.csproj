@@ -30,6 +30,7 @@
   <ItemGroup>
     <None Include="..\..\Tools\**\*" Condition="Exists('..\..\Tools')" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Link="Tools\%(RecursiveDir)%(Filename)%(Extension)" />
     <None Include="..\..\extension\**\*" Condition="Exists('..\..\extension')" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Link="extension\%(RecursiveDir)%(Filename)%(Extension)" />
+    <None Include="..\..\docs\EKLENTI_KURULUMU.html" Condition="Exists('..\..\docs\EKLENTI_KURULUMU.html')" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Link="EKLENTI_KURULUMU.html" />
   </ItemGroup>
   <ItemGroup>
     <Compile Update="Resources\Strings.Designer.cs">

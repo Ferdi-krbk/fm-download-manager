@@ -2,13 +2,13 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:McDm.App"
-        Title="FM DOWNLOAD MANAGER" Width="1140" Height="680" MinWidth="900" MinHeight="520"
+        Title="FM Download Manager" Width="1140" Height="680" MinWidth="900" MinHeight="520"
         Icon="Resources/app.ico"
         WindowStartupLocation="CenterScreen"
         FontFamily="{DynamicResource UiFont}"
         Background="{DynamicResource Bg0Brush}">
     <WindowChrome.WindowChrome>
-        <WindowChrome CaptionHeight="36" ResizeBorderThickness="6" CornerRadius="0" GlassFrameThickness="0" />
+        <WindowChrome CaptionHeight="38" ResizeBorderThickness="6" CornerRadius="0" GlassFrameThickness="0" />
     </WindowChrome.WindowChrome>
 
     <Window.Resources>
@@ -27,105 +27,105 @@
     <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" Background="{DynamicResource Bg0Brush}">
         <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="36" />  <!-- Custom Title Bar -->
-                <RowDefinition Height="48" />  <!-- Command Bar -->
+                <RowDefinition Height="38" />  <!-- Title Bar -->
+                <RowDefinition Height="50" />  <!-- Command Bar -->
                 <RowDefinition Height="*" />   <!-- Body: Sidebar + Main Area -->
-                <RowDefinition Height="28" />  <!-- Status Bar -->
+                <RowDefinition Height="30" />  <!-- Status Bar -->
             </Grid.RowDefinitions>
 
-            <!-- 1. Custom Title Bar (36px high, black) -->
-            <Border Grid.Row="0" Background="{DynamicResource Bg0Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1">
+            <!-- 1. Window Title Bar -->
+            <Border Grid.Row="0" Background="{DynamicResource Bg1Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1">
                 <DockPanel LastChildFill="True">
-                    <!-- Title Bar Window Controls Right -->
+                    <!-- Title Bar Controls Right -->
                     <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" WindowChrome.IsHitTestVisibleInChrome="True">
                         <Button Style="{DynamicResource WindowMinButtonStyle}" Click="Minimize_Click" />
                         <Button Style="{DynamicResource WindowMaxButtonStyle}" Click="Maximize_Click" />
                         <Button Style="{DynamicResource WindowCloseButtonStyle}" Click="Close_Click" />
                     </StackPanel>
 
-                    <!-- Left: Small App Icon + Title -->
+                    <!-- Left: App Icon + Clean Title -->
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0">
-                        <Path Data="{StaticResource GeoAppLogo}" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" Margin="0,0,10,0" />
-                        <TextBlock Text="FM DOWNLOAD MANAGER" FontFamily="{DynamicResource UiFont}" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" />
+                        <Path Data="{StaticResource GeoAppLogo}" Width="15" Height="15" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" Margin="0,0,10,0" />
+                        <TextBlock Text="FM Download Manager" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="12.5" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" />
                     </StackPanel>
                 </DockPanel>
             </Border>
 
-            <!-- 2. Command Bar (48px, Bg1, 1px bottom Line) -->
+            <!-- 2. Command Bar (Toolbar) -->
             <Border Grid.Row="1" Background="{DynamicResource Bg1Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1" Padding="14,0">
                 <DockPanel LastChildFill="True" VerticalAlignment="Center">
                     <!-- Actions Left -->
                     <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
                         <Button x:Name="BtnAddFromClipboard" Style="{DynamicResource PrimaryButton}" Margin="0,0,8,0" Click="PasteUrl_Click">
                             <StackPanel Orientation="Horizontal">
-                                <Path Data="{StaticResource GeoAdd}" Width="11" Height="11" Stretch="Uniform" Fill="{DynamicResource OnAccentBrush}" Margin="0,0,6,0" VerticalAlignment="Center" />
-                                <TextBlock Text="ADD URL" FontWeight="Bold" FontSize="11" VerticalAlignment="Center" />
+                                <Path Data="{StaticResource GeoAdd}" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource OnAccentBrush}" Margin="0,0,7,0" VerticalAlignment="Center" />
+                                <TextBlock x:Name="TxtBtnAdd" Text="URL Ekle" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
                         <Button x:Name="BtnAddUrls" Style="{DynamicResource SecondaryButton}" Margin="0,0,12,0" Click="AddUrls_Click">
                             <StackPanel Orientation="Horizontal">
-                                <Path Data="{StaticResource GeoAddMulti}" Width="11" Height="11" Stretch="Uniform" Fill="{DynamicResource TextBrush}" Margin="0,0,6,0" VerticalAlignment="Center" />
-                                <TextBlock Text="ADD MULTIPLE" FontWeight="SemiBold" FontSize="11" VerticalAlignment="Center" />
+                                <Path Data="{StaticResource GeoAddMulti}" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource TextBrush}" Margin="0,0,7,0" VerticalAlignment="Center" />
+                                <TextBlock x:Name="TxtBtnAddMulti" Text="Toplu Ekle" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
 
-                        <Rectangle Width="1" Fill="{DynamicResource LineBrush}" Margin="0,8,12,8" />
+                        <Rectangle Width="1" Fill="{DynamicResource LineBrush}" Margin="0,9,12,9" />
 
-                        <Button x:Name="BtnPause" Style="{DynamicResource IconButton}" Margin="0,0,4,0" Click="Pause_Click" ToolTip="Pause selected download">
+                        <Button x:Name="BtnPause" Style="{DynamicResource IconButton}" Margin="0,0,4,0" Click="Pause_Click" ToolTip="Seçileni Duraklat">
                             <Path Data="{StaticResource GeoPause}" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" />
                         </Button>
-                        <Button x:Name="BtnResume" Style="{DynamicResource IconButton}" Margin="0,0,4,0" Click="Resume_Click" ToolTip="Resume selected download">
+                        <Button x:Name="BtnResume" Style="{DynamicResource IconButton}" Margin="0,0,4,0" Click="Resume_Click" ToolTip="Seçileni Devam Ettir">
                             <Path Data="{StaticResource GeoPlay}" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" />
                         </Button>
-                        <Button x:Name="BtnCancel" Style="{DynamicResource IconButton}" Margin="0,0,4,0" Click="Cancel_Click" ToolTip="Cancel selected download">
+                        <Button x:Name="BtnCancel" Style="{DynamicResource IconButton}" Margin="0,0,4,0" Click="Cancel_Click" ToolTip="Seçileni İptal Et">
                             <Path Data="{StaticResource GeoStop}" Width="11" Height="11" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" />
                         </Button>
-                        <Button x:Name="BtnRemove" Style="{DynamicResource IconButton}" Margin="0,0,12,0" Click="Remove_Click" ToolTip="Remove from list">
+                        <Button x:Name="BtnRemove" Style="{DynamicResource IconButton}" Margin="0,0,12,0" Click="Remove_Click" ToolTip="Listeden Kaldır">
                             <Path Data="{StaticResource GeoTrash}" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource DangerBrush}" />
                         </Button>
 
-                        <Rectangle Width="1" Fill="{DynamicResource LineBrush}" Margin="0,8,12,8" />
+                        <Rectangle Width="1" Fill="{DynamicResource LineBrush}" Margin="0,9,12,9" />
 
                         <Button x:Name="BtnOpenFolder" Style="{DynamicResource GhostButton}" Margin="0,0,4,0" Click="OpenFolder_Click">
                             <StackPanel Orientation="Horizontal">
                                 <Path Data="{StaticResource GeoFolder}" Width="13" Height="13" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" Margin="0,0,6,0" VerticalAlignment="Center" />
-                                <TextBlock Text="FOLDER" FontWeight="SemiBold" FontSize="11" VerticalAlignment="Center" />
+                                <TextBlock x:Name="TxtBtnFolder" Text="Klasörü Aç" FontWeight="Medium" FontSize="12" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
                     </StackPanel>
 
                     <!-- Right Controls: Search Box, Extension Setup, Settings -->
                     <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
-                        <Grid Width="240" Margin="0,0,8,0">
+                        <Grid Width="230" Margin="0,0,8,0">
                             <TextBox x:Name="TxtSearch" Height="32" Padding="28,0,8,0"
-                                     local:WatermarkService.Watermark="SEARCH DOWNLOADS..."
+                                     local:WatermarkService.Watermark="İndirmelerde ara..."
                                      TextChanged="Search_TextChanged" />
-                            <Path Data="{StaticResource GeoSearch}" Width="11" Height="11" Stretch="Uniform"
-                                  Fill="{DynamicResource TextDimBrush}" HorizontalAlignment="Left"
+                            <Path Data="{StaticResource GeoSearch}" Width="12" Height="12" Stretch="Uniform"
+                                  Fill="{DynamicResource TextMuteBrush}" HorizontalAlignment="Left"
                                   VerticalAlignment="Center" Margin="10,0,0,0" IsHitTestVisible="False" />
                             <TextBlock x:Name="TxtSearchWatermark" Visibility="Collapsed" />
                         </Grid>
 
-                        <Button x:Name="BtnBrowserSetup" Style="{DynamicResource GhostButton}" Margin="0,0,4,0" Click="BrowserSetup_Click" ToolTip="Browser Extension Setup">
+                        <Button x:Name="BtnBrowserSetup" Style="{DynamicResource GhostButton}" Margin="0,0,4,0" Click="BrowserSetup_Click" ToolTip="Tarayıcı Eklentisi Kurulumu">
                             <StackPanel Orientation="Horizontal">
                                 <Path Data="{StaticResource GeoLink}" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" Margin="0,0,6,0" VerticalAlignment="Center" />
-                                <TextBlock Text="EXTENSION" FontWeight="SemiBold" FontSize="11" VerticalAlignment="Center" />
+                                <TextBlock x:Name="TxtBtnExtension" Text="Tarayıcı Eklentisi" FontWeight="Medium" FontSize="12" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
-                        <Button x:Name="BtnSettings" Style="{DynamicResource IconButton}" Margin="0,0,4,0" Click="Settings_Click" ToolTip="Settings">
-                            <Path Data="{StaticResource GeoSettings}" Width="13" Height="13" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" />
+                        <Button x:Name="BtnSettings" Style="{DynamicResource IconButton}" Margin="0,0,4,0" Click="Settings_Click" ToolTip="Ayarlar">
+                            <Path Data="{StaticResource GeoSettings}" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" />
                         </Button>
-                        <Button x:Name="BtnUpdateYtDlp" Style="{DynamicResource IconButton}" Click="UpdateYtDlp_Click" ToolTip="Update yt-dlp binary">
+                        <Button x:Name="BtnUpdateYtDlp" Style="{DynamicResource IconButton}" Click="UpdateYtDlp_Click" ToolTip="yt-dlp Güncelle">
                             <Path Data="{StaticResource GeoRefresh}" Width="13" Height="13" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" />
                         </Button>
                     </StackPanel>
                 </DockPanel>
             </Border>
 
-            <!-- 3. Body: Sidebar (220px, Bg1, 1px right Line) | Content Area (Bg0) -->
+            <!-- 3. Body: Sidebar (210px) | Content Area -->
             <Grid Grid.Row="2">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="220" MinWidth="180" MaxWidth="320" />
+                    <ColumnDefinition Width="210" MinWidth="180" MaxWidth="300" />
                     <ColumnDefinition Width="1" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
@@ -136,20 +136,20 @@
                         <!-- Global Speed & Active Block at Sidebar Bottom -->
                         <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="16,14" Background="{DynamicResource Bg0Brush}">
                             <StackPanel>
-                                <TextBlock Text="TOTAL SPEED" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="10" Foreground="{DynamicResource TextDimBrush}" />
+                                <TextBlock x:Name="LblTotalSpeed" Text="Toplam Hız" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource TextDimBrush}" />
                                 <TextBlock x:Name="TotalSpeedText" Text="0 B/s" FontFamily="{DynamicResource MonoFont}" FontWeight="Bold" FontSize="20" Foreground="{DynamicResource AccentBrush}" Margin="0,4,0,2" />
-                                <TextBlock x:Name="ActiveCountText" Text="0 ACTIVE" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="10" Foreground="{DynamicResource TextDimBrush}" />
+                                <TextBlock x:Name="ActiveCountText" Text="0 aktif indirme" FontFamily="{DynamicResource UiFont}" FontSize="11" Foreground="{DynamicResource TextMuteBrush}" />
                             </StackPanel>
                         </Border>
 
-                        <TextBlock DockPanel.Dock="Top" Text="CATEGORIES" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="10" Foreground="{DynamicResource TextDimBrush}" Margin="16,16,16,10" />
+                        <TextBlock x:Name="LblCategories" DockPanel.Dock="Top" Text="Kategoriler" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource TextDimBrush}" Margin="16,16,16,8" />
 
                         <!-- Category List -->
                         <ListBox x:Name="LstCategories" BorderThickness="0" Background="Transparent"
                                  SelectionChanged="Categories_SelectionChanged">
                             <ListBox.ItemContainerStyle>
                                 <Style TargetType="ListBoxItem">
-                                    <Setter Property="Height" Value="36" />
+                                    <Setter Property="Height" Value="38" />
                                     <Setter Property="Padding" Value="14,0" />
                                     <Setter Property="Foreground" Value="{DynamicResource TextDimBrush}" />
                                     <Setter Property="Cursor" Value="Hand" />
@@ -179,50 +179,50 @@
 
                             <ListBoxItem x:Name="CatAll" IsSelected="True" Tag="all">
                                 <StackPanel Orientation="Horizontal">
-                                    <Path Data="{StaticResource GeoCatAll}" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" Margin="0,0,10,0" VerticalAlignment="Center" />
-                                    <TextBlock Text="ALL DOWNLOADS" FontSize="11" VerticalAlignment="Center" />
+                                    <Path Data="{StaticResource GeoCatAll}" Width="13" Height="13" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" Margin="0,0,10,0" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="CatAllText" Text="Tüm İndirmeler" FontSize="12" VerticalAlignment="Center" />
                                 </StackPanel>
                             </ListBoxItem>
                             <ListBoxItem x:Name="CatImages" Tag="images">
                                 <StackPanel Orientation="Horizontal">
-                                    <Path Data="{StaticResource GeoCatImages}" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" Margin="0,0,10,0" VerticalAlignment="Center" />
-                                    <TextBlock Text="IMAGES" FontSize="11" VerticalAlignment="Center" />
+                                    <Path Data="{StaticResource GeoCatImages}" Width="13" Height="13" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" Margin="0,0,10,0" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="CatImagesText" Text="Resimler" FontSize="12" VerticalAlignment="Center" />
                                 </StackPanel>
                             </ListBoxItem>
                             <ListBoxItem x:Name="CatMusic" Tag="music">
                                 <StackPanel Orientation="Horizontal">
-                                    <Path Data="{StaticResource GeoCatMusic}" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" Margin="0,0,10,0" VerticalAlignment="Center" />
-                                    <TextBlock Text="MUSIC" FontSize="11" VerticalAlignment="Center" />
+                                    <Path Data="{StaticResource GeoCatMusic}" Width="13" Height="13" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" Margin="0,0,10,0" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="CatMusicText" Text="Müzik" FontSize="12" VerticalAlignment="Center" />
                                 </StackPanel>
                             </ListBoxItem>
                             <ListBoxItem x:Name="CatVideo" Tag="video">
                                 <StackPanel Orientation="Horizontal">
-                                    <Path Data="{StaticResource GeoCatVideo}" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" Margin="0,0,10,0" VerticalAlignment="Center" />
-                                    <TextBlock Text="VIDEOS" FontSize="11" VerticalAlignment="Center" />
+                                    <Path Data="{StaticResource GeoCatVideo}" Width="13" Height="13" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" Margin="0,0,10,0" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="CatVideoText" Text="Videolar" FontSize="12" VerticalAlignment="Center" />
                                 </StackPanel>
                             </ListBoxItem>
                             <ListBoxItem x:Name="CatApps" Tag="apps">
                                 <StackPanel Orientation="Horizontal">
-                                    <Path Data="{StaticResource GeoCatApps}" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" Margin="0,0,10,0" VerticalAlignment="Center" />
-                                    <TextBlock Text="APPLICATIONS" FontSize="11" VerticalAlignment="Center" />
+                                    <Path Data="{StaticResource GeoCatApps}" Width="13" Height="13" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" Margin="0,0,10,0" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="CatAppsText" Text="Programlar" FontSize="12" VerticalAlignment="Center" />
                                 </StackPanel>
                             </ListBoxItem>
                             <ListBoxItem x:Name="CatDocuments" Tag="documents">
                                 <StackPanel Orientation="Horizontal">
-                                    <Path Data="{StaticResource GeoCatDocs}" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" Margin="0,0,10,0" VerticalAlignment="Center" />
-                                    <TextBlock Text="DOCUMENTS" FontSize="11" VerticalAlignment="Center" />
+                                    <Path Data="{StaticResource GeoCatDocs}" Width="13" Height="13" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" Margin="0,0,10,0" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="CatDocsText" Text="Belgeler" FontSize="12" VerticalAlignment="Center" />
                                 </StackPanel>
                             </ListBoxItem>
                             <ListBoxItem x:Name="CatArchives" Tag="archives">
                                 <StackPanel Orientation="Horizontal">
-                                    <Path Data="{StaticResource GeoCatArchives}" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" Margin="0,0,10,0" VerticalAlignment="Center" />
-                                    <TextBlock Text="ARCHIVES" FontSize="11" VerticalAlignment="Center" />
+                                    <Path Data="{StaticResource GeoCatArchives}" Width="13" Height="13" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" Margin="0,0,10,0" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="CatArchivesText" Text="Arşivler" FontSize="12" VerticalAlignment="Center" />
                                 </StackPanel>
                             </ListBoxItem>
                             <ListBoxItem x:Name="CatOther" Tag="other">
                                 <StackPanel Orientation="Horizontal">
-                                    <Path Data="{StaticResource GeoCatOther}" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" Margin="0,0,10,0" VerticalAlignment="Center" />
-                                    <TextBlock Text="OTHER" FontSize="11" VerticalAlignment="Center" />
+                                    <Path Data="{StaticResource GeoCatOther}" Width="13" Height="13" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" Margin="0,0,10,0" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="CatOtherText" Text="Diğer" FontSize="12" VerticalAlignment="Center" />
                                 </StackPanel>
                             </ListBoxItem>
                         </ListBox>
@@ -239,61 +239,76 @@
                               CanUserAddRows="False" MouseDoubleClick="Grid_DoubleClick">
                         <DataGrid.ContextMenu>
                             <ContextMenu>
-                                <MenuItem x:Name="CtxOpen" Header="OPEN" Click="Open_Click" />
-                                <MenuItem x:Name="CtxOpenFolder" Header="OPEN FOLDER" Click="OpenFolder_Click" />
+                                <MenuItem x:Name="CtxOpen" Header="Aç" Click="Open_Click" />
+                                <MenuItem x:Name="CtxOpenFolder" Header="Klasörü Aç" Click="OpenFolder_Click" />
                                 <Separator />
-                                <MenuItem x:Name="CtxPause" Header="PAUSE" Click="Pause_Click" />
-                                <MenuItem x:Name="CtxResume" Header="RESUME" Click="Resume_Click" />
-                                <MenuItem x:Name="CtxCancel" Header="CANCEL" Click="Cancel_Click" />
+                                <MenuItem x:Name="CtxPause" Header="Duraklat" Click="Pause_Click" />
+                                <MenuItem x:Name="CtxResume" Header="Devam Et" Click="Resume_Click" />
+                                <MenuItem x:Name="CtxCancel" Header="İptal Et" Click="Cancel_Click" />
                                 <Separator />
-                                <MenuItem x:Name="CtxRemove" Header="REMOVE FROM LIST" Click="Remove_Click" />
-                                <MenuItem x:Name="CtxRemoveAndDelete" Header="REMOVE &amp; DELETE FILE" Click="RemoveAndDelete_Click" Foreground="{DynamicResource DangerBrush}" />
+                                <MenuItem x:Name="CtxRemove" Header="Listeden Kaldır" Click="Remove_Click" />
+                                <MenuItem x:Name="CtxRemoveAndDelete" Header="Kaldır ve Dosyayı Sil" Click="RemoveAndDelete_Click" Foreground="{DynamicResource DangerBrush}" />
                                 <Separator />
-                                <MenuItem x:Name="CtxCopyUrl" Header="COPY URL" Click="CopyUrl_Click" />
-                                <MenuItem x:Name="CtxDetails" Header="DETAILS / PROPERTIES" Click="Details_Click" />
+                                <MenuItem x:Name="CtxCopyUrl" Header="Bağlantıyı Kopyala" Click="CopyUrl_Click" />
+                                <MenuItem x:Name="CtxDetails" Header="Ayrıntılar" Click="Details_Click" />
                             </ContextMenu>
                         </DataGrid.ContextMenu>
                         <DataGrid.Columns>
-                            <DataGridTextColumn x:Name="ColHeaderName" Header="NAME" Binding="{Binding FileName}" Width="2*" />
-                            <DataGridTextColumn x:Name="ColHeaderSize" Header="SIZE" Binding="{Binding TotalBytes, Converter={StaticResource Bytes}}" Width="95">
+                            <DataGridTextColumn x:Name="ColHeaderName" Header="Dosya Adı" Binding="{Binding FileName}" Width="2*">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="VerticalAlignment" Value="Center" />
+                                        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                                        <Setter Property="ToolTip" Value="{Binding FileName}" />
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn x:Name="ColHeaderSize" Header="Boyut" Binding="{Binding TotalBytes, Converter={StaticResource Bytes}}" Width="95">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="FontFamily" Value="{DynamicResource MonoFont}" />
                                         <Setter Property="VerticalAlignment" Value="Center" />
+                                        <Setter Property="Foreground" Value="{DynamicResource TextDimBrush}" />
                                     </Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
-                            <DataGridTemplateColumn x:Name="ColHeaderProgress" Header="PROGRESS" Width="170">
+                            <DataGridTemplateColumn x:Name="ColHeaderProgress" Header="İlerleme" Width="185">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <Grid Margin="0,4">
-                                            <ProgressBar Minimum="0" Maximum="1" Value="{Binding Progress, Mode=OneWay}" Height="6" />
-                                            <TextBlock Text="{Binding Progress, StringFormat={}{0:P0}}" HorizontalAlignment="Right"
-                                                       Margin="0,-16,0,0" FontFamily="{DynamicResource MonoFont}" FontSize="11" Foreground="{DynamicResource AccentBrush}" />
+                                        <Grid VerticalAlignment="Center" Margin="6,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="46" />
+                                            </Grid.ColumnDefinitions>
+                                            <ProgressBar Minimum="0" Maximum="1" Value="{Binding Progress, Mode=OneWay}" Height="6" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="1" Text="{Binding Progress, StringFormat={}{0:P0}}" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                       FontFamily="{DynamicResource MonoFont}" FontSize="11" Foreground="{DynamicResource AccentBrush}" Margin="8,0,0,0" />
                                         </Grid>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTextColumn x:Name="ColHeaderSpeed" Header="SPEED" Binding="{Binding Speed, Converter={StaticResource Speed}}" Width="95">
+                            <DataGridTextColumn x:Name="ColHeaderSpeed" Header="Hız" Binding="{Binding Speed, Converter={StaticResource Speed}}" Width="95">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="FontFamily" Value="{DynamicResource MonoFont}" />
                                         <Setter Property="VerticalAlignment" Value="Center" />
+                                        <Setter Property="Foreground" Value="{DynamicResource TextDimBrush}" />
                                     </Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
-                            <DataGridTextColumn x:Name="ColHeaderConn" Header="CONN." Binding="{Binding ActiveConnections}" Width="60">
+                            <DataGridTextColumn x:Name="ColHeaderConn" Header="Bağl." Binding="{Binding ActiveConnections}" Width="65">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="FontFamily" Value="{DynamicResource MonoFont}" />
                                         <Setter Property="VerticalAlignment" Value="Center" />
+                                        <Setter Property="Foreground" Value="{DynamicResource TextDimBrush}" />
                                     </Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
-                            <DataGridTemplateColumn x:Name="ColHeaderStatus" Header="STATUS" Width="110">
+                            <DataGridTemplateColumn x:Name="ColHeaderStatus" Header="Durum" Width="110">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <TextBlock FontFamily="{DynamicResource UiFont}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center">
+                                        <TextBlock FontFamily="{DynamicResource UiFont}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center">
                                             <TextBlock.Style>
                                                 <Style TargetType="TextBlock">
                                                     <Setter Property="Text" Value="{Binding Status}" />
@@ -315,10 +330,10 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTemplateColumn x:Name="ColHeaderError" Header="DETAILS / ERROR" Width="*">
+                            <DataGridTemplateColumn x:Name="ColHeaderError" Header="Ayrıntılar" Width="*">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <TextBlock TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextMuteBrush}" VerticalAlignment="Center">
+                                        <TextBlock TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextMuteBrush}" FontSize="11" VerticalAlignment="Center">
                                             <TextBlock.Style>
                                                 <Style TargetType="TextBlock">
                                                     <Setter Property="Text" Value="{Binding Stage}" />
@@ -339,33 +354,35 @@
                         </DataGrid.Columns>
                     </DataGrid>
 
-                    <!-- Empty State Overlay (Visible when Items is empty) -->
+                    <!-- Modern Empty State Overlay -->
                     <Border x:Name="EmptyStateOverlay" Background="{DynamicResource Bg0Brush}" Visibility="Collapsed" SnapsToDevicePixels="True">
-                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <Path Data="{StaticResource GeoAdd}" Width="40" Height="40" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" HorizontalAlignment="Center" Margin="0,0,0,16" />
-                            <TextBlock Text="NO DOWNLOADS" FontFamily="{DynamicResource UiFont}" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Center" Margin="0,0,0,8" />
-                            <TextBlock Text="PASTE A LINK WITH CTRL+V OR USE THE BROWSER EXTENSION" FontFamily="{DynamicResource UiFont}" FontSize="11" Foreground="{DynamicResource TextDimBrush}" HorizontalAlignment="Center" Margin="0,0,0,20" />
-                            <Button Style="{DynamicResource PrimaryButton}" Content="ADD URL" HorizontalAlignment="Center" Width="140" Click="PasteUrl_Click" />
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="360">
+                            <Border Width="64" Height="64" CornerRadius="32" Background="{DynamicResource Bg2Brush}" HorizontalAlignment="Center" Margin="0,0,0,18">
+                                <Path Data="{StaticResource GeoAdd}" Width="24" Height="24" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <TextBlock x:Name="TxtEmptyTitle" Text="Henüz indirme yok" FontFamily="{DynamicResource UiFont}" FontWeight="Bold" FontSize="15" Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Center" Margin="0,0,0,6" />
+                            <TextBlock x:Name="TxtEmptySubtitle" Text="İndirme başlatmak için bir bağlantı yapıştırın veya tarayıcı eklentisini kullanın." FontFamily="{DynamicResource UiFont}" FontSize="12" Foreground="{DynamicResource TextDimBrush}" TextAlignment="Center" TextWrapping="Wrap" HorizontalAlignment="Center" Margin="0,0,0,22" />
+                            <Button Style="{DynamicResource PrimaryButton}" Content="URL Ekle" HorizontalAlignment="Center" Width="140" Height="34" Click="PasteUrl_Click" />
                         </StackPanel>
                     </Border>
                 </Grid>
             </Grid>
 
-            <!-- 4. Status Bar (28px high, Bg1, 1px top Line) -->
+            <!-- 4. Status Bar (30px) -->
             <Border Grid.Row="3" Background="{DynamicResource Bg1Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="14,0">
                 <DockPanel LastChildFill="True" VerticalAlignment="Center">
                     <!-- Left: Status Summary -->
                     <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
-                        <TextBlock x:Name="StatusCountsText" Text="0 ACTIVE / 0 QUEUED / 0 DONE" FontFamily="{DynamicResource MonoFont}" FontSize="11" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" />
-                        <Rectangle Width="1" Fill="{DynamicResource LineBrush}" Margin="12,4" />
-                        <TextBlock x:Name="StatusText" Text="Ready" FontFamily="{DynamicResource UiFont}" FontSize="11" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" />
+                        <TextBlock x:Name="StatusCountsText" Text="0 aktif / 0 sırada / 0 tamamlandı" FontFamily="{DynamicResource MonoFont}" FontSize="11" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" />
+                        <Rectangle Width="1" Fill="{DynamicResource LineBrush}" Margin="12,5" />
+                        <TextBlock x:Name="StatusText" Text="Hazır" FontFamily="{DynamicResource UiFont}" FontSize="11" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" />
                     </StackPanel>
 
-                    <!-- Right: Bridge Status Dot + Free Disk Space -->
+                    <!-- Right: Bridge Status Dot + Disk Space -->
                     <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
-                        <Ellipse Width="6" Height="6" Fill="{DynamicResource SuccessBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
-                        <TextBlock Text="BRIDGE CONNECTED" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="10" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,16,0" />
-                        <TextBlock x:Name="DiskSpaceText" Text="DISK: READY" FontFamily="{DynamicResource MonoFont}" FontSize="10" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" />
+                        <Ellipse Width="7" Height="7" Fill="{DynamicResource SuccessBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <TextBlock x:Name="LblBridgeConnected" Text="Eklenti Bağlı" FontFamily="{DynamicResource UiFont}" FontWeight="Medium" FontSize="11" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,16,0" />
+                        <TextBlock x:Name="DiskSpaceText" Text="DİSK: HAZIR" FontFamily="{DynamicResource MonoFont}" FontSize="10.5" Foreground="{DynamicResource TextMuteBrush}" VerticalAlignment="Center" />
                     </StackPanel>
                 </DockPanel>
             </Border>

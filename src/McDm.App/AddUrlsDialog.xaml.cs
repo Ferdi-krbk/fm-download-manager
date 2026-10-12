@@ -11,6 +11,7 @@ public partial class AddUrlsDialog : Window
     {
         InitializeComponent();
         Title = Strings.AddUrlsTitle;
+        TxtWinHeader.Text = Strings.AddUrlsTitle;
         PromptText.Text = Strings.AddUrlsPrompt;
         OkButton.Content = Strings.AddUrlsButton;
         CancelButton.Content = Strings.SettingsCancel;
@@ -38,7 +39,8 @@ public partial class AddUrlsDialog : Window
         if (UrlsBox == null || ValidLinksCountText == null) return;
         var lines = UrlsBox.Text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         int valid = lines.Count(l => Uri.TryCreate(l, UriKind.Absolute, out var uri) && (uri.Scheme == "http" || uri.Scheme == "https"));
-        ValidLinksCountText.Text = $"{valid} VALID LINKS";
+        bool isTr = Strings.Culture?.TwoLetterISOLanguageName == "tr";
+        ValidLinksCountText.Text = isTr ? $"{valid} geçerli bağlantı" : $"{valid} valid links";
         if (OkButton != null) OkButton.IsEnabled = valid > 0;
     }
 

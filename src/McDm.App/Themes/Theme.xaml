@@ -2,25 +2,25 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
 
-    <!-- Color Palette: Sleek Modern Dark + Vibrant Orange -->
-    <Color x:Key="ColorBg0">#0C0D10</Color>
-    <Color x:Key="ColorBg1">#131418</Color>
-    <Color x:Key="ColorBg2">#1A1B22</Color>
-    <Color x:Key="ColorBg3">#232530</Color>
-    <Color x:Key="ColorBg4">#2D303E</Color>
-    <Color x:Key="ColorLine">#262833</Color>
-    <Color x:Key="ColorLineStrong">#383C4D</Color>
-    <Color x:Key="ColorText">#F2F3F5</Color>
-    <Color x:Key="ColorTextDim">#9E9EA8</Color>
-    <Color x:Key="ColorTextMute">#646675</Color>
-    <Color x:Key="ColorAccent">#FF6600</Color>
-    <Color x:Key="ColorAccentHover">#FF7F24</Color>
-    <Color x:Key="ColorAccentPress">#E65500</Color>
-    <Color x:Key="ColorAccentDim">#2B1503</Color>
-    <Color x:Key="ColorOnAccent">#000000</Color>
-    <Color x:Key="ColorDanger">#FF3B3B</Color>
-    <Color x:Key="ColorSuccess">#22C55E</Color>
-    <Color x:Key="ColorAltRow">#101115</Color>
+    <!-- Color Palette: FDM-Style Sleek Dark + Warm Amber Orange (Non-glaring) -->
+    <Color x:Key="ColorBg0">#141519</Color>
+    <Color x:Key="ColorBg1">#1B1C22</Color>
+    <Color x:Key="ColorBg2">#23252E</Color>
+    <Color x:Key="ColorBg3">#2B2E39</Color>
+    <Color x:Key="ColorBg4">#363A48</Color>
+    <Color x:Key="ColorLine">#262933</Color>
+    <Color x:Key="ColorLineStrong">#3A3F4E</Color>
+    <Color x:Key="ColorText">#F3F4F6</Color>
+    <Color x:Key="ColorTextDim">#9CA3AF</Color>
+    <Color x:Key="ColorTextMute">#6B7280</Color>
+    <Color x:Key="ColorAccent">#FA6400</Color>
+    <Color x:Key="ColorAccentHover">#FB7D24</Color>
+    <Color x:Key="ColorAccentPress">#E05000</Color>
+    <Color x:Key="ColorAccentDim">#2E1B10</Color>
+    <Color x:Key="ColorOnAccent">#FFFFFF</Color>
+    <Color x:Key="ColorDanger">#EF4444</Color>
+    <Color x:Key="ColorSuccess">#10B981</Color>
+    <Color x:Key="ColorAltRow">#18191F</Color>
 
     <!-- SolidColorBrushes -->
     <SolidColorBrush x:Key="Bg0Brush" Color="{StaticResource ColorBg0}" />
@@ -42,10 +42,10 @@
     <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource ColorSuccess}" />
     <SolidColorBrush x:Key="AltRowBrush" Color="{StaticResource ColorAltRow}" />
 
-    <!-- Corner Radii -->
-    <CornerRadius x:Key="SharpCorner">3</CornerRadius>
-    <CornerRadius x:Key="ModernCorner">4</CornerRadius>
-    <CornerRadius x:Key="PillCorner">12</CornerRadius>
+    <!-- Corner Radii: Clean modern subtle rounding -->
+    <CornerRadius x:Key="SharpCorner">5</CornerRadius>
+    <CornerRadius x:Key="ModernCorner">6</CornerRadius>
+    <CornerRadius x:Key="PillCorner">14</CornerRadius>
     <Thickness x:Key="BorderThickness1">1</Thickness>
     <Thickness x:Key="BorderThickness2">2</Thickness>
 

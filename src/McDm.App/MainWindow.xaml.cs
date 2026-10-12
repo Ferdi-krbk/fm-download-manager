@@ -50,7 +50,7 @@ public partial class MainWindow : Window
     {
         Title = Strings.AppTitle;
 
-        TxtSearchWatermark.Text = "🔍 " + Strings.SearchPlaceholder;
+        TxtSearch.SetValue(WatermarkService.WatermarkProperty, Strings.SearchPlaceholder);
 
         CtxOpen.Header = Strings.Open;
         CtxOpenFolder.Header = Strings.OpenFolder;
@@ -70,6 +70,27 @@ public partial class MainWindow : Window
         ColHeaderStatus.Header = Strings.ColStatus;
         ColHeaderError.Header = Strings.ColError;
 
+        TxtBtnAdd.Text = Strings.AddFromClipboard;
+        TxtBtnAddMulti.Text = Strings.AddUrls;
+        TxtBtnFolder.Text = Strings.OpenFolder;
+        TxtBtnExtension.Text = Strings.BrowserSetup;
+
+        CatAllText.Text = Strings.CategoryAll;
+        CatImagesText.Text = Strings.CategoryImages;
+        CatMusicText.Text = Strings.CategoryMusic;
+        CatVideoText.Text = Strings.CategoryVideo;
+        CatAppsText.Text = Strings.CategoryApps;
+        CatDocsText.Text = Strings.CategoryDocuments;
+        CatArchivesText.Text = Strings.CategoryArchives;
+        CatOtherText.Text = Strings.CategoryOther;
+
+        bool isTr = Strings.Culture?.TwoLetterISOLanguageName == "tr";
+        LblCategories.Text = isTr ? "Kategoriler" : "Categories";
+        LblTotalSpeed.Text = isTr ? "Toplam Hız" : "Total Speed";
+        LblBridgeConnected.Text = isTr ? "Eklenti Bağlı" : "Bridge Connected";
+        TxtEmptyTitle.Text = isTr ? "Henüz indirme yok" : "No downloads yet";
+        TxtEmptySubtitle.Text = isTr ? "İndirme başlatmak için bir bağlantı yapıştırın veya tarayıcı eklentisini kullanın." : "Paste a link to start downloading or use the browser extension.";
+
         StatusText.Text = Strings.StatusReady;
     }
 
@@ -85,8 +106,11 @@ public partial class MainWindow : Window
         int done = _manager.Items.Count(i => i.Status == DownloadStatus.Completed);
 
         TotalSpeedText.Text = active > 0 ? $"{BytesConverter.Format(totalSpeed)}/s" : "0 B/s";
-        ActiveCountText.Text = $"{active} ACTIVE";
-        StatusCountsText.Text = $"{active} ACTIVE / {queued} QUEUED / {done} DONE";
+        bool isTr = Strings.Culture?.TwoLetterISOLanguageName == "tr";
+        ActiveCountText.Text = isTr ? $"{active} aktif indirme" : $"{active} active";
+        StatusCountsText.Text = isTr
+            ? $"{active} aktif / {queued} sırada / {done} tamamlandı"
+            : $"{active} active / {queued} queued / {done} completed";
         EmptyStateOverlay.Visibility = _manager.Items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 

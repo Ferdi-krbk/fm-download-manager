@@ -35,61 +35,81 @@ public static class ClipboardHelper
 
     public static bool SetText(string? text)
     {
-        if (text == null) return false;
+        if (string.IsNullOrEmpty(text)) return false;
 
-        // Try standard WPF clipboard up to 5 times
-        for (int i = 0; i < 5; i++)
+        // Run in a separate STA thread with a hard timeout to completely prevent UI thread freezes
+        bool success = false;
+        var thread = new Thread(() =>
         {
-            try
-            {
-                Clipboard.SetText(text);
-                return true;
-            }
-            catch
-            {
-                Thread.Sleep(50);
-            }
-        }
-
-        // Fallback: direct Win32 Clipboard API
-        try
-        {
+            // 1. Try Win32 direct clipboard first (fast, bypasses OLE synchronization locks)
             for (int i = 0; i < 5; i++)
             {
-                if (OpenClipboard(IntPtr.Zero))
+                if (TrySetWin32Text(text))
                 {
-                    try
-                    {
-                        EmptyClipboard();
-                        var bytes = (text.Length + 1) * 2;
-                        var hGlobal = GlobalAlloc(GMEM_MOVEABLE, (UIntPtr)bytes);
-                        if (hGlobal != IntPtr.Zero)
-                        {
-                            var target = GlobalLock(hGlobal);
-                            if (target != IntPtr.Zero)
-                            {
-                                Marshal.Copy(text.ToCharArray(), 0, target, text.Length);
-                                Marshal.WriteInt16(target + (text.Length * 2), 0);
-                                GlobalUnlock(hGlobal);
-                                SetClipboardData(CF_UNICODETEXT, hGlobal);
-                                return true;
-                            }
-                            GlobalFree(hGlobal);
-                        }
-                    }
-                    finally
-                    {
-                        CloseClipboard();
-                    }
+                    success = true;
+                    return;
                 }
-                Thread.Sleep(50);
+                Thread.Sleep(20);
+            }
+
+            // 2. Fallback to WPF Clipboard without OLE persistence
+            try
+            {
+                Clipboard.SetDataObject(new DataObject(DataFormats.UnicodeText, text), false);
+                success = true;
+            }
+            catch { }
+        })
+        {
+            IsBackground = true,
+            Name = "ClipboardHelperThread"
+        };
+
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        thread.Join(500); // 500ms max timeout - caller never hangs
+
+        return success;
+    }
+
+    private static bool TrySetWin32Text(string text)
+    {
+        try
+        {
+            if (!OpenClipboard(IntPtr.Zero)) return false;
+            try
+            {
+                EmptyClipboard();
+                int bytes = (text.Length + 1) * 2;
+                IntPtr hGlobal = GlobalAlloc(GMEM_MOVEABLE, (UIntPtr)bytes);
+                if (hGlobal == IntPtr.Zero) return false;
+
+                IntPtr target = GlobalLock(hGlobal);
+                if (target == IntPtr.Zero)
+                {
+                    GlobalFree(hGlobal);
+                    return false;
+                }
+
+                Marshal.Copy(text.ToCharArray(), 0, target, text.Length);
+                Marshal.WriteInt16(target + (text.Length * 2), 0);
+                GlobalUnlock(hGlobal);
+
+                if (SetClipboardData(CF_UNICODETEXT, hGlobal) == IntPtr.Zero)
+                {
+                    GlobalFree(hGlobal);
+                    return false;
+                }
+                return true;
+            }
+            finally
+            {
+                CloseClipboard();
             }
         }
         catch
         {
-            // Ignore
+            return false;
         }
-
-        return false;
     }
 }

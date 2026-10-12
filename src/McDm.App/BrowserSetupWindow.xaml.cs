@@ -47,6 +47,7 @@ public partial class BrowserSetupWindow : Window
     private void ApplyLocalization()
     {
         Title = Strings.WizardTitle;
+        TxtWinHeader.Text = Strings.WizardTitle;
         TxtTitle.Text = Strings.WizardTitle;
         TxtSubtitle.Text = Strings.WizardSubtitle;
         LblStep1.Text = Strings.WizardStep1;
@@ -116,12 +117,16 @@ public partial class BrowserSetupWindow : Window
         }
     }
 
-    private void CopyToken_Click(object sender, RoutedEventArgs e)
+    private async void CopyToken_Click(object sender, RoutedEventArgs e)
     {
         var text = TxtToken.Text?.Trim() ?? "";
-        bool ok = ClipboardHelper.SetText(text);
         TxtToken.Focus();
         TxtToken.SelectAll();
+        BtnCopyCode.IsEnabled = false;
+
+        bool ok = await Task.Run(() => ClipboardHelper.SetText(text));
+        BtnCopyCode.IsEnabled = true;
+
         if (ok)
         {
             BtnCopyCode.Content = "✓ " + Strings.PairingCodeCopied;

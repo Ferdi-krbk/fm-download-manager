@@ -23,15 +23,15 @@
                     <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" WindowChrome.IsHitTestVisibleInChrome="True">
                         <Button Style="{DynamicResource WindowCloseButtonStyle}" Click="Close_Click" />
                     </StackPanel>
-                    <TextBlock Text="BROWSER EXTENSION SETUP" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" Margin="14,0" />
+                    <TextBlock x:Name="TxtWinHeader" Text="Tarayıcı Eklentisi Kurulumu" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" Margin="14,0" />
                 </DockPanel>
             </Border>
 
             <!-- Scrollable Content -->
             <ScrollViewer Grid.Row="1" Padding="20" VerticalScrollBarVisibility="Auto">
                 <StackPanel>
-                    <TextBlock x:Name="TxtTitle" Text="BROWSER INTEGRATION" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,4" />
-                    <TextBlock x:Name="TxtSubtitle" Text="Pair the extension once to capture downloads seamlessly." Foreground="{DynamicResource TextDimBrush}" FontSize="12" Margin="0,0,0,20" TextWrapping="Wrap" />
+                    <TextBlock x:Name="TxtTitle" Text="Tarayıcı Entegrasyonu" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,4" />
+                    <TextBlock x:Name="TxtSubtitle" Text="İndirmeleri otomatik yakalamak için eklentiyi eşleştirin." Foreground="{DynamicResource TextDimBrush}" FontSize="12.5" Margin="0,0,0,20" TextWrapping="Wrap" />
 
                     <!-- Step 1 -->
                     <Grid Margin="0,0,0,16">
@@ -39,18 +39,18 @@
                             <ColumnDefinition Width="32" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <Border Width="24" Height="24" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" VerticalAlignment="Top" HorizontalAlignment="Left" Background="{DynamicResource Bg2Brush}">
+                        <Border Width="24" Height="24" CornerRadius="12" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" VerticalAlignment="Top" HorizontalAlignment="Left" Background="{DynamicResource Bg2Brush}">
                             <TextBlock Text="1" FontFamily="{DynamicResource MonoFont}" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                            <TextBlock x:Name="LblStep1" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,6" />
+                            <TextBlock x:Name="LblStep1" FontWeight="SemiBold" FontSize="12.5" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,6" />
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <TextBox x:Name="TxtExtPath" IsReadOnly="True" FontFamily="{DynamicResource MonoFont}" FontSize="11" />
-                                <Button x:Name="BtnOpenFolder" Grid.Column="1" Style="{DynamicResource SecondaryButton}" Content="OPEN FOLDER" Margin="8,0,0,0" Click="OpenFolder_Click" />
+                                <Button x:Name="BtnOpenFolder" Grid.Column="1" Style="{DynamicResource SecondaryButton}" Content="Klasörü Aç" Margin="8,0,0,0" Click="OpenFolder_Click" />
                             </Grid>
                         </StackPanel>
                     </Grid>
@@ -61,15 +61,15 @@
                             <ColumnDefinition Width="32" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <Border Width="24" Height="24" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" VerticalAlignment="Top" HorizontalAlignment="Left" Background="{DynamicResource Bg2Brush}">
+                        <Border Width="24" Height="24" CornerRadius="12" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" VerticalAlignment="Top" HorizontalAlignment="Left" Background="{DynamicResource Bg2Brush}">
                             <TextBlock Text="2" FontFamily="{DynamicResource MonoFont}" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                            <TextBlock x:Name="LblStep2" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,6" />
+                            <TextBlock x:Name="LblStep2" FontWeight="SemiBold" FontSize="12.5" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,6" />
                             <WrapPanel>
-                                <Button x:Name="BtnChrome" Style="{DynamicResource SecondaryButton}" Content="CHROME" Margin="0,0,8,8" Click="OpenChrome_Click" />
-                                <Button x:Name="BtnEdge" Style="{DynamicResource SecondaryButton}" Content="EDGE" Margin="0,0,8,8" Click="OpenEdge_Click" />
-                                <Button x:Name="BtnBrave" Style="{DynamicResource SecondaryButton}" Content="BRAVE" Margin="0,0,8,8" Click="OpenBrave_Click" />
+                                <Button x:Name="BtnChrome" Style="{DynamicResource SecondaryButton}" Content="Chrome" Margin="0,0,8,8" Click="OpenChrome_Click" />
+                                <Button x:Name="BtnEdge" Style="{DynamicResource SecondaryButton}" Content="Edge" Margin="0,0,8,8" Click="OpenEdge_Click" />
+                                <Button x:Name="BtnBrave" Style="{DynamicResource SecondaryButton}" Content="Brave" Margin="0,0,8,8" Click="OpenBrave_Click" />
                             </WrapPanel>
                         </StackPanel>
                     </Grid>
@@ -80,11 +80,11 @@
                             <ColumnDefinition Width="32" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <Border Width="24" Height="24" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" VerticalAlignment="Top" HorizontalAlignment="Left" Background="{DynamicResource Bg2Brush}">
+                        <Border Width="24" Height="24" CornerRadius="12" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" VerticalAlignment="Top" HorizontalAlignment="Left" Background="{DynamicResource Bg2Brush}">
                             <TextBlock Text="3" FontFamily="{DynamicResource MonoFont}" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                            <Border Background="{DynamicResource Bg2Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" Padding="12">
+                            <Border Background="{DynamicResource Bg2Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="6" Padding="12">
                                 <TextBlock x:Name="LblStep3" TextWrapping="Wrap" Foreground="{DynamicResource TextDimBrush}" FontSize="12" />
                             </Border>
                         </StackPanel>
@@ -96,29 +96,29 @@
                             <ColumnDefinition Width="32" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <Border Width="24" Height="24" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" VerticalAlignment="Top" HorizontalAlignment="Left" Background="{DynamicResource Bg2Brush}">
+                        <Border Width="24" Height="24" CornerRadius="12" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" VerticalAlignment="Top" HorizontalAlignment="Left" Background="{DynamicResource Bg2Brush}">
                             <TextBlock Text="4" FontFamily="{DynamicResource MonoFont}" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                            <TextBlock x:Name="LblStep4" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,6" />
+                            <TextBlock x:Name="LblStep4" FontWeight="SemiBold" FontSize="12.5" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,6" />
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <TextBox x:Name="TxtToken" IsReadOnly="True" FontFamily="{DynamicResource MonoFont}" FontSize="11" Foreground="{DynamicResource AccentBrush}" />
-                                <Button x:Name="BtnCopyCode" Grid.Column="1" Style="{DynamicResource PrimaryButton}" Content="COPY CODE" Margin="8,0,0,0" Click="CopyToken_Click" />
+                                <Button x:Name="BtnCopyCode" Grid.Column="1" Style="{DynamicResource PrimaryButton}" Content="Kodu Kopyala" Margin="8,0,0,0" Click="CopyToken_Click" />
                             </Grid>
                         </StackPanel>
                     </Grid>
 
                     <!-- Live Connection Indicator Block -->
-                    <Border Background="{DynamicResource Bg1Brush}" BorderBrush="{DynamicResource LineStrongBrush}" BorderThickness="1" Padding="16,12" Margin="0,0,0,8">
+                    <Border Background="{DynamicResource Bg1Brush}" BorderBrush="{DynamicResource LineStrongBrush}" BorderThickness="1" CornerRadius="6" Padding="16,12" Margin="0,0,0,8">
                         <DockPanel LastChildFill="True">
                             <Ellipse Width="8" Height="8" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center" Margin="0,0,10,0" />
                             <StackPanel>
-                                <TextBlock x:Name="LblConnectionStatus" Text="BRIDGE CONNECTION STATUS" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="10" Foreground="{DynamicResource TextDimBrush}" />
-                                <TextBlock x:Name="TxtStatus" Text="WAITING FOR EXTENSION..." FontFamily="{DynamicResource MonoFont}" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource AccentBrush}" Margin="0,2,0,0" />
+                                <TextBlock x:Name="LblConnectionStatus" Text="EKLENTİ BAĞLANTI DURUMU" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="10.5" Foreground="{DynamicResource TextDimBrush}" />
+                                <TextBlock x:Name="TxtStatus" Text="Eklenti bekleniyor..." FontFamily="{DynamicResource UiFont}" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource AccentBrush}" Margin="0,2,0,0" />
                             </StackPanel>
                         </DockPanel>
                     </Border>

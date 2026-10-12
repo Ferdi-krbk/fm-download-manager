@@ -23,7 +23,7 @@
                     <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" WindowChrome.IsHitTestVisibleInChrome="True">
                         <Button Style="{DynamicResource WindowCloseButtonStyle}" Click="Cancel_Click" />
                     </StackPanel>
-                    <TextBlock Text="APPLICATION SETTINGS" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" Margin="14,0" />
+                    <TextBlock x:Name="TxtWinHeader" Text="Ayarlar" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" Margin="14,0" />
                 </DockPanel>
             </Border>
 

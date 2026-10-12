@@ -38,6 +38,7 @@ public partial class DownloadDetailWindow : Window
     private void ApplyLocalization()
     {
         Title = Strings.DetailsTitle;
+        TxtWinHeader.Text = Strings.DetailsTitle;
         LblFile.Text = Strings.DetailsFile;
         LblUrl.Text = Strings.DetailsUrl;
         LblStatus.Text = Strings.DetailsStatus;

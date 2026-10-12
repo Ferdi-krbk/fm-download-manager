@@ -560,21 +560,24 @@
         </Style.Triggers>
     </Style>
 
-    <!-- ProgressBar Style: flat, 6px high, track #1F1F1F, fill Accent -->
+    <!-- ProgressBar Style: flat, 6px high, rounded track, fill Accent -->
     <Style TargetType="ProgressBar">
         <Setter Property="Height" Value="6" />
-        <Setter Property="Background" Value="#1F1F1F" />
+        <Setter Property="Background" Value="#23252E" />
         <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ProgressBar">
-                    <Grid Background="{TemplateBinding Background}">
-                        <Border x:Name="PART_Track" />
-                        <Border x:Name="PART_Indicator"
-                                HorizontalAlignment="Left"
-                                Background="{TemplateBinding Foreground}" />
-                    </Grid>
+                    <Border Background="{TemplateBinding Background}" CornerRadius="3" SnapsToDevicePixels="True">
+                        <Grid>
+                            <Border x:Name="PART_Track" />
+                            <Border x:Name="PART_Indicator"
+                                    HorizontalAlignment="Left"
+                                    Background="{TemplateBinding Foreground}"
+                                    CornerRadius="3" />
+                        </Grid>
+                    </Border>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
@@ -590,8 +593,8 @@
         <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource LineBrush}" />
         <Setter Property="HeadersVisibility" Value="Column" />
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
-        <Setter Property="FontSize" Value="13" />
-        <Setter Property="RowHeight" Value="36" />
+        <Setter Property="FontSize" Value="12.5" />
+        <Setter Property="RowHeight" Value="40" />
         <Setter Property="AutoGenerateColumns" Value="False" />
         <Setter Property="CanUserAddRows" Value="False" />
         <Setter Property="CanUserDeleteRows" Value="False" />
@@ -606,9 +609,9 @@
         <Setter Property="FontFamily" Value="{DynamicResource UiFont}" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="FontSize" Value="11" />
-        <Setter Property="Padding" Value="12,8" />
+        <Setter Property="Padding" Value="12,10" />
         <Setter Property="BorderThickness" Value="0,0,0,1" />
-        <Setter Property="BorderBrush" Value="{DynamicResource LineStrongBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="DataGridColumnHeader">

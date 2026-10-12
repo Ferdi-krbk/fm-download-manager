@@ -26,6 +26,7 @@ public partial class SettingsWindow : Window
     private void ApplyLocalization()
     {
         Title = Strings.SettingsTitle;
+        TxtWinHeader.Text = Strings.SettingsTitle;
         LblDlFolder.Text = Strings.SettingsDownloadFolder;
         BtnBrowse.Content = Strings.SettingsBrowse;
         LblConnections.Text = Strings.SettingsConnections;

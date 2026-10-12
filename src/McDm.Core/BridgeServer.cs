@@ -57,7 +57,7 @@ public sealed class BridgeServer : IAsyncDisposable
     public event Action<ExtensionSeenEventArgs>? ExtensionSeen;
 
     public static string Version =>
-        typeof(BridgeServer).Assembly.GetName().Version?.ToString(3) ?? "3.4.0";
+        typeof(BridgeServer).Assembly.GetName().Version?.ToString(3) ?? "3.4.1";
 
     public BridgeServer(DownloadManager manager, TokenStore tokens, BridgeHooks? hooks = null)
     {

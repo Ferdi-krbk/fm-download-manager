@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Ferdi-krbk/fm-download-manager/releases"><img src="https://img.shields.io/badge/S%C3%BCr%C3%BCm-v3.4.0-crimson.svg?style=for-the-badge&logo=windows" alt="Sürüm v3.4.0"></a>
+  <a href="https://github.com/Ferdi-krbk/fm-download-manager/releases"><img src="https://img.shields.io/badge/S%C3%BCr%C3%BCm-v3.4.1-crimson.svg?style=for-the-badge&logo=windows" alt="Sürüm v3.4.1"></a>
   <a href="https://dotnet.microsoft.com/download/dotnet/8.0"><img src="https://img.shields.io/badge/.NET-8.0%20LTS-purple.svg?style=for-the-badge&logo=dotnet" alt=".NET 8"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/Lisans-MIT-green.svg?style=for-the-badge" alt="Lisans MIT"></a>
   <a href="README.md"><img src="https://img.shields.io/badge/Language-English-blue.svg?style=for-the-badge" alt="English Documentation"></a>

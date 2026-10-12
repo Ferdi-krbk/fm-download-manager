@@ -46,6 +46,16 @@ async function refresh() {
   $('launch').classList.toggle('hidden', !(st && st.canLaunch));
   if (reachable && !paired) {
     try {
+      const res = await fetch(api.runtime.getURL('token.json'));
+      if (res.ok) {
+        const d = await res.json();
+        if (d && d.token) {
+          const r = await send({ type: 'setToken', token: d.token });
+          if (r && r.ok) { refresh(); return; }
+        }
+      }
+    } catch {}
+    try {
       const clip = (await navigator.clipboard.readText()).trim().toLowerCase();
       if (/^[0-9a-f]{64}$/.test(clip)) {
         $('pairCode').value = clip;

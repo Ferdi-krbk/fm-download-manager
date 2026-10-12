@@ -73,11 +73,20 @@
                                 <DockPanel LastChildFill="True" HorizontalAlignment="Stretch">
                                     <TextBlock Text="🦁" FontSize="16" VerticalAlignment="Center" Margin="0,0,10,0" />
                                     <StackPanel VerticalAlignment="Center">
-                                        <TextBlock Text="Brave Tarayıcıya Otomatik Kur &amp; Aç" FontWeight="Bold" FontSize="13" />
+                                        <TextBlock Text="Brave Tarayıcıya Kur &amp; Aç" FontWeight="Bold" FontSize="13" />
                                         <TextBlock Text="Brave tarayıcısında eklentiyi anında aktif eder" FontSize="10.5" Foreground="{DynamicResource TextDimBrush}" />
                                     </StackPanel>
                                 </DockPanel>
                             </Button>
+
+                            <!-- Quick Tip -->
+                            <Border Background="{DynamicResource Bg2Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,12,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="💡 Kurulum İpucu:" FontWeight="Bold" FontSize="11.5" Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,3" />
+                                    <TextBlock Text="Butona tıkladığınızda eklenti klasör yolu otomatik panoya kopyalanır. Açılan tarayıcı sayfasında sağ üstten 'Geliştirici modu'nu açıp 'Paketlenmemiş öge yükle' diyerek panodaki klasörü seçin." FontSize="11" Foreground="{DynamicResource TextDimBrush}" TextWrapping="Wrap" />
+                                    <TextBlock Text="✓ Eşleştirme kodu girmenize gerek yoktur; token.json ile sıfır tıkla otomatik bağlanır." FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" Margin="0,4,0,0" />
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </Border>
 

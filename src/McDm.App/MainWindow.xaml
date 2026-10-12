@@ -155,13 +155,20 @@
                                                 <TextBlock x:Name="TxtSpeedLimitVal" Text="Sınırsız" FontFamily="{DynamicResource MonoFont}" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
                                             </DockPanel>
                                             <Slider x:Name="SldSpeedLimit" Margin="0,5,0,6" Minimum="0" Maximum="50" TickFrequency="5" IsSnapToTickEnabled="False" ValueChanged="SldSpeedLimit_ValueChanged" />
-                                            <WrapPanel HorizontalAlignment="Center">
-                                                <Button Content="Oto" Style="{DynamicResource ChipButton}" Margin="2,1" Click="SpeedPreset_Click" Tag="0" />
-                                                <Button Content="2M" Style="{DynamicResource ChipButton}" Margin="2,1" Click="SpeedPreset_Click" Tag="2" />
-                                                <Button Content="5M" Style="{DynamicResource ChipButton}" Margin="2,1" Click="SpeedPreset_Click" Tag="5" />
-                                                <Button Content="10M" Style="{DynamicResource ChipButton}" Margin="2,1" Click="SpeedPreset_Click" Tag="10" />
-                                                <Button Content="20M" Style="{DynamicResource ChipButton}" Margin="2,1" Click="SpeedPreset_Click" Tag="20" />
-                                            </WrapPanel>
+                                            <Grid Margin="0,3,0,0">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <Button Grid.Column="0" Content="Oto" Style="{DynamicResource ChipButton}" Margin="1,0" Click="SpeedPreset_Click" Tag="0" />
+                                                <Button Grid.Column="1" Content="2M" Style="{DynamicResource ChipButton}" Margin="1,0" Click="SpeedPreset_Click" Tag="2" />
+                                                <Button Grid.Column="2" Content="5M" Style="{DynamicResource ChipButton}" Margin="1,0" Click="SpeedPreset_Click" Tag="5" />
+                                                <Button Grid.Column="3" Content="10M" Style="{DynamicResource ChipButton}" Margin="1,0" Click="SpeedPreset_Click" Tag="10" />
+                                                <Button Grid.Column="4" Content="20M" Style="{DynamicResource ChipButton}" Margin="1,0" Click="SpeedPreset_Click" Tag="20" />
+                                            </Grid>
                                         </StackPanel>
                                     </Border>
                                 </StackPanel>

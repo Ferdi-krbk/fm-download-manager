@@ -44,7 +44,33 @@ public partial class MainWindow : Window
         _speedTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
         _speedTimer.Tick += (_, _) => UpdateTotalSpeed();
         _speedTimer.Start();
+
+        // Enforce application icon on window and taskbar
+        try
+        {
+            string? exe = Environment.ProcessPath;
+            if (!string.IsNullOrEmpty(exe) && File.Exists(exe))
+            {
+                using var assoc = System.Drawing.Icon.ExtractAssociatedIcon(exe);
+                if (assoc != null)
+                {
+                    using var bmp = assoc.ToBitmap();
+                    var hBitmap = bmp.GetHbitmap();
+                    try
+                    {
+                        var wpfBmp = System.Windows.Interop.Imaging.CreateBitmapSourceFromHBitmap(
+                            hBitmap, IntPtr.Zero, Int32Rect.Empty, System.Windows.Media.Imaging.BitmapSizeOptions.FromEmptyOptions());
+                        Icon = wpfBmp;
+                    }
+                    finally { DeleteObject(hBitmap); }
+                }
+            }
+        }
+        catch { }
     }
+
+    [System.Runtime.InteropServices.DllImport("gdi32.dll")]
+    private static extern bool DeleteObject(IntPtr hObject);
 
     public void ApplyLocalization()
     {

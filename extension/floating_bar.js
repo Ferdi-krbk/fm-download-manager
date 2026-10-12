@@ -31,12 +31,22 @@
 
     hostEl = document.createElement('div');
     hostEl.id = 'fm-floating-bar-host';
-    hostEl.style.cssText = 'all: initial; position: absolute; z-index: 2147483647; pointer-events: none; top: 0; left: 0;';
+    // Fixed full-viewport overlay with pointer-events: none so clicks pass through completely
+    hostEl.style.cssText = 'all: initial; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 2147483647; pointer-events: none; overflow: hidden;';
 
     shadowRoot = hostEl.attachShadow({ mode: 'closed' });
 
-    // Inject styles & template
-    shadowRoot.innerHTML = `
+    // Inject styles & template with Trusted Types policy fallback
+    let policy = null;
+    if (typeof window !== 'undefined' && window.trustedTypes && typeof window.trustedTypes.createPolicy === 'function') {
+      try {
+        policy = window.trustedTypes.defaultPolicy || window.trustedTypes.createPolicy('fmBarPolicy', { createHTML: s => s });
+      } catch (e) {
+        policy = window.trustedTypes.defaultPolicy;
+      }
+    }
+
+    const templateHtml = `
       <style>
         *, *::before, *::after {
           box-sizing: border-box;
@@ -51,16 +61,16 @@
           display: flex;
           flex-direction: column;
           align-items: flex-end;
-          pointer-events: auto;
-          transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-          opacity: 0;
-          transform: translateY(-6px) scale(0.96);
           pointer-events: none;
+          transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+          opacity: 0;
+          transform: translateX(-100%) translateY(-6px) scale(0.96);
+          will-change: transform, opacity;
         }
 
         .fm-wrap.fm-visible {
           opacity: 1;
-          transform: translateY(0) scale(1);
+          transform: translateX(-100%) translateY(0) scale(1);
           pointer-events: auto;
         }
 
@@ -69,10 +79,10 @@
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          background: rgba(15, 17, 23, 0.88);
+          background: rgba(15, 17, 23, 0.90);
           backdrop-filter: blur(14px);
           -webkit-backdrop-filter: blur(14px);
-          border: 1px solid rgba(201, 42, 62, 0.45);
+          border: 1px solid rgba(201, 42, 62, 0.50);
           border-radius: 20px;
           padding: 5px 10px 5px 8px;
           box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45), 0 0 12px rgba(201, 42, 62, 0.25);
@@ -82,7 +92,7 @@
 
         .fm-bar:hover {
           background: rgba(22, 25, 35, 0.96);
-          border-color: rgba(229, 62, 62, 0.8);
+          border-color: rgba(229, 62, 62, 0.85);
           box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6), 0 0 18px rgba(201, 42, 62, 0.45);
           transform: translateY(-1px);
         }
@@ -135,14 +145,14 @@
         }
 
         .fm-close-btn:hover {
-          background: rgba(255, 255, 255, 0.12);
+          background: rgba(255, 255, 255, 0.15);
           color: #cbd5e1;
         }
 
         /* Success State */
         .fm-bar.fm-success {
-          background: rgba(6, 78, 59, 0.92);
-          border-color: rgba(16, 185, 129, 0.8);
+          background: rgba(6, 78, 59, 0.94);
+          border-color: rgba(16, 185, 129, 0.85);
           box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4), 0 0 16px rgba(16, 185, 129, 0.4);
         }
 
@@ -153,13 +163,13 @@
         /* Dropdown Menu */
         .fm-menu {
           margin-top: 6px;
-          background: rgba(15, 17, 23, 0.94);
+          background: rgba(15, 17, 23, 0.95);
           backdrop-filter: blur(16px);
           -webkit-backdrop-filter: blur(16px);
-          border: 1px solid rgba(45, 52, 70, 0.8);
+          border: 1px solid rgba(45, 52, 70, 0.85);
           border-radius: 12px;
           padding: 5px;
-          min-width: 190px;
+          min-width: 195px;
           box-shadow: 0 10px 30px rgba(0, 0, 0, 0.65), 0 0 15px rgba(201, 42, 62, 0.15);
           display: none;
           flex-direction: column;
@@ -190,7 +200,7 @@
         }
 
         .fm-item:hover {
-          background: rgba(201, 42, 62, 0.22);
+          background: rgba(201, 42, 62, 0.25);
           color: #ffffff;
         }
 
@@ -227,8 +237,13 @@
             <span class="fm-item-sub">MP3</span>
           </div>
         </div>
-      </div>
     `;
+
+    if (policy && typeof policy.createHTML === 'function') {
+      shadowRoot.innerHTML = policy.createHTML(templateHtml);
+    } else {
+      shadowRoot.innerHTML = templateHtml;
+    }
 
     barContainer = shadowRoot.getElementById('fm-wrap');
     dropdownMenu = shadowRoot.getElementById('fm-menu');
@@ -236,7 +251,7 @@
     statusText = shadowRoot.getElementById('fm-title');
     const closeBtn = shadowRoot.getElementById('fm-close-btn');
 
-    // Event: Toggle Dropdown or Quick Download
+    // Event: Toggle Dropdown
     mainBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       if (e.target === closeBtn) return;
@@ -282,7 +297,9 @@
     const isTikTok = /tiktok\.com/i.test(location.hostname);
 
     if (isYouTube) {
-      const cleanTitle = (document.title || 'YouTube Video').replace(/\s*-\s*YouTube$/i, '').trim();
+      const ytTitleEl = document.querySelector('h1.ytd-watch-metadata yt-formatted-string, #title h1 yt-formatted-string, h1.title');
+      let cleanTitle = (ytTitleEl ? ytTitleEl.textContent : '') || document.title || 'YouTube Video';
+      cleanTitle = cleanTitle.replace(/^\(\d+\)\s*/, '').replace(/\s*-\s*YouTube$/i, '').trim();
       return {
         url: location.href,
         name: cleanTitle,
@@ -391,31 +408,31 @@
     }
 
     // Check if video is visible in viewport
-    const isVisible = rect.bottom > 0 && rect.top < window.innerHeight && rect.right > 0 && rect.left < window.innerWidth;
+    const isVisible = rect.bottom > 40 && rect.top < (window.innerHeight - 40) &&
+                      rect.right > 40 && rect.left < (window.innerWidth - 40);
     if (!isVisible) {
       hideBar();
       return;
     }
 
-    const scrollX = window.scrollX || window.pageXOffset || 0;
-    const scrollY = window.scrollY || window.pageYOffset || 0;
+    // Position at top-right corner of the video
+    // Anchor left coordinate to (rect.right - 14px), with transform: translateX(-100%)
+    // it perfectly aligns the right edge inside the video boundaries!
+    const topPos = Math.max(10, Math.min(window.innerHeight - 50, rect.top + 14));
+    const leftPos = Math.max(10, Math.min(window.innerWidth - 10, rect.right - 14));
 
-    // Position at top-right corner inside the video player
-    const rightOffset = (window.innerWidth - rect.right);
-    const topPos = rect.top + scrollY + 12;
-    const rightPos = rightOffset - scrollX + 12;
-
-    barContainer.style.top = `${Math.max(8, topPos)}px`;
-    barContainer.style.right = `${Math.max(8, rightPos)}px`;
+    barContainer.style.top = `${topPos}px`;
+    barContainer.style.left = `${leftPos}px`;
   }
 
   function showBarFor(video) {
+    if (!video) return;
+    const rect = video.getBoundingClientRect();
+    if (rect.width < MIN_WIDTH || rect.height < MIN_HEIGHT) return;
+
     ensureHost();
     currentVideo = video;
     clearTimeout(hideTimer);
-
-    updatePosition();
-    barContainer.classList.add('fm-visible');
 
     // Attach to fullscreen element if playing fullscreen
     const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
@@ -424,6 +441,9 @@
     } else if (!fsEl && hostEl.parentElement !== document.body) {
       document.body.appendChild(hostEl);
     }
+
+    updatePosition();
+    barContainer.classList.add('fm-visible');
   }
 
   function hideBar() {
@@ -439,22 +459,60 @@
     hideTimer = setTimeout(hideBar, ms);
   }
 
-  // 5. Video Element Listeners
+  // Find player container for YouTube, VideoJS, JWPlayer, etc.
+  function getPlayerContainer(v) {
+    return v.closest([
+      '.html5-video-player',
+      '#movie_player',
+      'ytd-player',
+      '#player',
+      '.jwplayer',
+      '.video-js',
+      '.plyr',
+      '[class*="player"]',
+      '[id*="player"]',
+      '[data-player]'
+    ].join(',')) || v.parentElement || v;
+  }
+
+  // 5. Video Element & Player Listeners
   function attachVideoEvents(v) {
     if (v.__fmWatched) return;
     v.__fmWatched = true;
 
-    v.addEventListener('mouseenter', () => showBarFor(v), { passive: true });
-    v.addEventListener('play', () => showBarFor(v), { passive: true });
+    const player = getPlayerContainer(v);
+
+    const onHover = () => showBarFor(v);
+    const onLeave = () => scheduleHide(2200);
+
+    v.addEventListener('mouseenter', onHover, { passive: true });
+    v.addEventListener('mouseleave', onLeave, { passive: true });
+
+    if (player && player !== v && !player.__fmWatched) {
+      player.__fmWatched = true;
+      player.addEventListener('mouseenter', onHover, { passive: true });
+      player.addEventListener('mousemove', onHover, { passive: true });
+      player.addEventListener('mouseleave', onLeave, { passive: true });
+    }
+
+    // IDM-style auto show on video start or load
+    v.addEventListener('play', () => {
+      showBarFor(v);
+      scheduleHide(4500);
+    }, { passive: true });
+
+    v.addEventListener('playing', () => {
+      showBarFor(v);
+      scheduleHide(4500);
+    }, { passive: true });
+
     v.addEventListener('loadedmetadata', () => {
       const rect = v.getBoundingClientRect();
       if (rect.width >= MIN_WIDTH && rect.height >= MIN_HEIGHT) {
         showBarFor(v);
-        scheduleHide(3500);
+        scheduleHide(4000);
       }
     }, { passive: true });
-
-    v.addEventListener('mouseleave', () => scheduleHide(2500), { passive: true });
   }
 
   function scanAllVideos() {
@@ -465,7 +523,55 @@
   // 6. Global Observers and Lifecycle
   scanAllVideos();
 
-  // MutationObserver for SPA / dynamic videos (YouTube, TikTok, Netflix, stream players)
+  // Initial trigger for video already present / playing on page load
+  setTimeout(() => {
+    scanAllVideos();
+    const activeVideo = Array.from(document.querySelectorAll('video')).find(v => {
+      const r = v.getBoundingClientRect();
+      return r.width >= MIN_WIDTH && r.height >= MIN_HEIGHT;
+    });
+    if (activeVideo) {
+      showBarFor(activeVideo);
+      scheduleHide(4500);
+    }
+  }, 400);
+
+  // Fail-safe global mousemove: detect cursor over any video element even with complex overlays
+  let lastMouseMoveTime = 0;
+  document.addEventListener('mousemove', (e) => {
+    const now = Date.now();
+    if (now - lastMouseMoveTime < 220) return; // 220ms throttle
+    lastMouseMoveTime = now;
+
+    if (barContainer && barContainer.classList.contains('fm-open')) return;
+
+    const videos = document.querySelectorAll('video');
+    for (let i = 0; i < videos.length; i++) {
+      const v = videos[i];
+      const rect = v.getBoundingClientRect();
+      if (rect.width >= MIN_WIDTH && rect.height >= MIN_HEIGHT) {
+        if (e.clientX >= rect.left && e.clientX <= rect.right &&
+            e.clientY >= rect.top && e.clientY <= rect.bottom) {
+          showBarFor(v);
+          return;
+        }
+      }
+    }
+  }, { passive: true });
+
+  // YouTube SPA Navigation Listener
+  window.addEventListener('yt-navigate-finish', () => {
+    setTimeout(() => {
+      scanAllVideos();
+      const v = document.querySelector('video');
+      if (v) {
+        showBarFor(v);
+        scheduleHide(4500);
+      }
+    }, 600);
+  });
+
+  // MutationObserver for SPA / dynamic videos (YouTube, TikTok, stream players)
   const observer = new MutationObserver(() => {
     scanAllVideos();
   });

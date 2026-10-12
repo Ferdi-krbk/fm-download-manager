@@ -5,7 +5,8 @@
 <h1 align="center">FM Download Manager</h1>
 
 <p align="center">
-  <b>High-speed, multi-connection download manager with smart browser interception & 4K video downloader for Windows 10 & 11.</b>
+  <b>High-speed, multi-connection download manager with smart browser interception & 4K video downloader for Windows 10 & 11.</b><br>
+  <i>(A full Windows port of <a href="https://github.com/mstcvk">Mesut Çevik</a>'s open-source macOS <a href="https://github.com/mstcvk/mc-download-manager">MC Download Manager</a> project).</i>
 </p>
 
 <p align="center">

@@ -126,7 +126,27 @@
                         <DataGridTextColumn x:Name="ColHeaderSpeed" Header="Speed" Binding="{Binding Speed, Converter={StaticResource Speed}}" Width="90" />
                         <DataGridTextColumn x:Name="ColHeaderConn" Header="Conn." Binding="{Binding ActiveConnections}" Width="50" />
                         <DataGridTextColumn x:Name="ColHeaderStatus" Header="Status" Binding="{Binding Status}" Width="95" />
-                        <DataGridTextColumn x:Name="ColHeaderError" Header="Details / Error" Binding="{Binding Stage, TargetNullValue={Binding Error}}" Width="*" />
+                        <DataGridTemplateColumn x:Name="ColHeaderError" Header="Details / Error" Width="*">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock TextTrimming="CharacterEllipsis">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Text" Value="{Binding Stage}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Stage}" Value="{x:Null}">
+                                                        <Setter Property="Text" Value="{Binding Error}" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Stage}" Value="">
+                                                        <Setter Property="Text" Value="{Binding Error}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                     </DataGrid.Columns>
                 </DataGrid>
             </Grid>

@@ -5,7 +5,8 @@
 <h1 align="center">FM Download Manager</h1>
 
 <p align="center">
-  <b>Windows 10 ve 11 için akıllı tarayıcı entegrasyonlu ve 4K video indiricili, çoklu bağlantılı yüksek hızlı indirme yöneticisi.</b>
+  <b>Windows 10 ve 11 için akıllı tarayıcı entegrasyonlu ve 4K video indiricili, çoklu bağlantılı yüksek hızlı indirme yöneticisi.</b><br>
+  <i>(<a href="https://github.com/mstcvk">Mesut Çevik</a>'in macOS için geliştirdiği açık kaynaklı <a href="https://github.com/mstcvk/mc-download-manager">MC Download Manager</a> projesinin eksiksiz Windows portudur).</i>
 </p>
 
 <p align="center">

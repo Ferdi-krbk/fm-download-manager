@@ -33,11 +33,43 @@ public sealed class ToolPaths
     private string? Find(string name, string envVar)
     {
         if (Environment.GetEnvironmentVariable(envVar) is { Length: > 0 } fromEnv && File.Exists(fromEnv)) return fromEnv;
-        foreach (var dir in new[] { UserToolsDirectory, ToolsDirectory })
+
+        var candidates = new List<string>
         {
-            var p = Path.Combine(dir, name + Exe);
+            Path.Combine(UserToolsDirectory, name + Exe),
+            Path.Combine(ToolsDirectory, name + Exe),
+            Path.Combine(AppContext.BaseDirectory, "Tools", name + Exe),
+            Path.Combine(AppContext.BaseDirectory, name + Exe),
+            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Tools", name + Exe),
+            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, name + Exe),
+            Path.Combine(Environment.CurrentDirectory, "Tools", name + Exe),
+        };
+
+        if (Environment.ProcessPath is { Length: > 0 } procPath && Path.GetDirectoryName(procPath) is { } procDir)
+        {
+            candidates.Add(Path.Combine(procDir, "Tools", name + Exe));
+            candidates.Add(Path.Combine(procDir, name + Exe));
+        }
+
+        foreach (var p in candidates)
+        {
             if (File.Exists(p)) return p;
         }
+
+        var pathEnv = Environment.GetEnvironmentVariable("PATH");
+        if (!string.IsNullOrEmpty(pathEnv))
+        {
+            foreach (var dir in pathEnv.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                try
+                {
+                    var p = Path.Combine(dir, name + Exe);
+                    if (File.Exists(p)) return p;
+                }
+                catch { }
+            }
+        }
+
         return null;
     }
 }

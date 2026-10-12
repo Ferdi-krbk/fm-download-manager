@@ -14,7 +14,7 @@
         <WindowChrome CaptionHeight="38" ResizeBorderThickness="0" CornerRadius="0" GlassFrameThickness="0" />
     </WindowChrome.WindowChrome>
 
-    <Border Background="{DynamicResource Bg1Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="6" SnapsToDevicePixels="True">
+    <Border Background="{DynamicResource Bg1Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="12" SnapsToDevicePixels="True">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="38" />
@@ -23,13 +23,13 @@
             </Grid.RowDefinitions>
 
             <!-- Custom Title Bar -->
-            <Border Grid.Row="0" Background="{DynamicResource Bg0Brush}" CornerRadius="5,5,0,0" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1">
+            <Border Grid.Row="0" Background="{DynamicResource Bg0Brush}" CornerRadius="11,11,0,0" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1">
                 <DockPanel LastChildFill="True">
                     <Button DockPanel.Dock="Right" Style="{DynamicResource WindowCloseButtonStyle}" Click="Close_Click" WindowChrome.IsHitTestVisibleInChrome="True" />
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0,0,0">
                         <Path Width="13" Height="13" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" Margin="0,0,8,0"
                               Data="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
-                        <TextBlock x:Name="TxtTitle" Text="FM DOWNLOAD MANAGER" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" />
+                        <TextBlock x:Name="TxtTitle" Text="FM Download Manager" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" />
                     </StackPanel>
                 </DockPanel>
             </Border>
@@ -51,7 +51,7 @@
             </Grid>
 
             <!-- Buttons Footer -->
-            <Border Grid.Row="2" Background="{DynamicResource Bg0Brush}" CornerRadius="0,0,5,5" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="16,12">
+            <Border Grid.Row="2" Background="{DynamicResource Bg0Brush}" CornerRadius="0,0,11,11" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="16,12">
                 <StackPanel x:Name="ButtonPanel" Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button x:Name="BtnYes" Style="{DynamicResource PrimaryButton}" Content="Evet" MinWidth="85" Margin="8,0,0,0" Click="Yes_Click" />
                     <Button x:Name="BtnNo" Style="{DynamicResource SecondaryButton}" Content="Hayır" MinWidth="85" Margin="8,0,0,0" Click="No_Click" />

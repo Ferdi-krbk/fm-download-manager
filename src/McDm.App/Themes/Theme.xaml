@@ -2,25 +2,25 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
 
-    <!-- Color Palette: FDM-Style Sleek Dark + Warm Amber Orange (Non-glaring) -->
-    <Color x:Key="ColorBg0">#141519</Color>
-    <Color x:Key="ColorBg1">#1B1C22</Color>
-    <Color x:Key="ColorBg2">#23252E</Color>
-    <Color x:Key="ColorBg3">#2B2E39</Color>
-    <Color x:Key="ColorBg4">#363A48</Color>
-    <Color x:Key="ColorLine">#262933</Color>
-    <Color x:Key="ColorLineStrong">#3A3F4E</Color>
-    <Color x:Key="ColorText">#F3F4F6</Color>
+    <!-- Color Palette: Sleek Modern Dark + Dark Burgundy / Wine Red -->
+    <Color x:Key="ColorBg0">#0F1014</Color>
+    <Color x:Key="ColorBg1">#16171E</Color>
+    <Color x:Key="ColorBg2">#1E202A</Color>
+    <Color x:Key="ColorBg3">#272A38</Color>
+    <Color x:Key="ColorBg4">#351D26</Color>
+    <Color x:Key="ColorLine">#252733</Color>
+    <Color x:Key="ColorLineStrong">#383C4E</Color>
+    <Color x:Key="ColorText">#F4F5F7</Color>
     <Color x:Key="ColorTextDim">#9CA3AF</Color>
     <Color x:Key="ColorTextMute">#6B7280</Color>
-    <Color x:Key="ColorAccent">#FA6400</Color>
-    <Color x:Key="ColorAccentHover">#FB7D24</Color>
-    <Color x:Key="ColorAccentPress">#E05000</Color>
-    <Color x:Key="ColorAccentDim">#2E1B10</Color>
+    <Color x:Key="ColorAccent">#C92A3E</Color>
+    <Color x:Key="ColorAccentHover">#E11D48</Color>
+    <Color x:Key="ColorAccentPress">#9F1239</Color>
+    <Color x:Key="ColorAccentDim">#2E1018</Color>
     <Color x:Key="ColorOnAccent">#FFFFFF</Color>
     <Color x:Key="ColorDanger">#EF4444</Color>
     <Color x:Key="ColorSuccess">#10B981</Color>
-    <Color x:Key="ColorAltRow">#18191F</Color>
+    <Color x:Key="ColorAltRow">#13141A</Color>
 
     <!-- SolidColorBrushes -->
     <SolidColorBrush x:Key="Bg0Brush" Color="{StaticResource ColorBg0}" />
@@ -42,15 +42,16 @@
     <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource ColorSuccess}" />
     <SolidColorBrush x:Key="AltRowBrush" Color="{StaticResource ColorAltRow}" />
 
-    <!-- Corner Radii: Clean modern subtle rounding -->
-    <CornerRadius x:Key="SharpCorner">5</CornerRadius>
-    <CornerRadius x:Key="ModernCorner">6</CornerRadius>
-    <CornerRadius x:Key="PillCorner">14</CornerRadius>
+    <!-- Corner Radii: Modern oval / rounded contours -->
+    <CornerRadius x:Key="SharpCorner">10</CornerRadius>
+    <CornerRadius x:Key="ModernCorner">14</CornerRadius>
+    <CornerRadius x:Key="ButtonCorner">16</CornerRadius>
+    <CornerRadius x:Key="PillCorner">20</CornerRadius>
     <Thickness x:Key="BorderThickness1">1</Thickness>
     <Thickness x:Key="BorderThickness2">2</Thickness>
 
-    <!-- Typography -->
-    <FontFamily x:Key="UiFont">Segoe UI Variable Text, Segoe UI, sans-serif</FontFamily>
+    <!-- Typography: Sleek modern Bahnschrift DIN geometry -->
+    <FontFamily x:Key="UiFont">Bahnschrift, Segoe UI Variable Display, Segoe UI, sans-serif</FontFamily>
     <FontFamily x:Key="MonoFont">Consolas, monospace</FontFamily>
     <FontFamily x:Key="GlyphFont">Segoe MDL2 Assets, Segoe Fluent Icons, sans-serif</FontFamily>
 

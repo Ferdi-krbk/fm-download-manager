@@ -134,12 +134,14 @@
                 <Border Grid.Column="0" Background="{DynamicResource Bg1Brush}">
                     <DockPanel LastChildFill="True">
                         <!-- Global Speed & Active Block at Sidebar Bottom -->
-                        <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="16,14" Background="{DynamicResource Bg0Brush}">
-                            <StackPanel>
-                                <TextBlock x:Name="LblTotalSpeed" Text="Toplam Hız" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource TextDimBrush}" />
-                                <TextBlock x:Name="TotalSpeedText" Text="0 B/s" FontFamily="{DynamicResource MonoFont}" FontWeight="Bold" FontSize="20" Foreground="{DynamicResource AccentBrush}" Margin="0,4,0,2" />
-                                <TextBlock x:Name="ActiveCountText" Text="0 aktif indirme" FontFamily="{DynamicResource UiFont}" FontSize="11" Foreground="{DynamicResource TextMuteBrush}" />
-                            </StackPanel>
+                        <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="12,12" Background="{DynamicResource Bg0Brush}">
+                            <Border Background="{DynamicResource Bg2Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="10" Padding="12,10">
+                                <StackPanel>
+                                    <TextBlock x:Name="LblTotalSpeed" Text="Toplam Hız" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource TextDimBrush}" />
+                                    <TextBlock x:Name="TotalSpeedText" Text="0 B/s" FontFamily="{DynamicResource MonoFont}" FontWeight="Bold" FontSize="19" Foreground="{DynamicResource AccentBrush}" Margin="0,3,0,1" />
+                                    <TextBlock x:Name="ActiveCountText" Text="0 aktif indirme" FontFamily="{DynamicResource UiFont}" FontSize="11" Foreground="{DynamicResource TextMuteBrush}" />
+                                </StackPanel>
+                            </Border>
                         </Border>
 
                         <TextBlock x:Name="LblCategories" DockPanel.Dock="Top" Text="Kategoriler" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource TextDimBrush}" Margin="16,16,16,8" />
@@ -149,14 +151,14 @@
                                  SelectionChanged="Categories_SelectionChanged">
                             <ListBox.ItemContainerStyle>
                                 <Style TargetType="ListBoxItem">
-                                    <Setter Property="Height" Value="38" />
-                                    <Setter Property="Padding" Value="14,0" />
+                                    <Setter Property="Height" Value="36" />
+                                    <Setter Property="Padding" Value="12,0" />
                                     <Setter Property="Foreground" Value="{DynamicResource TextDimBrush}" />
                                     <Setter Property="Cursor" Value="Hand" />
                                     <Setter Property="Template">
                                         <Setter.Value>
                                             <ControlTemplate TargetType="ListBoxItem">
-                                                <Border x:Name="Bd" Background="Transparent" BorderThickness="3,0,0,0" BorderBrush="Transparent" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+                                                <Border x:Name="Bd" Background="Transparent" CornerRadius="8" Margin="8,2" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
                                                     <ContentPresenter VerticalAlignment="Center" />
                                                 </Border>
                                                 <ControlTemplate.Triggers>
@@ -167,6 +169,7 @@
                                                     <Trigger Property="IsSelected" Value="True">
                                                         <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Bg4Brush}" />
                                                         <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                                        <Setter TargetName="Bd" Property="BorderThickness" Value="1" />
                                                         <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
                                                         <Setter Property="FontWeight" Value="SemiBold" />
                                                     </Trigger>
@@ -368,21 +371,22 @@
                 </Grid>
             </Grid>
 
-            <!-- 4. Status Bar (30px) -->
-            <Border Grid.Row="3" Background="{DynamicResource Bg1Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="14,0">
+            <!-- 4. Status Bar (32px) -->
+            <Border Grid.Row="3" Background="{DynamicResource Bg1Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="16,0">
                 <DockPanel LastChildFill="True" VerticalAlignment="Center">
                     <!-- Left: Status Summary -->
-                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
-                        <TextBlock x:Name="StatusCountsText" Text="0 aktif / 0 sırada / 0 tamamlandı" FontFamily="{DynamicResource MonoFont}" FontSize="11" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" />
-                        <Rectangle Width="1" Fill="{DynamicResource LineBrush}" Margin="12,5" />
-                        <TextBlock x:Name="StatusText" Text="Hazır" FontFamily="{DynamicResource UiFont}" FontSize="11" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" />
+                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+                        <TextBlock x:Name="StatusCountsText" Text="0 aktif / 0 sırada / 0 tamamlandı" FontFamily="{DynamicResource UiFont}" FontSize="11.5" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" />
+                        <Rectangle Width="1" Height="14" Fill="{DynamicResource LineBrush}" Margin="14,0" VerticalAlignment="Center" />
+                        <TextBlock x:Name="StatusText" Text="Hazır" FontFamily="{DynamicResource UiFont}" FontSize="11.5" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" />
                     </StackPanel>
 
                     <!-- Right: Bridge Status Dot + Disk Space -->
-                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
                         <Ellipse Width="7" Height="7" Fill="{DynamicResource SuccessBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
-                        <TextBlock x:Name="LblBridgeConnected" Text="Eklenti Bağlı" FontFamily="{DynamicResource UiFont}" FontWeight="Medium" FontSize="11" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,16,0" />
-                        <TextBlock x:Name="DiskSpaceText" Text="DİSK: HAZIR" FontFamily="{DynamicResource MonoFont}" FontSize="10.5" Foreground="{DynamicResource TextMuteBrush}" VerticalAlignment="Center" />
+                        <TextBlock x:Name="LblBridgeConnected" Text="Eklenti Bağlı" FontFamily="{DynamicResource UiFont}" FontWeight="Medium" FontSize="11.5" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,14,0" />
+                        <Rectangle Width="1" Height="14" Fill="{DynamicResource LineBrush}" Margin="0,0,14,0" VerticalAlignment="Center" />
+                        <TextBlock x:Name="DiskSpaceText" Text="DİSK: HAZIR" FontFamily="{DynamicResource MonoFont}" FontSize="11" Foreground="{DynamicResource TextMuteBrush}" VerticalAlignment="Center" />
                     </StackPanel>
                 </DockPanel>
             </Border>

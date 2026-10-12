@@ -101,7 +101,14 @@ public partial class App : System.Windows.Application
                 _tray?.ShowBalloonTip(3000, "DOWNLOAD COMPLETE", item.FileName, Forms.ToolTipIcon.Info);
         };
 
-        _bridge = new BridgeServer(_manager, _tokenStore);
+        var hooks = new BridgeHooks
+        {
+            YtDlpAvailable = () => toolPaths.YtDlpAvailable,
+            CaptureExtensions = () => (_settings?.CapturedExtensions ?? "").Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+            MinCaptureSizeMB = () => (int)((_settings?.MinCaptureSizeBytes ?? 0) / (1024 * 1024)),
+        };
+
+        _bridge = new BridgeServer(_manager, _tokenStore, hooks);
         try { await _bridge.StartAsync(); }
         catch (Exception ex)
         {

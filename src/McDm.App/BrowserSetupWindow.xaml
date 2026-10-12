@@ -84,7 +84,7 @@
                             <TextBlock Text="3" FontFamily="{DynamicResource MonoFont}" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                            <Border Background="{DynamicResource Bg2Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="6" Padding="12">
+                            <Border Background="{DynamicResource Bg2Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="10" Padding="12">
                                 <TextBlock x:Name="LblStep3" TextWrapping="Wrap" Foreground="{DynamicResource TextDimBrush}" FontSize="12" />
                             </Border>
                         </StackPanel>
@@ -113,7 +113,7 @@
                     </Grid>
 
                     <!-- Live Connection Indicator Block -->
-                    <Border Background="{DynamicResource Bg1Brush}" BorderBrush="{DynamicResource LineStrongBrush}" BorderThickness="1" CornerRadius="6" Padding="16,12" Margin="0,0,0,8">
+                    <Border Background="{DynamicResource Bg1Brush}" BorderBrush="{DynamicResource LineStrongBrush}" BorderThickness="1" CornerRadius="10" Padding="16,12" Margin="0,0,0,8">
                         <DockPanel LastChildFill="True">
                             <Ellipse Width="8" Height="8" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center" Margin="0,0,10,0" />
                             <StackPanel>

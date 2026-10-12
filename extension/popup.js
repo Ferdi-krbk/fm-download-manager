@@ -81,7 +81,14 @@ async function loadMedia() {
       btn.disabled = true; btn.textContent = '…';
       const k = m.kind === 'video' || m.kind === 'hls' || m.kind === 'dash' ? 'video' : 'file';
       const r = await send({ type: 'download', url: m.url, filename: k === 'file' ? m.name : '', referer: tab.url, kind: k });
-      btn.textContent = r && r.ok ? t('popupSent') : t('popupError');
+      if (r && r.ok) {
+        btn.textContent = '✓ ' + t('popupSent');
+        btn.classList.add('success');
+      } else {
+        btn.textContent = t('popupError');
+        btn.classList.add('error');
+        btn.disabled = false;
+      }
     };
     li.append(info, btn);
     ul.appendChild(li);

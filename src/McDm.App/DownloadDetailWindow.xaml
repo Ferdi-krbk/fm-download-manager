@@ -45,7 +45,7 @@
                 </StackPanel>
 
                 <!-- Key stats row (SIZE, DOWNLOADED, SPEED, STATUS) -->
-                <Border Grid.Row="1" Background="{DynamicResource Bg1Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" Padding="14,10" Margin="0,0,0,14">
+                <Border Grid.Row="1" Background="{DynamicResource Bg1Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="10" Padding="14,10" Margin="0,0,0,14">
                     <UniformGrid Columns="4">
                         <StackPanel>
                             <TextBlock x:Name="LblDownloaded" Text="DOWNLOADED" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="10" Foreground="{DynamicResource TextDimBrush}" />

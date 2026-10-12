@@ -1,8 +1,11 @@
 using System.Drawing;
 using System.IO;
+using System.Net.Http;
+using System.Text.Json;
 using System.Threading;
 using System.Windows;
 using System.Windows.Threading;
+using McDm.App.Resources;
 using McDm.Core;
 using Microsoft.Win32;
 using Forms = System.Windows.Forms;
@@ -22,8 +25,13 @@ public partial class App : System.Windows.Application
     private volatile bool _quitting;
     private DownloadManager? _manager;
     private BridgeServer? _bridge;
+    private TokenStore? _tokenStore;
+    private AppSettings? _settings;
     private Forms.NotifyIcon? _tray;
     private MainWindow? _window;
+    private DispatcherTimer? _clipboardTimer;
+    private DispatcherTimer? _trayTooltipTimer;
+    private string _lastSeenClipboard = "";
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -33,7 +41,6 @@ public partial class App : System.Windows.Application
         bool quitRequested = e.Args.Contains("--quit");
         if (!first)
         {
-            // tell the running instance to bring its window to the front (or to quit), then leave
             try
             {
                 using var ev = EventWaitHandle.OpenExisting(quitRequested ? QuitEventName : ShowEventName);
@@ -43,7 +50,11 @@ public partial class App : System.Windows.Application
             Shutdown();
             return;
         }
-        if (quitRequested) { Shutdown(); return; }   // nothing running, nothing to quit
+        if (quitRequested) { Shutdown(); return; }
+
+        _settings = AppSettings.Load();
+        if (_settings.Language == "tr") Strings.Culture = new System.Globalization.CultureInfo("tr");
+        else if (_settings.Language == "en") Strings.Culture = new System.Globalization.CultureInfo("en");
 
         _showEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ShowEventName);
         _quitEvent = new EventWaitHandle(false, EventResetMode.AutoReset, QuitEventName);
@@ -60,51 +71,145 @@ public partial class App : System.Windows.Application
         }) { IsBackground = true, Name = "InstanceSignalListener" }.Start();
 
         var data = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MC Download Manager");
-        _manager = new DownloadManager(data, uiContext: new DispatcherSynchronizationContext(Dispatcher));
-        _manager.ItemCompleted += item =>
-            _tray?.ShowBalloonTip(3000, "Download complete", item.FileName, Forms.ToolTipIcon.Info);
+        _tokenStore = new TokenStore(Path.Combine(data, "bridge.token"));
 
-        _bridge = new BridgeServer(_manager, new TokenStore());
+        var toolPaths = new ToolPaths();
+        var videoEngine = new VideoDownloader(
+            ytDlp: () => toolPaths.YtDlpPath is { } p ? new ToolLauncher(p) : null,
+            ffmpeg: () => toolPaths.FfmpegPath,
+            options: () => new VideoOptions
+            {
+                Container = _settings.PreferredVideoFormat,
+                MaxHeight = _settings.MaxVideoResolution,
+            });
+
+        _manager = new DownloadManager(data, downloadDirectory: _settings.DownloadDirectory,
+                                       uiContext: new DispatcherSynchronizationContext(Dispatcher),
+                                       videoEngine: videoEngine)
+        {
+            DefaultConnections = _settings.ConnectionsPerDownload,
+            MaxConcurrentDownloads = _settings.MaxConcurrentDownloads,
+        };
+
+        _manager.ItemCompleted += item =>
+        {
+            if (_settings?.NotificationsEnabled == true)
+                _tray?.ShowBalloonTip(3000, Strings.DownloadComplete, item.FileName, Forms.ToolTipIcon.Info);
+        };
+
+        _bridge = new BridgeServer(_manager, _tokenStore);
         try { await _bridge.StartAsync(); }
         catch (Exception ex)
         {
             MessageBox.Show($"Browser bridge could not start on port {BridgeServer.DefaultPort}:\n{ex.Message}\n\n" +
-                            "Browser integration will not work until the port is free.", "MC Download Manager");
+                            "Browser integration will not work until the port is free.", Strings.AppTitle);
         }
 
         BuildTray();
-        _window = new MainWindow(_manager);
+        StartClipboardWatcher();
+        StartTrayTooltipUpdater();
+
+        _window = new MainWindow(_manager, _tokenStore, _settings);
         if (!e.Args.Contains("--background")) _window.Show();
     }
 
     private void BuildTray()
     {
         var menu = new Forms.ContextMenuStrip();
-        menu.Items.Add("Open", null, (_, _) => ShowWindow());
-        var startup = new Forms.ToolStripMenuItem("Start with Windows") { Checked = IsStartupEnabled(), CheckOnClick = true };
+        menu.Items.Add(Strings.TrayOpen, null, (_, _) => ShowWindow());
+        var startup = new Forms.ToolStripMenuItem(Strings.TrayStartWithWindows) { Checked = IsStartupEnabled(), CheckOnClick = true };
         startup.CheckedChanged += (_, _) => SetStartup(startup.Checked);
         menu.Items.Add(startup);
         menu.Items.Add(new Forms.ToolStripSeparator());
-        menu.Items.Add("Quit", null, (_, _) => Quit());
+        menu.Items.Add(Strings.TrayQuit, null, (_, _) => Quit());
+
+        Icon icon = SystemIcons.Application;
+        try
+        {
+            var iconUri = new Uri("pack://application:,,,/Resources/app.ico");
+            using var iconStream = System.Windows.Application.GetResourceStream(iconUri)?.Stream;
+            if (iconStream != null) icon = new Icon(iconStream);
+        }
+        catch { }
 
         _tray = new Forms.NotifyIcon
         {
-            Icon = SystemIcons.Application, // replaced by the real icon in step 4
-            Text = "MC Download Manager",
+            Icon = icon,
+            Text = Strings.AppTitle,
             Visible = true,
             ContextMenuStrip = menu,
         };
         _tray.DoubleClick += (_, _) => ShowWindow();
     }
 
+    private void StartTrayTooltipUpdater()
+    {
+        _trayTooltipTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _trayTooltipTimer.Tick += (_, _) =>
+        {
+            if (_tray == null || _manager == null) return;
+            int active = _manager.Items.Count(i => i.Status == DownloadStatus.Downloading);
+            double totalSpeed = _manager.Items.Where(i => i.Status == DownloadStatus.Downloading).Sum(i => i.Speed);
+
+            string text = active > 0
+                ? $"{Strings.AppTitle}\n{active} active - {BytesConverter.Format(totalSpeed)}/s"
+                : Strings.AppTitle;
+
+            if (text.Length > 63) text = text[..63]; // NotifyIcon.Text max length is 63 chars on older Win32
+            _tray.Text = text;
+        };
+        _trayTooltipTimer.Start();
+    }
+
+    private void StartClipboardWatcher()
+    {
+        _clipboardTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1000) };
+        _clipboardTimer.Tick += (_, _) =>
+        {
+            if (_settings?.ClipboardWatcherEnabled != true) return;
+            try
+            {
+                if (Clipboard.ContainsText())
+                {
+                    var text = Clipboard.GetText().Trim();
+                    if (text == _lastSeenClipboard) return;
+                    _lastSeenClipboard = text;
+
+                    if (Uri.TryCreate(text, UriKind.Absolute, out var uri) && (uri.Scheme is "http" or "https"))
+                    {
+                        var ext = Path.GetExtension(uri.AbsolutePath).TrimStart('.');
+                        if (!string.IsNullOrEmpty(ext))
+                        {
+                            var capturedList = (_settings.CapturedExtensions ?? "")
+                                .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+                            if (capturedList.Any(e => string.Equals(e, ext, StringComparison.OrdinalIgnoreCase)))
+                            {
+                                // Show confirmation prompt
+                                var msg = string.Format(Strings.DownloadPromptMessage, text);
+                                var res = MessageBox.Show(msg, Strings.DownloadPromptTitle, MessageBoxButton.YesNo, MessageBoxImage.Question);
+                                if (res == MessageBoxResult.Yes)
+                                {
+                                    _manager?.Add(new DownloadRequest { Url = text });
+                                    ShowWindow();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch { }
+        };
+        _clipboardTimer.Start();
+    }
+
     private void ShowWindow()
     {
         if (_quitting) return;
-        _window ??= new MainWindow(_manager!);
+        _window ??= new MainWindow(_manager!, _tokenStore!, _settings!);
         _window.Show();
         if (_window.WindowState == WindowState.Minimized) _window.WindowState = WindowState.Normal;
         _window.Activate();
-        // Activate() alone is refused by Windows' foreground lock; a short Topmost toggle reliably raises the window.
         _window.Topmost = true;
         _window.Topmost = false;
         _window.Focus();
@@ -115,8 +220,10 @@ public partial class App : System.Windows.Application
         if (_quitting) return;
         _quitting = true;
         _showEvent?.Set();
+        _clipboardTimer?.Stop();
+        _trayTooltipTimer?.Stop();
         if (_tray != null) { _tray.Visible = false; _tray.Dispose(); }
-        _manager?.Dispose();                 // pauses everything and persists resume state
+        _manager?.Dispose();
         if (_bridge != null) await _bridge.DisposeAsync();
         _window?.AllowClose();
         Shutdown();

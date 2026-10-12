@@ -1,0 +1,110 @@
+<Window x:Class="McDm.App.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Settings" Width="580" Height="580" MinWidth="480" MinHeight="480"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="0,0,10,0">
+                <!-- Download Folder -->
+                <TextBlock x:Name="LblDlFolder" FontWeight="SemiBold" Margin="0,0,0,6" />
+                <Grid Margin="0,0,0,16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="TxtDlFolder" Grid.Column="0" Height="28" Padding="4" VerticalContentAlignment="Center" />
+                    <Button x:Name="BtnBrowse" Grid.Column="1" Margin="8,0,0,0" Padding="12,0" Height="28" Click="Browse_Click" />
+                </Grid>
+
+                <!-- Concurrency and connections -->
+                <Grid Margin="0,0,0,16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                        <TextBlock x:Name="LblConnections" FontWeight="SemiBold" Margin="0,0,0,6" />
+                        <TextBox x:Name="TxtConnections" Height="28" Padding="4" VerticalContentAlignment="Center" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                        <TextBlock x:Name="LblMaxConcurrent" FontWeight="SemiBold" Margin="0,0,0,6" />
+                        <TextBox x:Name="TxtMaxConcurrent" Height="28" Padding="4" VerticalContentAlignment="Center" />
+                    </StackPanel>
+                </Grid>
+
+                <!-- Speed limit & Min capture size -->
+                <Grid Margin="0,0,0,16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                        <TextBlock x:Name="LblSpeedLimit" FontWeight="SemiBold" Margin="0,0,0,6" />
+                        <TextBox x:Name="TxtSpeedLimit" Height="28" Padding="4" VerticalContentAlignment="Center" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                        <TextBlock x:Name="LblMinSize" FontWeight="SemiBold" Margin="0,0,0,6" />
+                        <TextBox x:Name="TxtMinSize" Height="28" Padding="4" VerticalContentAlignment="Center" />
+                    </StackPanel>
+                </Grid>
+
+                <!-- Captured Extensions -->
+                <TextBlock x:Name="LblCaptureExts" FontWeight="SemiBold" Margin="0,0,0,6" />
+                <TextBox x:Name="TxtCaptureExts" Height="50" TextWrapping="Wrap" AcceptsReturn="True"
+                         Padding="4" VerticalScrollBarVisibility="Auto" Margin="0,0,0,16" />
+
+                <!-- Video settings -->
+                <Grid Margin="0,0,0,16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                        <TextBlock x:Name="LblVideoFormat" FontWeight="SemiBold" Margin="0,0,0,6" />
+                        <ComboBox x:Name="CmbVideoFormat" Height="28" SelectedIndex="0">
+                            <ComboBoxItem Content="mp4" />
+                            <ComboBoxItem Content="mkv" />
+                            <ComboBoxItem Content="webm" />
+                        </ComboBox>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                        <TextBlock x:Name="LblVideoQuality" FontWeight="SemiBold" Margin="0,0,0,6" />
+                        <ComboBox x:Name="CmbVideoQuality" Height="28" SelectedIndex="2">
+                            <ComboBoxItem Content="2160p (4K)" Tag="2160" />
+                            <ComboBoxItem Content="1440p (2K)" Tag="1440" />
+                            <ComboBoxItem Content="1080p (Full HD)" Tag="1080" />
+                            <ComboBoxItem Content="720p (HD)" Tag="720" />
+                            <ComboBoxItem Content="480p (SD)" Tag="480" />
+                            <ComboBoxItem Content="Best available" Tag="0" />
+                        </ComboBox>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Language -->
+                <TextBlock x:Name="LblLanguage" FontWeight="SemiBold" Margin="0,0,0,6" />
+                <ComboBox x:Name="CmbLanguage" Height="28" Margin="0,0,0,16" SelectedIndex="0">
+                    <ComboBoxItem Content="Follow Windows (Otomatik)" Tag="auto" />
+                    <ComboBoxItem Content="English" Tag="en" />
+                    <ComboBoxItem Content="Türkçe" Tag="tr" />
+                </ComboBox>
+
+                <!-- Checkboxes -->
+                <CheckBox x:Name="ChkStartWithWindows" Margin="0,0,0,8" />
+                <CheckBox x:Name="ChkClipboardWatcher" Margin="0,0,0,8" />
+                <CheckBox x:Name="ChkNotifications" Margin="0,0,0,16" />
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Actions -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+            <Button x:Name="BtnSave" IsDefault="True" Width="100" Height="32" Margin="0,0,8,0" Click="Save_Click" />
+            <Button x:Name="BtnCancel" IsCancel="True" Width="90" Height="32" Click="Cancel_Click" />
+        </StackPanel>
+    </Grid>
+</Window>

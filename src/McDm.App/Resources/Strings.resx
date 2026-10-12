@@ -1,0 +1,283 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="AppTitle" xml:space="preserve">
+    <value>MC Download Manager</value>
+  </data>
+  <data name="AddFromClipboard" xml:space="preserve">
+    <value>Add from clipboard</value>
+  </data>
+  <data name="AddUrls" xml:space="preserve">
+    <value>Add URL(s)...</value>
+  </data>
+  <data name="Pause" xml:space="preserve">
+    <value>Pause</value>
+  </data>
+  <data name="Resume" xml:space="preserve">
+    <value>Resume</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Remove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="RemoveAndDelete" xml:space="preserve">
+    <value>Remove and delete file</value>
+  </data>
+  <data name="Open" xml:space="preserve">
+    <value>Open</value>
+  </data>
+  <data name="OpenFolder" xml:space="preserve">
+    <value>Open folder</value>
+  </data>
+  <data name="CopyUrl" xml:space="preserve">
+    <value>Copy URL</value>
+  </data>
+  <data name="Details" xml:space="preserve">
+    <value>Download details...</value>
+  </data>
+  <data name="Settings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="BrowserSetup" xml:space="preserve">
+    <value>Browser setup</value>
+  </data>
+  <data name="CopyPairingCode" xml:space="preserve">
+    <value>Copy pairing code</value>
+  </data>
+  <data name="PairingCodeCopied" xml:space="preserve">
+    <value>Pairing code copied to clipboard!</value>
+  </data>
+  <data name="SearchPlaceholder" xml:space="preserve">
+    <value>Search downloads...</value>
+  </data>
+  <data name="CategoryAll" xml:space="preserve">
+    <value>All Downloads</value>
+  </data>
+  <data name="CategoryImages" xml:space="preserve">
+    <value>Images</value>
+  </data>
+  <data name="CategoryMusic" xml:space="preserve">
+    <value>Music</value>
+  </data>
+  <data name="CategoryVideo" xml:space="preserve">
+    <value>Video</value>
+  </data>
+  <data name="CategoryApps" xml:space="preserve">
+    <value>Programs / Apps</value>
+  </data>
+  <data name="CategoryDocuments" xml:space="preserve">
+    <value>Documents</value>
+  </data>
+  <data name="CategoryArchives" xml:space="preserve">
+    <value>Archives</value>
+  </data>
+  <data name="CategoryOther" xml:space="preserve">
+    <value>Other</value>
+  </data>
+  <data name="ColName" xml:space="preserve">
+    <value>File Name</value>
+  </data>
+  <data name="ColSize" xml:space="preserve">
+    <value>Size</value>
+  </data>
+  <data name="ColProgress" xml:space="preserve">
+    <value>Progress</value>
+  </data>
+  <data name="ColSpeed" xml:space="preserve">
+    <value>Speed</value>
+  </data>
+  <data name="ColConnections" xml:space="preserve">
+    <value>Conn.</value>
+  </data>
+  <data name="ColStatus" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="ColError" xml:space="preserve">
+    <value>Error / Details</value>
+  </data>
+  <data name="StatusReady" xml:space="preserve">
+    <value>Ready</value>
+  </data>
+  <data name="DownloadPromptTitle" xml:space="preserve">
+    <value>New Download Link</value>
+  </data>
+  <data name="DownloadPromptMessage" xml:space="preserve">
+    <value>Download link found in clipboard:\n{0}\n\nDo you want to download this file?</value>
+  </data>
+  <data name="DownloadComplete" xml:space="preserve">
+    <value>Download complete</value>
+  </data>
+  <data name="SettingsTitle" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="SettingsDownloadFolder" xml:space="preserve">
+    <value>Default download folder:</value>
+  </data>
+  <data name="SettingsBrowse" xml:space="preserve">
+    <value>Browse...</value>
+  </data>
+  <data name="SettingsConnections" xml:space="preserve">
+    <value>Connections per download (1-16):</value>
+  </data>
+  <data name="SettingsMaxConcurrent" xml:space="preserve">
+    <value>Max concurrent downloads:</value>
+  </data>
+  <data name="SettingsSpeedLimit" xml:space="preserve">
+    <value>Speed limit (KB/s, 0 = unlimited):</value>
+  </data>
+  <data name="SettingsMinSize" xml:space="preserve">
+    <value>Only capture browser downloads larger than (MB):</value>
+  </data>
+  <data name="SettingsCaptureExtensions" xml:space="preserve">
+    <value>Captured file types (comma-separated):</value>
+  </data>
+  <data name="SettingsStartWithWindows" xml:space="preserve">
+    <value>Start MC Download Manager with Windows</value>
+  </data>
+  <data name="SettingsClipboardWatcher" xml:space="preserve">
+    <value>Monitor clipboard for downloadable links</value>
+  </data>
+  <data name="SettingsNotifications" xml:space="preserve">
+    <value>Show notifications when downloads finish</value>
+  </data>
+  <data name="SettingsVideoFormat" xml:space="preserve">
+    <value>Preferred video format:</value>
+  </data>
+  <data name="SettingsVideoQuality" xml:space="preserve">
+    <value>Max video resolution (height):</value>
+  </data>
+  <data name="SettingsLanguage" xml:space="preserve">
+    <value>Language:</value>
+  </data>
+  <data name="SettingsSave" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="SettingsCancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="WizardTitle" xml:space="preserve">
+    <value>Browser Extension Setup</value>
+  </data>
+  <data name="WizardSubtitle" xml:space="preserve">
+    <value>Connect MC Download Manager with Chrome, Edge, and Brave</value>
+  </data>
+  <data name="WizardStep1" xml:space="preserve">
+    <value>1. Locate the unpacked extension folder:</value>
+  </data>
+  <data name="WizardOpenFolder" xml:space="preserve">
+    <value>Open extension folder in Explorer</value>
+  </data>
+  <data name="WizardStep2" xml:space="preserve">
+    <value>2. Open extensions page in your browser:</value>
+  </data>
+  <data name="WizardOpenChrome" xml:space="preserve">
+    <value>Open chrome://extensions</value>
+  </data>
+  <data name="WizardOpenEdge" xml:space="preserve">
+    <value>Open edge://extensions</value>
+  </data>
+  <data name="WizardOpenBrave" xml:space="preserve">
+    <value>Open brave://extensions</value>
+  </data>
+  <data name="WizardStep3" xml:space="preserve">
+    <value>3. Enable &apos;Developer mode&apos; and click &apos;Load unpacked&apos;. Select the extension folder above.</value>
+  </data>
+  <data name="WizardStep4" xml:space="preserve">
+    <value>4. In the extension popup, paste your Pairing Code:</value>
+  </data>
+  <data name="WizardCopyCode" xml:space="preserve">
+    <value>Copy pairing code</value>
+  </data>
+  <data name="WizardConnectionStatus" xml:space="preserve">
+    <value>Extension Connection Status:</value>
+  </data>
+  <data name="WizardWaiting" xml:space="preserve">
+    <value>Waiting for extension to connect...</value>
+  </data>
+  <data name="WizardConnected" xml:space="preserve">
+    <value>Connected successfully!</value>
+  </data>
+  <data name="WizardClose" xml:space="preserve">
+    <value>Finish</value>
+  </data>
+  <data name="DetailsTitle" xml:space="preserve">
+    <value>Download Details</value>
+  </data>
+  <data name="DetailsFile" xml:space="preserve">
+    <value>File:</value>
+  </data>
+  <data name="DetailsUrl" xml:space="preserve">
+    <value>URL:</value>
+  </data>
+  <data name="DetailsStatus" xml:space="preserve">
+    <value>Status:</value>
+  </data>
+  <data name="DetailsDownloaded" xml:space="preserve">
+    <value>Downloaded:</value>
+  </data>
+  <data name="DetailsSpeed" xml:space="preserve">
+    <value>Speed:</value>
+  </data>
+  <data name="DetailsSegments" xml:space="preserve">
+    <value>Segments / Connections:</value>
+  </data>
+  <data name="AddUrlsTitle" xml:space="preserve">
+    <value>Add URL(s)</value>
+  </data>
+  <data name="AddUrlsPrompt" xml:space="preserve">
+    <value>Enter one or more download URLs (one per line):</value>
+  </data>
+  <data name="AddUrlsButton" xml:space="preserve">
+    <value>Start Download</value>
+  </data>
+  <data name="TrayOpen" xml:space="preserve">
+    <value>Open</value>
+  </data>
+  <data name="TrayQuit" xml:space="preserve">
+    <value>Quit</value>
+  </data>
+  <data name="TrayStartWithWindows" xml:space="preserve">
+    <value>Start with Windows</value>
+  </data>
+  <data name="UpdateYtDlp" xml:space="preserve">
+    <value>Update yt-dlp</value>
+  </data>
+  <data name="UpdatingYtDlp" xml:space="preserve">
+    <value>Updating yt-dlp...</value>
+  </data>
+  <data name="YtDlpUpdated" xml:space="preserve">
+    <value>yt-dlp is up to date!</value>
+  </data>
+  <data name="YtDlpUpdateFailed" xml:space="preserve">
+    <value>Failed to update yt-dlp: {0}</value>
+  </data>
+</root>

@@ -1,0 +1,283 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="AppTitle" xml:space="preserve">
+    <value>MC Download Manager</value>
+  </data>
+  <data name="AddFromClipboard" xml:space="preserve">
+    <value>Panodan ekle</value>
+  </data>
+  <data name="AddUrls" xml:space="preserve">
+    <value>Bağlantı(lar) ekle...</value>
+  </data>
+  <data name="Pause" xml:space="preserve">
+    <value>Duraklat</value>
+  </data>
+  <data name="Resume" xml:space="preserve">
+    <value>Devam et</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>İptal et</value>
+  </data>
+  <data name="Remove" xml:space="preserve">
+    <value>Listeden kaldır</value>
+  </data>
+  <data name="RemoveAndDelete" xml:space="preserve">
+    <value>Kaldır ve dosyayı sil</value>
+  </data>
+  <data name="Open" xml:space="preserve">
+    <value>Aç</value>
+  </data>
+  <data name="OpenFolder" xml:space="preserve">
+    <value>Klasörü aç</value>
+  </data>
+  <data name="CopyUrl" xml:space="preserve">
+    <value>Bağlantıyı kopyala</value>
+  </data>
+  <data name="Details" xml:space="preserve">
+    <value>İndirme ayrıntıları...</value>
+  </data>
+  <data name="Settings" xml:space="preserve">
+    <value>Ayarlar</value>
+  </data>
+  <data name="BrowserSetup" xml:space="preserve">
+    <value>Tarayıcı kurulumu</value>
+  </data>
+  <data name="CopyPairingCode" xml:space="preserve">
+    <value>Eşleştirme kodunu kopyala</value>
+  </data>
+  <data name="PairingCodeCopied" xml:space="preserve">
+    <value>Eşleştirme kodu panoya kopyalandı!</value>
+  </data>
+  <data name="SearchPlaceholder" xml:space="preserve">
+    <value>İndirmelerde ara...</value>
+  </data>
+  <data name="CategoryAll" xml:space="preserve">
+    <value>Tüm İndirmeler</value>
+  </data>
+  <data name="CategoryImages" xml:space="preserve">
+    <value>Resimler</value>
+  </data>
+  <data name="CategoryMusic" xml:space="preserve">
+    <value>Müzik</value>
+  </data>
+  <data name="CategoryVideo" xml:space="preserve">
+    <value>Video</value>
+  </data>
+  <data name="CategoryApps" xml:space="preserve">
+    <value>Programlar</value>
+  </data>
+  <data name="CategoryDocuments" xml:space="preserve">
+    <value>Belgeler</value>
+  </data>
+  <data name="CategoryArchives" xml:space="preserve">
+    <value>Arşivler</value>
+  </data>
+  <data name="CategoryOther" xml:space="preserve">
+    <value>Diğer</value>
+  </data>
+  <data name="ColName" xml:space="preserve">
+    <value>Dosya Adı</value>
+  </data>
+  <data name="ColSize" xml:space="preserve">
+    <value>Boyut</value>
+  </data>
+  <data name="ColProgress" xml:space="preserve">
+    <value>İlerleme</value>
+  </data>
+  <data name="ColSpeed" xml:space="preserve">
+    <value>Hız</value>
+  </data>
+  <data name="ColConnections" xml:space="preserve">
+    <value>Bağl.</value>
+  </data>
+  <data name="ColStatus" xml:space="preserve">
+    <value>Durum</value>
+  </data>
+  <data name="ColError" xml:space="preserve">
+    <value>Hata / Ayrıntı</value>
+  </data>
+  <data name="StatusReady" xml:space="preserve">
+    <value>Hazır</value>
+  </data>
+  <data name="DownloadPromptTitle" xml:space="preserve">
+    <value>Yeni İndirme Bağlantısı</value>
+  </data>
+  <data name="DownloadPromptMessage" xml:space="preserve">
+    <value>Panoda indirilebilir bir bağlantı algılandı:\n{0}\n\nBu dosyayı indirmek istiyor musunuz?</value>
+  </data>
+  <data name="DownloadComplete" xml:space="preserve">
+    <value>İndirme tamamlandı</value>
+  </data>
+  <data name="SettingsTitle" xml:space="preserve">
+    <value>Ayarlar</value>
+  </data>
+  <data name="SettingsDownloadFolder" xml:space="preserve">
+    <value>Varsayılan indirme klasörü:</value>
+  </data>
+  <data name="SettingsBrowse" xml:space="preserve">
+    <value>Gözat...</value>
+  </data>
+  <data name="SettingsConnections" xml:space="preserve">
+    <value>İndirme başına bağlantı sayısı (1-16):</value>
+  </data>
+  <data name="SettingsMaxConcurrent" xml:space="preserve">
+    <value>Aynı anda en fazla indirme:</value>
+  </data>
+  <data name="SettingsSpeedLimit" xml:space="preserve">
+    <value>Hız sınırı (KB/sn, 0 = sınırsız):</value>
+  </data>
+  <data name="SettingsMinSize" xml:space="preserve">
+    <value>Yalnızca şundan büyük tarayıcı indirmelerini yakala (MB):</value>
+  </data>
+  <data name="SettingsCaptureExtensions" xml:space="preserve">
+    <value>Yakalanacak dosya uzantıları (virgülle ayrılmış):</value>
+  </data>
+  <data name="SettingsStartWithWindows" xml:space="preserve">
+    <value>MC Download Manager&apos;ı Windows ile başlat</value>
+  </data>
+  <data name="SettingsClipboardWatcher" xml:space="preserve">
+    <value>Panodaki indirme bağlantılarını izle</value>
+  </data>
+  <data name="SettingsNotifications" xml:space="preserve">
+    <value>İndirme tamamlandığında bildirim göster</value>
+  </data>
+  <data name="SettingsVideoFormat" xml:space="preserve">
+    <value>Tercih edilen video biçimi:</value>
+  </data>
+  <data name="SettingsVideoQuality" xml:space="preserve">
+    <value>En yüksek video çözünürlüğü (yükseklik):</value>
+  </data>
+  <data name="SettingsLanguage" xml:space="preserve">
+    <value>Dil:</value>
+  </data>
+  <data name="SettingsSave" xml:space="preserve">
+    <value>Kaydet</value>
+  </data>
+  <data name="SettingsCancel" xml:space="preserve">
+    <value>Vazgeç</value>
+  </data>
+  <data name="WizardTitle" xml:space="preserve">
+    <value>Tarayıcı Eklentisi Kurulumu</value>
+  </data>
+  <data name="WizardSubtitle" xml:space="preserve">
+    <value>MC Download Manager&apos;ı Chrome, Edge ve Brave ile bağlayın</value>
+  </data>
+  <data name="WizardStep1" xml:space="preserve">
+    <value>1. Paketlenmemiş eklenti klasörünün konumu:</value>
+  </data>
+  <data name="WizardOpenFolder" xml:space="preserve">
+    <value>Eklenti klasörünü Dosya Gezgini&apos;nde aç</value>
+  </data>
+  <data name="WizardStep2" xml:space="preserve">
+    <value>2. Tarayıcınızda eklentiler sayfasını açın:</value>
+  </data>
+  <data name="WizardOpenChrome" xml:space="preserve">
+    <value>chrome://extensions aç</value>
+  </data>
+  <data name="WizardOpenEdge" xml:space="preserve">
+    <value>edge://extensions aç</value>
+  </data>
+  <data name="WizardOpenBrave" xml:space="preserve">
+    <value>brave://extensions aç</value>
+  </data>
+  <data name="WizardStep3" xml:space="preserve">
+    <value>3. &apos;Geliştirici modu&apos;nu açın ve &apos;Paketlenmemiş öge yükle&apos;ye tıklayarak yukarıdaki klasörü seçin.</value>
+  </data>
+  <data name="WizardStep4" xml:space="preserve">
+    <value>4. Eklenti simgesine tıklayıp Eşleştirme Kodunu yapıştırın:</value>
+  </data>
+  <data name="WizardCopyCode" xml:space="preserve">
+    <value>Eşleştirme kodunu kopyala</value>
+  </data>
+  <data name="WizardConnectionStatus" xml:space="preserve">
+    <value>Eklenti Bağlantı Durumu:</value>
+  </data>
+  <data name="WizardWaiting" xml:space="preserve">
+    <value>Eklentinin bağlanması bekleniyor...</value>
+  </data>
+  <data name="WizardConnected" xml:space="preserve">
+    <value>Başarıyla bağlandı!</value>
+  </data>
+  <data name="WizardClose" xml:space="preserve">
+    <value>Tamamla</value>
+  </data>
+  <data name="DetailsTitle" xml:space="preserve">
+    <value>İndirme Ayrıntıları</value>
+  </data>
+  <data name="DetailsFile" xml:space="preserve">
+    <value>Dosya:</value>
+  </data>
+  <data name="DetailsUrl" xml:space="preserve">
+    <value>Bağlantı:</value>
+  </data>
+  <data name="DetailsStatus" xml:space="preserve">
+    <value>Durum:</value>
+  </data>
+  <data name="DetailsDownloaded" xml:space="preserve">
+    <value>İndirilen:</value>
+  </data>
+  <data name="DetailsSpeed" xml:space="preserve">
+    <value>Hız:</value>
+  </data>
+  <data name="DetailsSegments" xml:space="preserve">
+    <value>Parçalar / Bağlantılar:</value>
+  </data>
+  <data name="AddUrlsTitle" xml:space="preserve">
+    <value>Bağlantı(lar) Ekle</value>
+  </data>
+  <data name="AddUrlsPrompt" xml:space="preserve">
+    <value>İndirilecek bağlantıları girin (her satıra bir tane):</value>
+  </data>
+  <data name="AddUrlsButton" xml:space="preserve">
+    <value>İndirmeyi Başlat</value>
+  </data>
+  <data name="TrayOpen" xml:space="preserve">
+    <value>Aç</value>
+  </data>
+  <data name="TrayQuit" xml:space="preserve">
+    <value>Çıkış</value>
+  </data>
+  <data name="TrayStartWithWindows" xml:space="preserve">
+    <value>Windows ile başlat</value>
+  </data>
+  <data name="UpdateYtDlp" xml:space="preserve">
+    <value>yt-dlp&apos;yi Güncelle</value>
+  </data>
+  <data name="UpdatingYtDlp" xml:space="preserve">
+    <value>yt-dlp güncelleniyor...</value>
+  </data>
+  <data name="YtDlpUpdated" xml:space="preserve">
+    <value>yt-dlp güncel!</value>
+  </data>
+  <data name="YtDlpUpdateFailed" xml:space="preserve">
+    <value>yt-dlp güncellenemedi: {0}</value>
+  </data>
+</root>

@@ -2,7 +2,8 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:McDm.App"
-        Title="MC Download Manager" Width="980" Height="560" MinWidth="720" MinHeight="320"
+        Title="MC Download Manager" Width="1040" Height="600" MinWidth="750" MinHeight="360"
+        Icon="Resources/app.ico"
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
         <local:BytesConverter x:Key="Bytes" />
@@ -15,40 +16,120 @@
         <CommandBinding Command="{x:Static local:MainWindow.PasteCommand}" Executed="PasteUrl_Click" />
     </Window.CommandBindings>
     <DockPanel>
-        <ToolBar DockPanel.Dock="Top">
-            <Button Content="Add from clipboard" Click="PasteUrl_Click" />
-            <Separator />
-            <Button Content="Pause" Click="Pause_Click" />
-            <Button Content="Resume" Click="Resume_Click" />
-            <Button Content="Cancel" Click="Cancel_Click" />
-            <Button Content="Remove" Click="Remove_Click" />
-            <Separator />
-            <Button Content="Open folder" Click="OpenFolder_Click" />
-        </ToolBar>
+        <!-- Top Toolbar -->
+        <ToolBarTray DockPanel.Dock="Top">
+            <ToolBar>
+                <Button x:Name="BtnAddFromClipboard" Content="Add from clipboard" Click="PasteUrl_Click" />
+                <Button x:Name="BtnAddUrls" Content="Add URLs" Click="AddUrls_Click" />
+                <Separator />
+                <Button x:Name="BtnPause" Content="Pause" Click="Pause_Click" />
+                <Button x:Name="BtnResume" Content="Resume" Click="Resume_Click" />
+                <Button x:Name="BtnCancel" Content="Cancel" Click="Cancel_Click" />
+                <Button x:Name="BtnRemove" Content="Remove" Click="Remove_Click" />
+                <Separator />
+                <Button x:Name="BtnOpenFolder" Content="Open folder" Click="OpenFolder_Click" />
+                <Separator />
+                <Button x:Name="BtnBrowserSetup" Content="Browser setup" Click="BrowserSetup_Click" />
+                <Button x:Name="BtnSettings" Content="Settings" Click="Settings_Click" />
+                <Separator />
+                <Button x:Name="BtnUpdateYtDlp" Content="Update yt-dlp" Click="UpdateYtDlp_Click" />
+            </ToolBar>
+        </ToolBarTray>
+
+        <!-- Bottom Status Bar -->
         <StatusBar DockPanel.Dock="Bottom">
-            <TextBlock x:Name="StatusText" />
+            <StatusBarItem>
+                <TextBlock x:Name="StatusText" Text="Ready" />
+            </StatusBarItem>
+            <StatusBarItem HorizontalAlignment="Right">
+                <TextBlock x:Name="TotalSpeedText" Margin="0,0,10,0" />
+            </StatusBarItem>
         </StatusBar>
-        <DataGrid x:Name="Grid" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Extended"
-                  CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal"
-                  MouseDoubleClick="Grid_DoubleClick">
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="Name" Binding="{Binding FileName}" Width="2*" />
-                <DataGridTextColumn Header="Size" Binding="{Binding TotalBytes, Converter={StaticResource Bytes}}" Width="90" />
-                <DataGridTemplateColumn Header="Progress" Width="160">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <Grid>
-                                <ProgressBar Minimum="0" Maximum="1" Value="{Binding Progress, Mode=OneWay}" Height="16" />
-                                <TextBlock Text="{Binding Progress, StringFormat={}{0:P0}}" HorizontalAlignment="Center" />
-                            </Grid>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-                <DataGridTextColumn Header="Speed" Binding="{Binding Speed, Converter={StaticResource Speed}}" Width="90" />
-                <DataGridTextColumn Header="Conn." Binding="{Binding ActiveConnections}" Width="50" />
-                <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="95" />
-                <DataGridTextColumn Header="Error" Binding="{Binding Error}" Width="*" />
-            </DataGrid.Columns>
-        </DataGrid>
+
+        <!-- Main Content Area: Sidebar Categories + Downloads Grid -->
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="180" MinWidth="130" MaxWidth="300" />
+                <ColumnDefinition Width="3" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Sidebar -->
+            <Border Grid.Column="0" Background="#F9FAFB" BorderBrush="#E5E7EB" BorderThickness="0,0,1,0">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="Categories" FontWeight="Bold" Margin="12,12,12,8" Foreground="#374151" />
+                    <ListBox x:Name="LstCategories" BorderThickness="0" Background="Transparent"
+                             SelectionChanged="Categories_SelectionChanged">
+                        <ListBoxItem x:Name="CatAll" Content="All Downloads" IsSelected="True" Tag="all" Padding="12,8" />
+                        <ListBoxItem x:Name="CatImages" Content="Images" Tag="images" Padding="12,8" />
+                        <ListBoxItem x:Name="CatMusic" Content="Music" Tag="music" Padding="12,8" />
+                        <ListBoxItem x:Name="CatVideo" Content="Video" Tag="video" Padding="12,8" />
+                        <ListBoxItem x:Name="CatApps" Content="Apps" Tag="apps" Padding="12,8" />
+                        <ListBoxItem x:Name="CatDocuments" Content="Documents" Tag="documents" Padding="12,8" />
+                        <ListBoxItem x:Name="CatArchives" Content="Archives" Tag="archives" Padding="12,8" />
+                        <ListBoxItem x:Name="CatOther" Content="Other" Tag="other" Padding="12,8" />
+                    </ListBox>
+                </DockPanel>
+            </Border>
+
+            <!-- Splitter -->
+            <GridSplitter Grid.Column="1" Width="3" HorizontalAlignment="Stretch" Background="#E5E7EB" />
+
+            <!-- Main Panel -->
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!-- Search Bar -->
+                <Grid Grid.Row="0" Margin="10,8,10,8">
+                    <TextBox x:Name="TxtSearch" Height="28" Padding="6,2" VerticalContentAlignment="Center"
+                             TextChanged="Search_TextChanged" />
+                    <TextBlock x:Name="TxtSearchWatermark" Text="Search downloads..." Foreground="#9CA3AF"
+                               IsHitTestVisible="False" VerticalAlignment="Center" Margin="10,0,0,0" />
+                </Grid>
+
+                <!-- Downloads DataGrid -->
+                <DataGrid x:Name="Grid" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Extended"
+                          CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                          MouseDoubleClick="Grid_DoubleClick">
+                    <DataGrid.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem x:Name="CtxOpen" Header="Open" Click="Open_Click" />
+                            <MenuItem x:Name="CtxOpenFolder" Header="Open folder" Click="OpenFolder_Click" />
+                            <Separator />
+                            <MenuItem x:Name="CtxPause" Header="Pause" Click="Pause_Click" />
+                            <MenuItem x:Name="CtxResume" Header="Resume" Click="Resume_Click" />
+                            <MenuItem x:Name="CtxCancel" Header="Cancel" Click="Cancel_Click" />
+                            <Separator />
+                            <MenuItem x:Name="CtxRemove" Header="Remove from list" Click="Remove_Click" />
+                            <MenuItem x:Name="CtxRemoveAndDelete" Header="Remove and delete file" Click="RemoveAndDelete_Click" />
+                            <Separator />
+                            <MenuItem x:Name="CtxCopyUrl" Header="Copy URL" Click="CopyUrl_Click" />
+                            <MenuItem x:Name="CtxDetails" Header="Details" Click="Details_Click" />
+                        </ContextMenu>
+                    </DataGrid.ContextMenu>
+                    <DataGrid.Columns>
+                        <DataGridTextColumn x:Name="ColHeaderName" Header="Name" Binding="{Binding FileName}" Width="2*" />
+                        <DataGridTextColumn x:Name="ColHeaderSize" Header="Size" Binding="{Binding TotalBytes, Converter={StaticResource Bytes}}" Width="90" />
+                        <DataGridTemplateColumn x:Name="ColHeaderProgress" Header="Progress" Width="160">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <ProgressBar Minimum="0" Maximum="1" Value="{Binding Progress, Mode=OneWay}" Height="16" />
+                                        <TextBlock Text="{Binding Progress, StringFormat={}{0:P0}}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="11" />
+                                    </Grid>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn x:Name="ColHeaderSpeed" Header="Speed" Binding="{Binding Speed, Converter={StaticResource Speed}}" Width="90" />
+                        <DataGridTextColumn x:Name="ColHeaderConn" Header="Conn." Binding="{Binding ActiveConnections}" Width="50" />
+                        <DataGridTextColumn x:Name="ColHeaderStatus" Header="Status" Binding="{Binding Status}" Width="95" />
+                        <DataGridTextColumn x:Name="ColHeaderError" Header="Details / Error" Binding="{Binding Stage, TargetNullValue={Binding Error}}" Width="*" />
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+        </Grid>
     </DockPanel>
 </Window>

@@ -1,0 +1,60 @@
+using System.IO;
+using System.Text.Json;
+
+namespace McDm.App;
+
+public sealed class AppSettings
+{
+    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+
+    public string DownloadDirectory { get; set; } =
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+
+    public int ConnectionsPerDownload { get; set; } = 8;
+    public int MaxConcurrentDownloads { get; set; } = 3;
+    public int SpeedLimitKbps { get; set; } = 0; // 0 = unlimited
+    public int MinCaptureSizeBytes { get; set; } = 5 * 1024 * 1024; // 5 MB
+
+    public string CapturedExtensions { get; set; } =
+        "zip,rar,7z,tar,gz,iso,exe,msi,bin,dmg,pkg,mp4,mkv,webm,mov,avi,mp3,flac,wav,m4a,pdf,epub,doc,docx,xls,xlsx,ppt,pptx";
+
+    public string PreferredVideoFormat { get; set; } = "mp4";
+    public int MaxVideoResolution { get; set; } = 1080;
+
+    public string Language { get; set; } = "auto"; // "auto", "en", "tr"
+    public bool StartWithWindows { get; set; } = false;
+    public bool ClipboardWatcherEnabled { get; set; } = true;
+    public bool NotificationsEnabled { get; set; } = true;
+
+    public static string SettingsFilePath =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MC Download Manager", "settings.json");
+
+    public static AppSettings Load()
+    {
+        try
+        {
+            var path = SettingsFilePath;
+            if (File.Exists(path))
+            {
+                var json = File.ReadAllText(path);
+                var loaded = JsonSerializer.Deserialize<AppSettings>(json);
+                if (loaded != null) return loaded;
+            }
+        }
+        catch { }
+        return new AppSettings();
+    }
+
+    public void Save()
+    {
+        try
+        {
+            var path = SettingsFilePath;
+            var dir = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
+            var json = JsonSerializer.Serialize(this, JsonOptions);
+            File.WriteAllText(path, json);
+        }
+        catch { }
+    }
+}

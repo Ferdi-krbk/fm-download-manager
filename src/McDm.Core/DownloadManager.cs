@@ -25,6 +25,7 @@ public sealed class DownloadManager : IDisposable
     public string DefaultDownloadDirectory { get; set; }
     public int DefaultConnections { get; set; } = 8;
     public int MaxConcurrentDownloads { get; set; } = 3;
+    public SpeedLimiter SpeedLimiter { get; } = new();
 
     public event Action<DownloadItem>? ItemCompleted;
 
@@ -34,12 +35,54 @@ public sealed class DownloadManager : IDisposable
     {
         Directory.CreateDirectory(dataDirectory);
         _dbPath = Path.Combine(dataDirectory, "downloads.json");
-        _engine = engine ?? new SegmentedDownloader();
+        _engine = engine ?? new SegmentedDownloader(options: new EngineOptions { Limiter = SpeedLimiter });
         _videoEngine = videoEngine;
         _ui = uiContext;
         DefaultDownloadDirectory = downloadDirectory
             ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
         Load();
+    }
+
+    // ───────────────────────── queue reordering ─────────────────────────
+
+    public bool MoveUp(string id)
+    {
+        lock (_gate)
+        {
+            int idx = _all.FindIndex(i => i.Id == id);
+            if (idx <= 0) return false;
+            var item = _all[idx];
+            _all.RemoveAt(idx);
+            _all.Insert(idx - 1, item);
+            Post(() =>
+            {
+                int uiIdx = Items.IndexOf(item);
+                if (uiIdx > 0) Items.Move(uiIdx, uiIdx - 1);
+            });
+            Save();
+            Pump();
+            return true;
+        }
+    }
+
+    public bool MoveDown(string id)
+    {
+        lock (_gate)
+        {
+            int idx = _all.FindIndex(i => i.Id == id);
+            if (idx < 0 || idx >= _all.Count - 1) return false;
+            var item = _all[idx];
+            _all.RemoveAt(idx);
+            _all.Insert(idx + 1, item);
+            Post(() =>
+            {
+                int uiIdx = Items.IndexOf(item);
+                if (uiIdx >= 0 && uiIdx < Items.Count - 1) Items.Move(uiIdx, uiIdx + 1);
+            });
+            Save();
+            Pump();
+            return true;
+        }
     }
 
     // ───────────────────────── commands ─────────────────────────
@@ -139,7 +182,7 @@ public sealed class DownloadManager : IDisposable
         lock (_gate)
         {
             int running = _all.Count(i => i.Status == DownloadStatus.Downloading);
-            foreach (var i in _all.Where(i => i.Status == DownloadStatus.Queued).OrderBy(i => i.CreatedAt))
+            foreach (var i in _all.Where(i => i.Status == DownloadStatus.Queued))
             {
                 if (running >= MaxConcurrentDownloads) break;
                 i.Status = DownloadStatus.Downloading;

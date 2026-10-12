@@ -19,6 +19,7 @@ public sealed class EngineOptions
     public long MinChunkBytes { get; set; } = 1024 * 1024;
     public long MaxChunkBytes { get; set; } = 32L * 1024 * 1024;
     public TimeSpan ThrottleBackoff { get; set; } = TimeSpan.FromSeconds(2);
+    public SpeedLimiter? Limiter { get; set; }
 }
 
 public class DownloadException : Exception
@@ -106,6 +107,28 @@ public sealed class SegmentedDownloader
 
         var part = PartPath(item.SavePath);
         bool completed = false;
+
+        // Disk space check before preallocating
+        if (probe.Total > 0)
+        {
+            try
+            {
+                var targetDir = Path.GetFullPath(item.Directory);
+                var root = Path.GetPathRoot(targetDir);
+                if (!string.IsNullOrEmpty(root))
+                {
+                    var drive = new DriveInfo(root);
+                    if (drive.IsReady && drive.AvailableFreeSpace < probe.Total)
+                    {
+                        throw new FatalDownloadException(
+                            $"Not enough disk space on drive {root}. Required: {probe.Total} bytes, available: {drive.AvailableFreeSpace} bytes");
+                    }
+                }
+            }
+            catch (FatalDownloadException) { throw; }
+            catch { /* non-fatal if DriveInfo fails on custom UNC / virtual paths */ }
+        }
+
         var handle = File.OpenHandle(part, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite, FileOptions.Asynchronous);
         var ctx = new RunCtx
         {
@@ -156,24 +179,44 @@ public sealed class SegmentedDownloader
             handle.Dispose();
         }
 
-        // finished: close handle (done above), move into place, drop state
+        // finished: close handle (done above), move into place with antivirus/lock retry, drop state
         long finalSize = chunks.Sum(c => c.Done);
         item.TotalBytes = finalSize;
         item.DownloadedBytes = finalSize;
         item.ActiveConnections = 0;
         item.Speed = 0;
-        try { File.Move(part, item.SavePath, overwrite: false); }
-        catch (IOException)
-        {
-            lock (PathLock)
-            {
-                item.SavePath = FileNames.Unique(item.Directory, Path.GetFileName(item.SavePath));
-                File.Move(part, item.SavePath, overwrite: false);
-            }
-            item.FileName = Path.GetFileName(item.SavePath);
-        }
+
+        await MoveFileWithRetryAsync(part, item);
         TryDelete(StatePath(item.SavePath));
         TryDelete(StatePath(Path.ChangeExtension(part, null) ?? ""));
+    }
+
+    private static async Task MoveFileWithRetryAsync(string sourcePart, DownloadItem item)
+    {
+        // Antivirus scanners or indexers may briefly lock the file after handle disposal.
+        // Retry with backoff before falling back to unique name.
+        for (int attempt = 1; attempt <= 5; attempt++)
+        {
+            try
+            {
+                File.Move(sourcePart, item.SavePath, overwrite: false);
+                return;
+            }
+            catch (IOException) when (attempt < 5)
+            {
+                await Task.Delay(attempt * 100);
+            }
+            catch (IOException)
+            {
+                lock (PathLock)
+                {
+                    item.SavePath = FileNames.Unique(item.Directory, Path.GetFileName(item.SavePath));
+                    File.Move(sourcePart, item.SavePath, overwrite: false);
+                }
+                item.FileName = Path.GetFileName(item.SavePath);
+                return;
+            }
+        }
     }
 
     // ───────────────────────── probing ─────────────────────────
@@ -358,6 +401,8 @@ public sealed class SegmentedDownloader
                     readCts.CancelAfter(_opt.ReadTimeout);
                     int n = await stream.ReadAsync(buf.AsMemory(0, want), readCts.Token);
                     if (n == 0) break;
+
+                    if (_opt.Limiter != null) await _opt.Limiter.ThrottleAsync(n, ct);
 
                     try { await RandomAccess.WriteAsync(c.Handle, buf.AsMemory(0, n), chunk.Start + chunk.Done, ct); }
                     catch (IOException ex) { throw new FatalDownloadException($"Disk write failed: {ex.Message}", ex); }

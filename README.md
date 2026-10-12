@@ -2,7 +2,7 @@
   <img src="docs/icon.png" width="130" height="130" alt="FM Download Manager Logo" />
 </p>
 
-<h1 align="center">FM Download Manager v3.4.1</h1>
+<h1 align="center">FM Download Manager v3.4.2</h1>
 
 <p align="center">
   <b>Ultra-hızlı, çok parçalı indirme yöneticisi, entegre BitTorrent motoru, akıllı tarayıcı entegrasyonu ve 4K medya yakalayıcısı (Windows 10 & 11).</b><br>
@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Ferdi-krbk/fm-download-manager/releases"><img src="https://img.shields.io/badge/Release-v3.4.1-crimson.svg?style=for-the-badge&logo=windows" alt="Release v3.4.1"></a>
+  <a href="https://github.com/Ferdi-krbk/fm-download-manager/releases"><img src="https://img.shields.io/badge/Release-v3.4.2-crimson.svg?style=for-the-badge&logo=windows" alt="Release v3.4.2"></a>
   <a href="https://dotnet.microsoft.com/download/dotnet/8.0"><img src="https://img.shields.io/badge/.NET-8.0%20LTS-purple.svg?style=for-the-badge&logo=dotnet" alt=".NET 8"></a>
   <a href="https://github.com/Ferdi-krbk/fm-download-manager"><img src="https://img.shields.io/badge/BitTorrent-MonoTorrent%203.0-blue.svg?style=for-the-badge&logo=bittorrent" alt="BitTorrent"></a>
   <a href="https://github.com/Ferdi-krbk/fm-download-manager"><img src="https://img.shields.io/badge/YouTube-yt--dlp%20FastClient-red.svg?style=for-the-badge&logo=youtube" alt="yt-dlp"></a>

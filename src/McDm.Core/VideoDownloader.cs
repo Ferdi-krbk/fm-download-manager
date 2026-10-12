@@ -175,12 +175,6 @@ public sealed class VideoDownloader
             "--no-part-if-exists-placeholder-never-used".Length > 0 ? "--no-overwrites" : "",
             "-f", FormatSelector(o),
         };
-
-        if (IsYouTubeUrl(url))
-        {
-            a.Add("--extractor-args");
-            a.Add("youtube:player_client=android,web;player_skip=configs,webpage");
-        }
         a.RemoveAll(string.IsNullOrEmpty);
         if (!string.IsNullOrWhiteSpace(userAgent))
         {

@@ -15,7 +15,7 @@ namespace McDm.App;
 public partial class App : System.Windows.Application
 {
     private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
-    private const string RunValue = "MC Download Manager";
+    private const string RunValue = "FM Download Manager";
     private const string ShowEventName = @"Local\MCDownloadManager.Show";
     private const string QuitEventName = @"Local\MCDownloadManager.Quit";
 

@@ -2,25 +2,25 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>MC Download Manager</title>
+<title>FM Download Manager</title>
 <link rel="stylesheet" href="popup.css">
 </head>
 <body>
   <header>
     <div class="title">
       <img src="icons/icon48.png" alt="" width="20" height="20">
-      <span>MC Download Manager</span>
+      <span>FM Download Manager</span>
     </div>
     <div class="status"><span id="dot" class="dot"></span><span id="statusText" data-i18n="popupConnecting">Connecting…</span></div>
   </header>
 
   <div id="offline" class="box hidden">
-    <span data-i18n="popupOfflineBox">The app is not running. Open MC Download Manager.</span>
+    <span data-i18n="popupOfflineBox">The app is not running. Open FM Download Manager.</span>
     <button id="launch" class="hidden" data-i18n="popupLaunch">Open App</button>
   </div>
 
   <div id="pair" class="box hidden">
-    <span data-i18n="popupPairBox">Open MC Download Manager, choose "Copy pairing code", then paste the code here.</span>
+    <span data-i18n="popupPairBox">Open FM Download Manager, choose "Copy pairing code", then paste the code here.</span>
     <input id="pairCode" type="text" autocomplete="off" spellcheck="false" data-i18n-placeholder="popupPairPlaceholder" placeholder="Pairing code">
     <button id="pairBtn" class="primary" data-i18n="popupPairButton">Pair</button>
     <span id="pairMsg" class="muted"></span>

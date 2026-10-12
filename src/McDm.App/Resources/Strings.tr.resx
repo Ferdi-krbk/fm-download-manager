@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
     <xsd:element name="root" msdata:IsDataSet="true">
@@ -29,7 +29,7 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="AppTitle" xml:space="preserve">
-    <value>MC Download Manager</value>
+    <value>FM Download Manager</value>
   </data>
   <data name="AddFromClipboard" xml:space="preserve">
     <value>Panodan ekle</value>
@@ -161,7 +161,7 @@
     <value>Yakalanacak dosya uzantıları (virgülle ayrılmış):</value>
   </data>
   <data name="SettingsStartWithWindows" xml:space="preserve">
-    <value>MC Download Manager&apos;ı Windows ile başlat</value>
+    <value>FM Download Manager&apos;ı Windows ile başlat</value>
   </data>
   <data name="SettingsClipboardWatcher" xml:space="preserve">
     <value>Panodaki indirme bağlantılarını izle</value>
@@ -188,7 +188,7 @@
     <value>Tarayıcı Eklentisi Kurulumu</value>
   </data>
   <data name="WizardSubtitle" xml:space="preserve">
-    <value>MC Download Manager&apos;ı Chrome, Edge ve Brave ile bağlayın</value>
+    <value>FM Download Manager&apos;ı Chrome, Edge ve Brave ile bağlayın</value>
   </data>
   <data name="WizardStep1" xml:space="preserve">
     <value>1. Paketlenmemiş eklenti klasörünün konumu:</value>

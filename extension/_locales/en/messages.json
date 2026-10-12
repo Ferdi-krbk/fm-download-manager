@@ -1,12 +1,12 @@
 {
   "extName": {
-    "message": "MC Download Manager"
+    "message": "FM Download Manager"
   },
   "extDesc": {
-    "message": "Sends browser downloads to the MC Download Manager app and captures videos on pages."
+    "message": "Sends browser downloads to the FM Download Manager app and captures videos on pages."
   },
   "menuDownloadLink": {
-    "message": "Download with MC Download Manager"
+    "message": "Download with FM Download Manager"
   },
   "menuPageVideo": {
     "message": "Download video from this page (yt-dlp)"
@@ -18,7 +18,7 @@
     "message": "Video download started"
   },
   "notifOfflineTitle": {
-    "message": "MC Download Manager is not running"
+    "message": "FM Download Manager is not running"
   },
   "notifOfflineBody": {
     "message": "Open the app and try again."
@@ -148,7 +148,7 @@
     "message": "App found – not paired"
   },
   "popupPairBox": {
-    "message": "Open MC Download Manager, choose \"Copy pairing code\" (tray menu or Browser setup), then paste the code here."
+    "message": "Open FM Download Manager, choose \"Copy pairing code\" (tray menu or Browser setup), then paste the code here."
   },
   "popupPairPlaceholder": {
     "message": "Pairing code"

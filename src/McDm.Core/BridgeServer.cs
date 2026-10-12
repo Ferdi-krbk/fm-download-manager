@@ -135,10 +135,10 @@ public sealed class BridgeServer : IAsyncDisposable
         app.MapGet("/ping", (HttpContext ctx) =>
         {
             if (ctx.Items["paired"] is not true)
-                return Results.Json(new { name = "MC Download Manager", platform = "windows", version = Version, paired = false });
+                return Results.Json(new { name = "FM Download Manager", platform = "windows", version = Version, paired = false });
             return Results.Json(new
             {
-                name = "MC Download Manager",
+                name = "FM Download Manager",
                 platform = "windows",
                 version = Version,
                 paired = true,

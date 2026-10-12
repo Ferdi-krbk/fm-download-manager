@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
     <xsd:element name="root" msdata:IsDataSet="true">
@@ -29,7 +29,7 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="AppTitle" xml:space="preserve">
-    <value>MC Download Manager</value>
+    <value>FM Download Manager</value>
   </data>
   <data name="AddFromClipboard" xml:space="preserve">
     <value>Add from clipboard</value>
@@ -161,7 +161,7 @@
     <value>Captured file types (comma-separated):</value>
   </data>
   <data name="SettingsStartWithWindows" xml:space="preserve">
-    <value>Start MC Download Manager with Windows</value>
+    <value>Start FM Download Manager with Windows</value>
   </data>
   <data name="SettingsClipboardWatcher" xml:space="preserve">
     <value>Monitor clipboard for downloadable links</value>
@@ -188,7 +188,7 @@
     <value>Browser Extension Setup</value>
   </data>
   <data name="WizardSubtitle" xml:space="preserve">
-    <value>Connect MC Download Manager with Chrome, Edge, and Brave</value>
+    <value>Connect FM Download Manager with Chrome, Edge, and Brave</value>
   </data>
   <data name="WizardStep1" xml:space="preserve">
     <value>1. Locate the unpacked extension folder:</value>

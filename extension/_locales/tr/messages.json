@@ -1,12 +1,12 @@
 {
   "extName": {
-    "message": "MC Download Manager"
+    "message": "FM Download Manager"
   },
   "extDesc": {
-    "message": "Tarayıcı indirmelerini MC Download Manager uygulamasına yönlendirir ve sayfalardaki videoları yakalar."
+    "message": "Tarayıcı indirmelerini FM Download Manager uygulamasına yönlendirir ve sayfalardaki videoları yakalar."
   },
   "menuDownloadLink": {
-    "message": "MC Download Manager ile indir"
+    "message": "FM Download Manager ile indir"
   },
   "menuPageVideo": {
     "message": "Bu sayfadaki videoyu indir (yt-dlp)"
@@ -18,7 +18,7 @@
     "message": "Video indirmesi başlatıldı"
   },
   "notifOfflineTitle": {
-    "message": "MC Download Manager çalışmıyor"
+    "message": "FM Download Manager çalışmıyor"
   },
   "notifOfflineBody": {
     "message": "Uygulamayı açın ve tekrar deneyin."
@@ -148,7 +148,7 @@
     "message": "Uygulama bulundu – eşleşmedi"
   },
   "popupPairBox": {
-    "message": "MC Download Manager'ı açın, \"Eşleştirme kodunu kopyala\"yı seçin (tepsi menüsü veya Tarayıcı kurulumu) ve kodu buraya yapıştırın."
+    "message": "FM Download Manager'ı açın, \"Eşleştirme kodunu kopyala\"yı seçin (tepsi menüsü veya Tarayıcı kurulumu) ve kodu buraya yapıştırın."
   },
   "popupPairPlaceholder": {
     "message": "Eşleştirme kodu"

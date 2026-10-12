@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Ferdi-krbk/fm-download-manager/releases"><img src="https://img.shields.io/badge/Release-v0.1.0-blue.svg?style=for-the-badge&logo=windows" alt="Release v0.1.0"></a>
+  <a href="https://github.com/Ferdi-krbk/fm-download-manager/releases"><img src="https://img.shields.io/badge/Release-v2.0.0-blue.svg?style=for-the-badge&logo=windows" alt="Release v2.0.0"></a>
   <a href="https://dotnet.microsoft.com/download/dotnet/8.0"><img src="https://img.shields.io/badge/.NET-8.0%20LTS-purple.svg?style=for-the-badge&logo=dotnet" alt=".NET 8"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge" alt="License MIT"></a>
   <a href="README.tr.md"><img src="https://img.shields.io/badge/Language-T%C3%BCrk%C3%A7e-red.svg?style=for-the-badge" alt="Türkçe Dokümantasyon"></a>
@@ -133,7 +133,7 @@ FM Download Manager includes an unpacked Manifest V3 browser extension for **Goo
 ## 📥 Installation
 
 ### Method 1: Ready Installer (Recommended)
-Download the latest `FMDownloadManager-Setup-0.1.0.exe` from [GitHub Releases](https://github.com/Ferdi-krbk/fm-download-manager/releases).
+Download the latest `FMDownloadManager-Setup-2.0.0.exe` from [GitHub Releases](https://github.com/Ferdi-krbk/fm-download-manager/releases).
 - Installs to `%LOCALAPPDATA%\Programs\FM Download Manager` (no admin rights required).
 - Automatically configures desktop and start menu shortcuts.
 

@@ -1,5 +1,5 @@
 #define MyAppName "FM Download Manager"
-#define MyAppVersion "0.1.0"
+#define MyAppVersion "2.0.0"
 #define MyAppPublisher "FM Download Manager Authors"
 #define MyAppURL "https://github.com/mstcvk/mc-download-manager"
 #define MyAppExeName "FMDownloadManager.exe"
@@ -34,12 +34,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "startupicon"; Description: "Start FM Download Manager with Windows"; GroupDescription: "Windows Integration:"
 
 [Files]
-; Main published single-file binaries
+; Main published binaries (includes Tools and extension)
 Source: "..\publish\win-x64\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-; Tools folder (yt-dlp and ffmpeg if downloaded)
-Source: "..\Tools\*"; DestDir: "{app}\Tools"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
-; Chrome/Edge/Brave extension folder
-Source: "..\extension\*"; DestDir: "{app}\extension"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"

@@ -1,140 +1,194 @@
-# FM Download Manager (Windows Port)
+<p align="center">
+  <img src="docs/icon.png" width="120" height="120" alt="FM Download Manager Logo" />
+</p>
 
-> Fast, lightweight, multi-connection download manager with browser interception and video downloads for Windows 10/11 (C# / .NET 8).
->
-> *(Based on the upstream macOS project [mstcvk/mc-download-manager](https://github.com/mstcvk/mc-download-manager), MIT License).*
+<h1 align="center">FM Download Manager</h1>
 
----
+<p align="center">
+  <b>High-speed, multi-connection download manager with smart browser interception & 4K video downloader for Windows 10 & 11.</b>
+</p>
 
-## Features
+<p align="center">
+  <a href="https://github.com/Ferdi-krbk/fm-download-manager/releases"><img src="https://img.shields.io/badge/Release-v0.1.0-blue.svg?style=for-the-badge&logo=windows" alt="Release v0.1.0"></a>
+  <a href="https://dotnet.microsoft.com/download/dotnet/8.0"><img src="https://img.shields.io/badge/.NET-8.0%20LTS-purple.svg?style=for-the-badge&logo=dotnet" alt=".NET 8"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge" alt="License MIT"></a>
+  <a href="README.tr.md"><img src="https://img.shields.io/badge/Language-T%C3%BCrk%C3%A7e-red.svg?style=for-the-badge" alt="Türkçe Dokümantasyon"></a>
+</p>
 
-- **Multi-Connection Segmented Engine (`McDm.Core`):**
-  - Range-based parallel chunk downloads (1–16 connections, default 8).
-  - Adaptive connection pool shrinking upon HTTP `429 Too Many Requests` or `503 Service Unavailable`.
-  - Pause & resume support via atomic `.mcdm` state persistence.
-  - Automatic download restart if server changes `ETag` on resume.
-  - Safe redirect tracking (drops cookies when switching hosts).
-  - File sanitization, path traversal protection, and automatic collision renaming.
-  - Global speed limit throttling (KB/s) via token bucket.
-  - Disk free-space check before preallocating disk files.
-  - Antivirus lock retry with backoff on completion rename.
-
-- **Browser Integration (Chrome, Edge, Brave):**
-  - Intercepts browser downloads and hands them over with session cookies, Referer, and User-Agent.
-  - Loopback-only bridge (`127.0.0.1:48213`) secured with **random pairing token** (`X-MCDM-Token`).
-  - Supports configurable capture extensions and minimum file size thresholds.
-  - First-run **Browser Setup Wizard** with one-click folder opening and pairing code copy.
-
-- **Video Downloads (`yt-dlp` + `FFmpeg`):**
-  - Download videos directly from web pages into MP4/MKV with resolution selection up to 4K.
-  - Safe child process execution using `ArgumentList` without shell escaping.
-  - Real-time progress parsing and cancel/pause support.
-  - Built-in `scripts/fetch-tools.ps1` for verified SHA-256 binary downloads.
-
-- **Modern WPF Desktop App (`McDm.App`):**
-  - System tray icon with live speed tooltip and completion notifications.
-  - Minimize/close to system tray; single-instance activation via named mutex/events.
-  - Sidebar categories: *All, Images, Music, Video, Apps, Documents, Archives, Other*.
-  - Search filter and IDM-style per-download segment/connection detail viewer.
-  - Clipboard monitoring for automatic download prompts.
-  - Full Turkish and English localization via `.resx` resources.
+<p align="center">
+  <a href="#features">Features</a> •
+  <a href="#architecture">Architecture</a> •
+  <a href="#browser-integration">Browser Integration</a> •
+  <a href="#video-downloads">Video Downloads</a> •
+  <a href="#installation--setup">Installation</a> •
+  <a href="#building-from-source">Build from Source</a> •
+  <a href="#troubleshooting">Troubleshooting</a>
+</p>
 
 ---
 
-## Architecture
+## ⚡ Highlights
+
+- 🚀 **Maximized Bandwidth:** Multi-connection segmented engine (up to 16 parallel threads per file).
+- 🌐 **Seamless Interception:** Intercepts browser downloads in **Chrome, Edge, and Brave** with session cookies, headers, and credentials.
+- 🎬 **Video Downloader:** One-click YouTube/web video downloader powered by `yt-dlp` and `FFmpeg` (up to 4K MP4/MKV).
+- 🛡️ **Zero-Crash Resilience:** Automatic pause/resume via atomic `.mcdm` state, ETag change recovery, and network change auto-healing.
+- 🎨 **Modern Native UI:** Fast, lightweight WPF client with system tray integration, categorized views, clipboard listener, and connection visualizer.
+- 🔒 **Zero Telemetry & Local Only:** Local HTTP bridge secured by 256-bit pairing token (`X-MCDM-Token`). No cloud dependencies.
+
+---
+
+## 📸 Overview & Features
+
+### 🗂️ Smart Sidebar Categorization & Search
+Organizes downloads by file type automatically (*All, Images, Music, Video, Apps, Documents, Archives, Other*) with real-time text filtering and sortable columns.
+
+### 📊 Connection Visualizer (IDM-Style)
+Inspect individual chunk byte-ranges, per-segment transfer speeds, and active thread counts in real time.
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│  Download: archive-backup.zip (2.4 GB)                                 │
+├────────────────────────────────────────────────────────────────────────┤
+│  [=====================================>         ] 78% (18.4 MB/s)     │
+│                                                                        │
+│  Segment 1:  [====================] 100% (300 MB / 300 MB)             │
+│  Segment 2:  [====================] 100% (300 MB / 300 MB)             │
+│  Segment 3:  [==============>     ]  72% (216 MB / 300 MB)             │
+│  Segment 4:  [===========>        ]  55% (165 MB / 300 MB)             │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+### 📋 Clipboard Auto-Detection
+Whenever an `http(s)` download link to a file is copied to your clipboard, FM Download Manager pops up a non-intrusive prompt asking if you'd like to capture it.
+
+### 🌐 System Tray Integration
+- Minimizes directly to tray when closing the window.
+- Real-time download speed and active transfer count shown in tray tooltip.
+- Native balloon notifications upon download completion.
+
+---
+
+## 🏗️ Architecture
 
 ```mermaid
 flowchart TD
-    subgraph Browser["Browser (Chrome / Edge / Brave)"]
-        EXT["Extension (MV3)"]
+    subgraph Browser["Chromium Browser (Chrome / Edge / Brave)"]
+        EXT["Extension (Manifest V3)"]
     end
 
-    subgraph DesktopApp["FM Download Manager (WPF & Background Shell)"]
-        UI["WPF UI (MainWindow, Settings, Wizard, Details)"]
-        TRAY["System Tray & Clipboard Watcher"]
-        BRIDGE["BridgeServer (Kestrel 127.0.0.1:48213)"]
-        DM["DownloadManager (Queue, Scheduler, Persistence)"]
-        ENGINE["SegmentedDownloader (Multi-Connection Engine)"]
-        VIDEO["VideoDownloader (yt-dlp + ffmpeg)"]
+    subgraph App["FM Download Manager (WPF & Core Engine)"]
+        UI["WPF Shell (Categories, Search, Details)"]
+        TRAY["Tray Icon & Clipboard Watcher"]
+        SERVER["BridgeServer (Kestrel 127.0.0.1:48213)"]
+        MGR["DownloadManager (Queue Scheduler & SQLite/JSON Store)"]
+        ENGINE["SegmentedDownloader (Multi-Connection HTTP Engine)"]
+        VIDEO["VideoDownloader (yt-dlp + FFmpeg process runner)"]
     end
 
-    EXT -- "HTTP POST/GET + X-MCDM-Token" --> BRIDGE
-    BRIDGE --> DM
-    UI --> DM
-    TRAY --> DM
-    DM --> ENGINE
-    DM --> VIDEO
-    ENGINE -- "Range Chunk Streams" --> TargetServer["Remote Web Server"]
-    VIDEO -- "Process Tree" --> Tools["Tools/ (yt-dlp.exe, ffmpeg.exe)"]
+    EXT -- "HTTP POST/GET + X-MCDM-Token" --> SERVER
+    SERVER --> MGR
+    UI --> MGR
+    TRAY --> MGR
+    MGR --> ENGINE
+    MGR --> VIDEO
+    ENGINE -- "Parallel Range Chunks" --> Target["Remote Web Server"]
+    VIDEO -- "Child Process Tree" --> Tools["Tools/ (yt-dlp.exe, ffmpeg.exe)"]
 ```
 
 ---
 
-## Bridge API Contract
+## 🔌 Browser Integration & Pairing Flow
 
-The local HTTP bridge listens on `127.0.0.1:48213`. Non-loopback Host headers and web origins are strictly rejected with `403 Forbidden`. Every endpoint (except `OPTIONS` and unauthenticated `/ping`) requires the pairing token header:
+FM Download Manager includes an unpacked Manifest V3 browser extension for **Google Chrome, Microsoft Edge, and Brave**.
 
-| Method | Endpoint | Headers Required | Description |
+```
+  1. Open FM Download Manager
+       ↓
+  2. Click "Browser setup" on toolbar
+       ↓
+  3. Click "Open folder" → Copies extension location
+       ↓
+  4. In Browser: Extensions (chrome://extensions) → Enable "Developer mode" → "Load unpacked"
+       ↓
+  5. Click Extension Icon in toolbar → Paste Pairing Token → Done (✓ Paired)
+```
+
+### Bridge Security Contract
+- **Loopback Enforced:** Listens exclusively on `127.0.0.1:48213`.
+- **Origin Validation:** Strictly refuses external web page origins or `null` origins with `403 Forbidden`.
+- **Token Protection:** Every bridge request requires the secret `X-MCDM-Token` generated per user under `%LOCALAPPDATA%\MC Download Manager\bridge.token`.
+
+| Method | Endpoint | Required Headers | Description |
 |---|---|---|---|
-| `GET` | `/ping` | *(none)* | Returns minimal `{ name, platform, version, paired: false }`. |
-| `GET` | `/ping` | `X-MCDM-Token` | Returns full status including `paired: true`, `ytDlpAvailable`, `active`, and settings. |
-| `GET` | `/downloads` | `X-MCDM-Token` | Returns recent downloads and their statuses. |
-| `POST` | `/download` | `X-MCDM-Token` | Intercepts/adds download (`url`, `fileName`, `referer`, `cookies`, `kind`). |
-| `POST` | `/action` | `X-MCDM-Token` | Triggers queue actions: `pause`, `resume`, `cancel`, `remove`. |
+| `GET` | `/ping` | *(none)* | Returns basic state `{ name, platform, version, paired: false }`. |
+| `GET` | `/ping` | `X-MCDM-Token` | Returns full status: `paired: true`, `ytDlpAvailable`, download count. |
+| `GET` | `/downloads`| `X-MCDM-Token` | Returns list of recent downloads with real-time status. |
+| `POST`| `/download` | `X-MCDM-Token` | Intercepts download with cookies, referer & user-agent. |
+| `POST`| `/action`   | `X-MCDM-Token` | Controls downloads (`pause`, `resume`, `cancel`, `remove`). |
 
 ---
 
-## Browser Extension Setup & Pairing
+## 📥 Installation
 
-1. Start **FM Download Manager**.
-2. Click **Browser setup** on the toolbar (or select **Browser extension setup** from settings).
-3. Click **Open extension folder in Explorer** to open the `extension/` directory.
-4. Open `chrome://extensions` (or `edge://extensions` / `brave://extensions`) in your browser.
-5. Enable **Developer mode** and click **Load unpacked**. Select the extension folder.
-6. Click the FM Download Manager icon in the browser toolbar.
-7. Click **Copy pairing code** in the app and paste it into the extension popup.
-8. The extension will display **Paired ✓** and begin intercepting downloads!
+### Method 1: Ready Installer (Recommended)
+Download the latest `FMDownloadManager-Setup-0.1.0.exe` from [GitHub Releases](https://github.com/Ferdi-krbk/fm-download-manager/releases).
+- Installs to `%LOCALAPPDATA%\Programs\FM Download Manager` (no admin rights required).
+- Automatically configures desktop and start menu shortcuts.
+
+### Method 2: Portable / Standalone
+Download the self-contained single-file `.exe` and run directly.
 
 ---
 
-## Building from Source
+## 🛠️ Building from Source
 
 ### Prerequisites
 - Windows 10 (1809+) or Windows 11 (x64)
-- .NET 8.0 SDK
+- [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+- Inno Setup 6 (optional, for installer creation)
 
 ### Commands
 
 ```powershell
-# 1. Restore & Build Release
+# Clone the repository
+git clone https://github.com/Ferdi-krbk/fm-download-manager.git
+cd fm-download-manager
+
+# Build Solution
 dotnet build -c Release
 
-# 2. Run All 20 Automated Tests
+# Run automated tests (20 end-to-end tests)
 dotnet run -c Release --project tests/McDm.Tests
 
-# 3. Publish Self-Contained Win-x64 Single File
+# Publish self-contained single-file executable
 dotnet publish src/McDm.App/McDm.App.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish/win-x64
 
-# 4. Fetch yt-dlp & FFmpeg Tools (Optional for Video Downloads)
+# (Optional) Download official yt-dlp & FFmpeg binaries
 powershell -ExecutionPolicy Bypass -File scripts/fetch-tools.ps1
 
-# 5. Compile Inno Setup Installer
+# (Optional) Compile Inno Setup installer
 & "C:\Users\Ferdi\AppData\Local\Programs\Inno Setup 6\ISCC.exe" installer\setup.iss
 ```
 
-The compiled installer will be located in `dist/FMDownloadManager-Setup-0.1.0.exe`.
+---
+
+## ⚙️ Settings & Customization
+
+| Setting | Default | Description |
+|---|---|---|
+| **Download Folder** | `~/Downloads` | Default destination directory for downloaded files. |
+| **Connections** | `8` | Parallel Range threads per download (1 to 16). |
+| **Max Concurrent** | `3` | Maximum number of simultaneously downloading tasks. |
+| **Speed Limit** | `0` (Unlimited) | Global throttling cap in KB/s. |
+| **Min Intercept Size**| `5 MB` | Browser downloads smaller than this won't be captured. |
+| **Start with Windows**| `Disabled` | Adds background tray launch on Windows startup (`--background`). |
+| **Language** | `Auto` | Select between English and Turkish (Türkçe). |
 
 ---
 
-## Troubleshooting
+## 📄 License & Attribution
 
-- **Port 48213 is already in use:** Ensure no conflicting application or zombie process is holding port 48213 (`netstat -ano | findstr 48213`).
-- **Extension shows "Not paired":** Open the app, click **Browser setup**, copy your pairing code, and paste it into the extension popup.
-- **SmartScreen warning:** Unsigned binaries built locally or downloaded from GitHub without an EV certificate will display a SmartScreen prompt. Click *More info* -> *Run anyway*.
-- **Video downloads say "yt-dlp missing":** Run `scripts/fetch-tools.ps1` to automatically fetch official `yt-dlp.exe` and `ffmpeg.exe` builds into `Tools/`.
-
----
-
-## Known Limitations
-
-- **Firefox Extension:** Firefox requires signed `.xpi` extensions or `about:debugging` temporary loading in developer editions. Chrome, Edge, and Brave are fully supported out-of-the-box via MV3 unpackaged loading.
+- Released under the **MIT License**.
+- Based on the upstream macOS project [mstcvk/mc-download-manager](https://github.com/mstcvk/mc-download-manager).
+- Bundled third-party tools (FFmpeg & yt-dlp) are governed by their respective licenses (LGPL/GPL & Unlicense). See [NOTICE.md](NOTICE.md) for full attribution details.

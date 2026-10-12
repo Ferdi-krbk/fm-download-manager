@@ -74,6 +74,20 @@ public sealed class VideoDownloader
 
     public bool Available => _ytDlp() != null;
 
+    public static bool IsVideoUrl(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return false;
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return false;
+        var host = uri.Host.ToLowerInvariant();
+        return host.Contains("youtube.com") || host.Contains("youtu.be") ||
+               host.Contains("tiktok.com") || host.Contains("instagram.com") ||
+               host.Contains("twitter.com") || host.Contains("x.com") ||
+               host.Contains("vimeo.com") || host.Contains("dailymotion.com") ||
+               host.Contains("facebook.com") || host.Contains("fb.watch") ||
+               host.Contains("twitch.tv") || host.Contains("bilibili.com") ||
+               host.Contains("reddit.com");
+    }
+
     // ───────────────────────── argument construction ─────────────────────────
 
     public static string FormatSelector(VideoOptions o) => "bv*+ba/b";

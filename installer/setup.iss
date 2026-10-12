@@ -2,7 +2,7 @@
 #define MyAppVersion "0.1.0"
 #define MyAppPublisher "FM Download Manager Authors"
 #define MyAppURL "https://github.com/mstcvk/mc-download-manager"
-#define MyAppExeName "MCDownloadManager.exe"
+#define MyAppExeName "FMDownloadManager.exe"
 
 [Setup]
 ; AppId uniquely identifies this application. Do not use the same AppId in other installers.
@@ -31,7 +31,7 @@ Name: "turkish"; MessagesFile: "compiler:Languages\Turkish.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
-Name: "startupicon"; Description: "Start MC Download Manager with Windows"; GroupDescription: "Windows Integration:"
+Name: "startupicon"; Description: "Start FM Download Manager with Windows"; GroupDescription: "Windows Integration:"
 
 [Files]
 ; Main published single-file binaries

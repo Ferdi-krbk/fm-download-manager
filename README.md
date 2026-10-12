@@ -82,7 +82,7 @@ flowchart TD
         UI["WPF Shell (Categories, Search, Details)"]
         TRAY["Tray Icon & Clipboard Watcher"]
         SERVER["BridgeServer (Kestrel 127.0.0.1:48213)"]
-        MGR["DownloadManager (Queue Scheduler & SQLite/JSON Store)"]
+        MGR["DownloadManager (Queue Scheduler & JSON Store)"]
         ENGINE["SegmentedDownloader (Multi-Connection HTTP Engine)"]
         VIDEO["VideoDownloader (yt-dlp + FFmpeg process runner)"]
     end
@@ -168,8 +168,8 @@ dotnet publish src/McDm.App/McDm.App.csproj -c Release -r win-x64 --self-contain
 # (Optional) Download official yt-dlp & FFmpeg binaries
 powershell -ExecutionPolicy Bypass -File scripts/fetch-tools.ps1
 
-# (Optional) Compile Inno Setup installer
-& "C:\Users\Ferdi\AppData\Local\Programs\Inno Setup 6\ISCC.exe" installer\setup.iss
+# (Optional) Compile Inno Setup installer (if Inno Setup 6 is installed)
+iscc installer\setup.iss
 ```
 
 ---

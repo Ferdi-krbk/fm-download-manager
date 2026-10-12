@@ -154,8 +154,8 @@ dotnet publish src/McDm.App/McDm.App.csproj -c Release -r win-x64 --self-contain
 # (İsteğe bağlı) Resmi yt-dlp ve FFmpeg araçlarını indirin
 powershell -ExecutionPolicy Bypass -File scripts/fetch-tools.ps1
 
-# (İsteğe bağlı) Inno Setup kurulum paketini derleyin
-& "C:\Users\Ferdi\AppData\Local\Programs\Inno Setup 6\ISCC.exe" installer\setup.iss
+# (İsteğe bağlı) Inno Setup kurulum paketini derleyin (Inno Setup 6 kuruluysa)
+iscc installer\setup.iss
 ```
 
 ---

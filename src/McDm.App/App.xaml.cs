@@ -177,22 +177,22 @@ public partial class App : System.Windows.Application
 
                     if (Uri.TryCreate(text, UriKind.Absolute, out var uri) && (uri.Scheme is "http" or "https"))
                     {
+                        var isVideo = VideoDownloader.IsVideoUrl(text);
                         var ext = Path.GetExtension(uri.AbsolutePath).TrimStart('.');
-                        if (!string.IsNullOrEmpty(ext))
-                        {
-                            var capturedList = (_settings.CapturedExtensions ?? "")
-                                .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                        var capturedList = (_settings.CapturedExtensions ?? "")
+                            .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                        bool isCapturedFile = !string.IsNullOrEmpty(ext) && capturedList.Any(e => string.Equals(e, ext, StringComparison.OrdinalIgnoreCase));
 
-                            if (capturedList.Any(e => string.Equals(e, ext, StringComparison.OrdinalIgnoreCase)))
+                        if (isVideo || isCapturedFile)
+                        {
+                            // Show confirmation prompt
+                            var msg = string.Format(Strings.DownloadPromptMessage, text);
+                            var res = MessageBox.Show(msg, Strings.DownloadPromptTitle, MessageBoxButton.YesNo, MessageBoxImage.Question);
+                            if (res == MessageBoxResult.Yes)
                             {
-                                // Show confirmation prompt
-                                var msg = string.Format(Strings.DownloadPromptMessage, text);
-                                var res = MessageBox.Show(msg, Strings.DownloadPromptTitle, MessageBoxButton.YesNo, MessageBoxImage.Question);
-                                if (res == MessageBoxResult.Yes)
-                                {
-                                    _manager?.Add(new DownloadRequest { Url = text });
-                                    ShowWindow();
-                                }
+                                var kind = isVideo ? DownloadKind.Video : DownloadKind.File;
+                                _manager?.Add(new DownloadRequest { Url = text, Kind = kind });
+                                ShowWindow();
                             }
                         }
                     }

@@ -148,7 +148,8 @@ public partial class MainWindow : Window
             StatusText.Text = "Clipboard does not contain an http(s) link.";
             return;
         }
-        _manager.Add(new DownloadRequest { Url = text });
+        var kind = VideoDownloader.IsVideoUrl(text) ? DownloadKind.Video : DownloadKind.File;
+        _manager.Add(new DownloadRequest { Url = text, Kind = kind });
         StatusText.Text = "Added " + uri.Host;
     }
 
@@ -159,7 +160,8 @@ public partial class MainWindow : Window
         {
             foreach (var u in dlg.ResultUrls)
             {
-                _manager.Add(new DownloadRequest { Url = u });
+                var kind = VideoDownloader.IsVideoUrl(u) ? DownloadKind.Video : DownloadKind.File;
+                _manager.Add(new DownloadRequest { Url = u, Kind = kind });
             }
             StatusText.Text = $"Added {dlg.ResultUrls.Count} URL(s)";
         }

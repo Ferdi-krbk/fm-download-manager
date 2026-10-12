@@ -14,7 +14,7 @@ public sealed class UpdateInfo
 
 public static class UpdateChecker
 {
-    public const string CurrentVersion = "3.3.0";
+    public const string CurrentVersion = "3.4.0";
     public const string RepoOwner = "Ferdi-krbk";
     public const string RepoName = "fm-download-manager";
 

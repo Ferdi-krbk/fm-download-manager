@@ -169,11 +169,13 @@ function notify(title, message) {
   } catch {}
 }
 
-async function sendToApp({ url, filename, referer, kind }) {
+async function sendToApp({ url, filename, referer, kind, format, audioOnly }) {
   const settings = await getSettings();
   const ck = await cookiesFor(url);
+  const isAudio = audioOnly === true || format === 'audio';
   const payload = {
     url, filename: filename || '', referer: referer || '', kind: kind || 'file',
+    audioOnly: isAudio,
     userAgent: navigator.userAgent, cookieHeader: ck.header, cookies: ck.list,
   };
   const post = async () => fetch(base(settings) + '/download', {

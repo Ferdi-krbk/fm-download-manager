@@ -474,4 +474,33 @@ public partial class MainWindow : Window
             win.ShowDialog();
         }
     }
+
+    private UpdateInfo? _latestUpdate;
+
+    public void NotifyUpdateAvailable(UpdateInfo info)
+    {
+        _latestUpdate = info;
+        Dispatcher.Invoke(() =>
+        {
+            TxtUpdateVersion.Text = $"v{info.LatestVersion} Yayında!";
+            BtnUpdateAvailable.Visibility = Visibility.Visible;
+        });
+    }
+
+    private void UpdateAvailable_Click(object sender, RoutedEventArgs e)
+    {
+        if (_latestUpdate == null) return;
+        var notes = string.IsNullOrWhiteSpace(_latestUpdate.ReleaseNotes) ? "" :
+            (_latestUpdate.ReleaseNotes.Length > 250 ? _latestUpdate.ReleaseNotes[..250] + "..." : _latestUpdate.ReleaseNotes);
+        var msg = $"FM Download Manager için yeni bir güncelleme mevcut!\n\n" +
+                  $"Kurulu Sürüm: v{UpdateChecker.CurrentVersion}\n" +
+                  $"Yeni Sürüm: v{_latestUpdate.LatestVersion}\n\n" +
+                  (notes.Length > 0 ? $"Yenilikler:\n{notes}\n\n" : "") +
+                  "GitHub indirme sayfasını açmak istiyor musunuz?";
+        var res = DarkMessageBox.Show(this, msg, Strings.AppTitle, MessageBoxButton.YesNo, MessageBoxImage.Information);
+        if (res == MessageBoxResult.Yes)
+        {
+            try { Process.Start(new ProcessStartInfo(_latestUpdate.ReleaseUrl) { UseShellExecute = true }); } catch { }
+        }
+    }
 }

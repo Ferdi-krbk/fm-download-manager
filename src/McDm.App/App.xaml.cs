@@ -336,6 +336,34 @@ public partial class App : System.Windows.Application
 
         _window = new MainWindow(_manager, _tokenStore, _settings, _bridge);
         if (!e.Args.Contains("--background")) _window.Show();
+
+        // Non-blocking auto update check on startup
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(4000);
+                var info = await UpdateChecker.CheckAsync();
+                if (info != null && info.HasUpdate)
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        if (_settings?.NotificationsEnabled != false && _tray != null)
+                        {
+                            _tray.BalloonTipClicked += (_, _) =>
+                            {
+                                try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(info.ReleaseUrl) { UseShellExecute = true }); } catch { }
+                            };
+                            _tray.ShowBalloonTip(7000, "Yeni Güncelleme Mevcut!",
+                                $"FM Download Manager v{info.LatestVersion} yayınlandı. Tıklayarak indirebilirsiniz.", Forms.ToolTipIcon.Info);
+                        }
+
+                        _window?.NotifyUpdateAvailable(info);
+                    });
+                }
+            }
+            catch { }
+        });
         }
         catch (Exception ex)
         {
@@ -361,6 +389,30 @@ public partial class App : System.Windows.Application
         var startup = new Forms.ToolStripMenuItem(Strings.TrayStartWithWindows) { Checked = IsStartupEnabled(), CheckOnClick = true };
         startup.CheckedChanged += (_, _) => SetStartup(startup.Checked);
         menu.Items.Add(startup);
+        menu.Items.Add("Güncellemeleri Denetle...", null, async (_, _) =>
+        {
+            var info = await UpdateChecker.CheckAsync();
+            if (info != null && info.HasUpdate)
+            {
+                var res = DarkMessageBox.Show(_window,
+                    $"Yeni bir sürüm yayınlandı!\n\nFM Download Manager v{info.LatestVersion}\n\nGitHub indirme sayfasını açmak ister misiniz?",
+                    Strings.AppTitle, MessageBoxButton.YesNo, MessageBoxImage.Information);
+                if (res == MessageBoxResult.Yes)
+                {
+                    try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(info.ReleaseUrl) { UseShellExecute = true }); } catch { }
+                }
+            }
+            else if (info != null)
+            {
+                DarkMessageBox.Show(_window, $"Uygulamanız güncel!\n\nKurulu Sürüm: v{UpdateChecker.CurrentVersion}\nSon Sürüm: v{info.LatestVersion}",
+                    Strings.AppTitle, MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            else
+            {
+                DarkMessageBox.Show(_window, "Güncellemeler denetlenirken GitHub bağlantısı kurulamadı.",
+                    Strings.AppTitle, MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        });
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add(Strings.TrayQuit, null, (_, _) => Quit());
 

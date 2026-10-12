@@ -33,7 +33,7 @@
 <p align="center">
   <img src="docs/ui/dashboard_dark.png" width="900" alt="FM Download Manager Ana Ekran" style="border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);" />
   <br>
-  <i>FM Download Manager v3.2.0 — 1 Gbps Turbo Motor, Modern Koyu Bordo Tema, Canlı Vektör Hız Grafiği ve Çok Parçalı İndirme Kuyruğu</i>
+  <i>FM Download Manager v3.3.0 — Evrensel Medya Yakalama, 1 Gbps Turbo Motor, Otomatik Güncelleme Bildirimi ve Çok Parçalı İndirme Kuyruğu</i>
 </p>
 
 <br>
@@ -56,7 +56,7 @@
       <img src="docs/ui/extension_popup.png" width="280" alt="Medya Yakalayıcı Eklenti" />
       <br>
       <b>🎬 Akıllı Medya Yakalayıcısı</b>
-      <p><i>YouTube, Twitter, TikTok ve 1000+ siteden tek tıkla 4K/MP3 indirme</i></p>
+      <p><i>YouTube, Twitter, TikTok, HDFilmcehennemi, NotebookLM ve 1000+ siteden tek tıkla 4K/MP3 indirme</i></p>
     </td>
   </tr>
 </table>
@@ -67,7 +67,7 @@
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│  FM DOWNLOAD MANAGER v3.2.0 - TURBO PERFORMANCE EDITION                │
+│  FM DOWNLOAD MANAGER v3.3.0 - UNIVERSAL MEDIA & TURBO EDITION          │
 ├────────────────────────────────────────────────────────────────────────┤
 │  ⚡ 1 Gbps Turbo Motor (32 Segment) │  🧲 Dahili BitTorrent & Magnet   │
 │  📊 Canlı Vektör Hız Grafiği (EMA)  │  🎛️ Anlık Hız Limiti Kadranı     │
@@ -175,7 +175,7 @@ flowchart TD
 
 ## 📦 Kurulum (Installation)
 
-1. [GitHub Releases](https://github.com/Ferdi-krbk/fm-download-manager/releases) sayfasından en son **`FMDownloadManager-Setup-3.2.0.exe`** dosyasını indirin.
+1. [GitHub Releases](https://github.com/Ferdi-krbk/fm-download-manager/releases) sayfasından en son **`FMDownloadManager-Setup-3.3.0.exe`** dosyasını indirin.
 2. Kurulum sihirbazını çalıştırın (kullanıcı bazlı temiz kurulum, yönetici izni gerektirmez).
 3. Program açıldığında araç çubuğundaki **Tarayıcı Eklentisi** butonuna tıklayın ve tarayıcınızı seçin. Eklenti saniyeler içinde otomatik olarak yüklenip eşleşecektir.
 

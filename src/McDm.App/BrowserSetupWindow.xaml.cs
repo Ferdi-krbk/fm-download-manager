@@ -118,8 +118,26 @@ public partial class BrowserSetupWindow : Window
 
     private void CopyToken_Click(object sender, RoutedEventArgs e)
     {
-        Clipboard.SetText(TxtToken.Text);
-        BtnCopyCode.Content = "✓ " + Strings.PairingCodeCopied;
+        for (int i = 0; i < 5; i++)
+        {
+            try
+            {
+                Clipboard.SetDataObject(TxtToken.Text, true);
+                BtnCopyCode.Content = "✓ " + Strings.PairingCodeCopied;
+                return;
+            }
+            catch (System.Runtime.InteropServices.COMException)
+            {
+                System.Threading.Thread.Sleep(50);
+            }
+            catch (Exception)
+            {
+                // Fallback: select the text in case clipboard is completely locked by another app
+                TxtToken.Focus();
+                TxtToken.SelectAll();
+                return;
+            }
+        }
     }
 
     private void Close_Click(object sender, RoutedEventArgs e) => Close();

@@ -2,25 +2,25 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
 
-    <!-- Color Palette: Hard Black / Orange -->
-    <Color x:Key="ColorBg0">#000000</Color>
-    <Color x:Key="ColorBg1">#0A0A0A</Color>
-    <Color x:Key="ColorBg2">#121212</Color>
-    <Color x:Key="ColorBg3">#1A1A1A</Color>
-    <Color x:Key="ColorBg4">#242424</Color>
-    <Color x:Key="ColorLine">#2A2A2A</Color>
-    <Color x:Key="ColorLineStrong">#3A3A3A</Color>
-    <Color x:Key="ColorText">#F2F2F2</Color>
-    <Color x:Key="ColorTextDim">#A0A0A0</Color>
-    <Color x:Key="ColorTextMute">#6B6B6B</Color>
-    <Color x:Key="ColorAccent">#FF6A00</Color>
-    <Color x:Key="ColorAccentHover">#FF8533</Color>
-    <Color x:Key="ColorAccentPress">#E05A00</Color>
-    <Color x:Key="ColorAccentDim">#3A1A00</Color>
+    <!-- Color Palette: Sleek Modern Dark + Vibrant Orange -->
+    <Color x:Key="ColorBg0">#0C0D10</Color>
+    <Color x:Key="ColorBg1">#131418</Color>
+    <Color x:Key="ColorBg2">#1A1B22</Color>
+    <Color x:Key="ColorBg3">#232530</Color>
+    <Color x:Key="ColorBg4">#2D303E</Color>
+    <Color x:Key="ColorLine">#262833</Color>
+    <Color x:Key="ColorLineStrong">#383C4D</Color>
+    <Color x:Key="ColorText">#F2F3F5</Color>
+    <Color x:Key="ColorTextDim">#9E9EA8</Color>
+    <Color x:Key="ColorTextMute">#646675</Color>
+    <Color x:Key="ColorAccent">#FF6600</Color>
+    <Color x:Key="ColorAccentHover">#FF7F24</Color>
+    <Color x:Key="ColorAccentPress">#E65500</Color>
+    <Color x:Key="ColorAccentDim">#2B1503</Color>
     <Color x:Key="ColorOnAccent">#000000</Color>
     <Color x:Key="ColorDanger">#FF3B3B</Color>
-    <Color x:Key="ColorSuccess">#3DDC84</Color>
-    <Color x:Key="ColorAltRow">#0E0E0E</Color>
+    <Color x:Key="ColorSuccess">#22C55E</Color>
+    <Color x:Key="ColorAltRow">#101115</Color>
 
     <!-- SolidColorBrushes -->
     <SolidColorBrush x:Key="Bg0Brush" Color="{StaticResource ColorBg0}" />
@@ -42,8 +42,10 @@
     <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource ColorSuccess}" />
     <SolidColorBrush x:Key="AltRowBrush" Color="{StaticResource ColorAltRow}" />
 
-    <!-- CornerRadius = 0 everywhere -->
-    <CornerRadius x:Key="SharpCorner">0</CornerRadius>
+    <!-- Corner Radii -->
+    <CornerRadius x:Key="SharpCorner">3</CornerRadius>
+    <CornerRadius x:Key="ModernCorner">4</CornerRadius>
+    <CornerRadius x:Key="PillCorner">12</CornerRadius>
     <Thickness x:Key="BorderThickness1">1</Thickness>
     <Thickness x:Key="BorderThickness2">2</Thickness>
 
@@ -52,7 +54,35 @@
     <FontFamily x:Key="MonoFont">Consolas, monospace</FontFamily>
     <FontFamily x:Key="GlyphFont">Segoe MDL2 Assets, Segoe Fluent Icons, sans-serif</FontFamily>
 
-    <!-- SystemColors overrides so fallback WPF components stay hard black / orange -->
+    <!-- Vector Icon Geometries (100% reliable across all Windows versions) -->
+    <Geometry x:Key="GeoMin">M0 5h10v1.2H0z</Geometry>
+    <Geometry x:Key="GeoMax">M1 1h8v8H1V1zm1.2 1.2v5.6h5.6V2.2H2.2z</Geometry>
+    <Geometry x:Key="GeoClose">M8.5 1.5L7 0 4.25 2.75 1.5 0 0 1.5 2.75 4.25 0 7 1.5 8.5 4.25 5.75 7 8.5 8.5 7 5.75 4.25z</Geometry>
+
+    <Geometry x:Key="GeoAdd">M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z</Geometry>
+    <Geometry x:Key="GeoAddMulti">M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 9h-4v4h-2v-4H9V9h4V5h2v4h4v2z</Geometry>
+    <Geometry x:Key="GeoPause">M6 19h4V5H6v14zm8-14v14h4V5h-4z</Geometry>
+    <Geometry x:Key="GeoPlay">M8 5v14l11-7z</Geometry>
+    <Geometry x:Key="GeoStop">M6 6h12v12H6z</Geometry>
+    <Geometry x:Key="GeoTrash">M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z</Geometry>
+    <Geometry x:Key="GeoFolder">M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z</Geometry>
+    <Geometry x:Key="GeoSearch">M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z</Geometry>
+    <Geometry x:Key="GeoSettings">M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z</Geometry>
+    <Geometry x:Key="GeoRefresh">M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z</Geometry>
+    <Geometry x:Key="GeoLink">M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z</Geometry>
+    <Geometry x:Key="GeoAppLogo">M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z</Geometry>
+
+    <!-- Categories -->
+    <Geometry x:Key="GeoCatAll">M4 4h7v7H4V4zm9 0h7v7h-7V4zm-9 9h7v7H4v-7zm9 0h7v7h-7v-7z</Geometry>
+    <Geometry x:Key="GeoCatImages">M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z</Geometry>
+    <Geometry x:Key="GeoCatMusic">M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z</Geometry>
+    <Geometry x:Key="GeoCatVideo">M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z</Geometry>
+    <Geometry x:Key="GeoCatApps">M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z</Geometry>
+    <Geometry x:Key="GeoCatDocs">M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z</Geometry>
+    <Geometry x:Key="GeoCatArchives">M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-6 0h-4V4h4v2z</Geometry>
+    <Geometry x:Key="GeoCatOther">M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z</Geometry>
+
+    <!-- SystemColors overrides -->
     <SolidColorBrush x:Key="{x:Static SystemColors.WindowBrushKey}" Color="{StaticResource ColorBg0}" />
     <SolidColorBrush x:Key="{x:Static SystemColors.WindowTextBrushKey}" Color="{StaticResource ColorText}" />
     <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="{StaticResource ColorBg1}" />

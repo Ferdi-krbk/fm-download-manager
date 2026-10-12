@@ -21,7 +21,7 @@
             <Border Grid.Row="0" Background="{DynamicResource Bg1Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1">
                 <DockPanel LastChildFill="True">
                     <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" WindowChrome.IsHitTestVisibleInChrome="True">
-                        <Button Style="{DynamicResource CloseCaptionBtn}" Content="&#xE8BB;" Click="Cancel_Click" />
+                        <Button Style="{DynamicResource WindowCloseButtonStyle}" Click="Cancel_Click" />
                     </StackPanel>
                     <TextBlock Text="APPLICATION SETTINGS" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" Margin="14,0" />
                 </DockPanel>

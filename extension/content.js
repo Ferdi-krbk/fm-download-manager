@@ -63,10 +63,30 @@
     const items = [];
     document.querySelectorAll('video, audio, source').forEach((el) => {
       const src = el.currentSrc || el.src || el.getAttribute('src');
-      if (!src || !/^https?:/i.test(src) || reported.has(src)) return;
-      reported.add(src);
-      items.push({ url: src, type: el.getAttribute('type') || '', name: document.title ? document.title.slice(0, 80) : '' });
+      if (src && /^https?:/i.test(src) && !reported.has(src)) {
+        reported.add(src);
+        items.push({ url: src, type: el.getAttribute('type') || '', name: document.title ? document.title.slice(0, 80) : '' });
+      }
     });
+
+    // Detect streaming video players (YouTube, Vimeo, etc. or any page with a HTML5 video element)
+    const hasVideo = document.querySelector('video') !== null;
+    const isVideoSite = /(youtube\.com|youtu\.be|vimeo\.com|twitter\.com|x\.com|tiktok\.com|instagram\.com|twitch\.tv|facebook\.com|dailymotion\.com)/i.test(location.hostname);
+    if ((hasVideo || isVideoSite) && !reported.has(location.href) && /^https?:/i.test(location.href)) {
+      reported.add(location.href);
+      const cleanTitle = (document.title || 'Video')
+        .replace(/\s*-\s*YouTube$/i, '')
+        .replace(/\s*\|\s*X$/i, '')
+        .replace(/\s*\|\s*TikTok$/i, '')
+        .trim();
+      items.push({
+        url: location.href,
+        type: 'video/mp4',
+        name: cleanTitle.slice(0, 100),
+        kind: 'video'
+      });
+    }
+
     if (items.length) {
       try { api.runtime.sendMessage({ type: 'pageMedia', items }); } catch {}
     }

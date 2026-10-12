@@ -38,15 +38,15 @@
                 <DockPanel LastChildFill="True">
                     <!-- Title Bar Window Controls Right -->
                     <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" WindowChrome.IsHitTestVisibleInChrome="True">
-                        <Button Style="{DynamicResource CaptionBtn}" Content="&#xE921;" Click="Minimize_Click" />
-                        <Button Style="{DynamicResource CaptionBtn}" Content="&#xE922;" Click="Maximize_Click" />
-                        <Button Style="{DynamicResource CloseCaptionBtn}" Content="&#xE8BB;" Click="Close_Click" />
+                        <Button Style="{DynamicResource WindowMinButtonStyle}" Click="Minimize_Click" />
+                        <Button Style="{DynamicResource WindowMaxButtonStyle}" Click="Maximize_Click" />
+                        <Button Style="{DynamicResource WindowCloseButtonStyle}" Click="Close_Click" />
                     </StackPanel>
 
-                    <!-- Left: Small App Icon + Title in Uppercase -->
+                    <!-- Left: Small App Icon + Title -->
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0">
-                        <Image Source="Resources/app.ico" Width="16" Height="16" Margin="0,0,10,0" RenderOptions.BitmapScalingMode="HighQuality" />
-                        <TextBlock Text="FM DOWNLOAD MANAGER" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" />
+                        <Path Data="{StaticResource GeoAppLogo}" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" Margin="0,0,10,0" />
+                        <TextBlock Text="FM DOWNLOAD MANAGER" FontFamily="{DynamicResource UiFont}" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" />
                     </StackPanel>
                 </DockPanel>
             </Border>
@@ -58,29 +58,37 @@
                     <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
                         <Button x:Name="BtnAddFromClipboard" Style="{DynamicResource PrimaryButton}" Margin="0,0,8,0" Click="PasteUrl_Click">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="&#xE896;" FontFamily="{DynamicResource GlyphFont}" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                <Path Data="{StaticResource GeoAdd}" Width="11" Height="11" Stretch="Uniform" Fill="{DynamicResource OnAccentBrush}" Margin="0,0,6,0" VerticalAlignment="Center" />
                                 <TextBlock Text="ADD URL" FontWeight="Bold" FontSize="11" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
                         <Button x:Name="BtnAddUrls" Style="{DynamicResource SecondaryButton}" Margin="0,0,12,0" Click="AddUrls_Click">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="&#xE710;" FontFamily="{DynamicResource GlyphFont}" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                <Path Data="{StaticResource GeoAddMulti}" Width="11" Height="11" Stretch="Uniform" Fill="{DynamicResource TextBrush}" Margin="0,0,6,0" VerticalAlignment="Center" />
                                 <TextBlock Text="ADD MULTIPLE" FontWeight="SemiBold" FontSize="11" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
 
                         <Rectangle Width="1" Fill="{DynamicResource LineBrush}" Margin="0,8,12,8" />
 
-                        <Button x:Name="BtnPause" Style="{DynamicResource IconButton}" Content="&#xE769;" Margin="0,0,4,0" Click="Pause_Click" ToolTip="Pause selected download" />
-                        <Button x:Name="BtnResume" Style="{DynamicResource IconButton}" Content="&#xE768;" Margin="0,0,4,0" Click="Resume_Click" ToolTip="Resume selected download" />
-                        <Button x:Name="BtnCancel" Style="{DynamicResource IconButton}" Content="&#xE71A;" Margin="0,0,4,0" Click="Cancel_Click" ToolTip="Cancel selected download" />
-                        <Button x:Name="BtnRemove" Style="{DynamicResource IconButton}" Content="&#xE74D;" Margin="0,0,12,0" Click="Remove_Click" ToolTip="Remove from list" Foreground="{DynamicResource DangerBrush}" />
+                        <Button x:Name="BtnPause" Style="{DynamicResource IconButton}" Margin="0,0,4,0" Click="Pause_Click" ToolTip="Pause selected download">
+                            <Path Data="{StaticResource GeoPause}" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" />
+                        </Button>
+                        <Button x:Name="BtnResume" Style="{DynamicResource IconButton}" Margin="0,0,4,0" Click="Resume_Click" ToolTip="Resume selected download">
+                            <Path Data="{StaticResource GeoPlay}" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" />
+                        </Button>
+                        <Button x:Name="BtnCancel" Style="{DynamicResource IconButton}" Margin="0,0,4,0" Click="Cancel_Click" ToolTip="Cancel selected download">
+                            <Path Data="{StaticResource GeoStop}" Width="11" Height="11" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" />
+                        </Button>
+                        <Button x:Name="BtnRemove" Style="{DynamicResource IconButton}" Margin="0,0,12,0" Click="Remove_Click" ToolTip="Remove from list">
+                            <Path Data="{StaticResource GeoTrash}" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource DangerBrush}" />
+                        </Button>
 
                         <Rectangle Width="1" Fill="{DynamicResource LineBrush}" Margin="0,8,12,8" />
 
                         <Button x:Name="BtnOpenFolder" Style="{DynamicResource GhostButton}" Margin="0,0,4,0" Click="OpenFolder_Click">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="&#xED25;" FontFamily="{DynamicResource GlyphFont}" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                <Path Data="{StaticResource GeoFolder}" Width="13" Height="13" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" Margin="0,0,6,0" VerticalAlignment="Center" />
                                 <TextBlock Text="FOLDER" FontWeight="SemiBold" FontSize="11" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
@@ -92,20 +100,24 @@
                             <TextBox x:Name="TxtSearch" Height="32" Padding="28,0,8,0"
                                      local:WatermarkService.Watermark="SEARCH DOWNLOADS..."
                                      TextChanged="Search_TextChanged" />
-                            <TextBlock Text="&#xE721;" FontFamily="{DynamicResource GlyphFont}" FontSize="11"
-                                       Foreground="{DynamicResource TextDimBrush}" HorizontalAlignment="Left"
-                                       VerticalAlignment="Center" Margin="10,0,0,0" IsHitTestVisible="False" />
+                            <Path Data="{StaticResource GeoSearch}" Width="11" Height="11" Stretch="Uniform"
+                                  Fill="{DynamicResource TextDimBrush}" HorizontalAlignment="Left"
+                                  VerticalAlignment="Center" Margin="10,0,0,0" IsHitTestVisible="False" />
                             <TextBlock x:Name="TxtSearchWatermark" Visibility="Collapsed" />
                         </Grid>
 
                         <Button x:Name="BtnBrowserSetup" Style="{DynamicResource GhostButton}" Margin="0,0,4,0" Click="BrowserSetup_Click" ToolTip="Browser Extension Setup">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="&#xE71B;" FontFamily="{DynamicResource GlyphFont}" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                <Path Data="{StaticResource GeoLink}" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" Margin="0,0,6,0" VerticalAlignment="Center" />
                                 <TextBlock Text="EXTENSION" FontWeight="SemiBold" FontSize="11" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
-                        <Button x:Name="BtnSettings" Style="{DynamicResource IconButton}" Content="&#xE713;" Margin="0,0,4,0" Click="Settings_Click" ToolTip="Settings" />
-                        <Button x:Name="BtnUpdateYtDlp" Style="{DynamicResource IconButton}" Content="&#xE714;" Click="UpdateYtDlp_Click" ToolTip="Update yt-dlp binary" />
+                        <Button x:Name="BtnSettings" Style="{DynamicResource IconButton}" Margin="0,0,4,0" Click="Settings_Click" ToolTip="Settings">
+                            <Path Data="{StaticResource GeoSettings}" Width="13" Height="13" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" />
+                        </Button>
+                        <Button x:Name="BtnUpdateYtDlp" Style="{DynamicResource IconButton}" Click="UpdateYtDlp_Click" ToolTip="Update yt-dlp binary">
+                            <Path Data="{StaticResource GeoRefresh}" Width="13" Height="13" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" />
+                        </Button>
                     </StackPanel>
                 </DockPanel>
             </Border>
@@ -167,49 +179,49 @@
 
                             <ListBoxItem x:Name="CatAll" IsSelected="True" Tag="all">
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="&#xE8B9;" FontFamily="{DynamicResource GlyphFont}" FontSize="12" Margin="0,0,10,0" VerticalAlignment="Center" />
+                                    <Path Data="{StaticResource GeoCatAll}" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" Margin="0,0,10,0" VerticalAlignment="Center" />
                                     <TextBlock Text="ALL DOWNLOADS" FontSize="11" VerticalAlignment="Center" />
                                 </StackPanel>
                             </ListBoxItem>
                             <ListBoxItem x:Name="CatImages" Tag="images">
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="&#xEB9F;" FontFamily="{DynamicResource GlyphFont}" FontSize="12" Margin="0,0,10,0" VerticalAlignment="Center" />
+                                    <Path Data="{StaticResource GeoCatImages}" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" Margin="0,0,10,0" VerticalAlignment="Center" />
                                     <TextBlock Text="IMAGES" FontSize="11" VerticalAlignment="Center" />
                                 </StackPanel>
                             </ListBoxItem>
                             <ListBoxItem x:Name="CatMusic" Tag="music">
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="&#xEC4F;" FontFamily="{DynamicResource GlyphFont}" FontSize="12" Margin="0,0,10,0" VerticalAlignment="Center" />
+                                    <Path Data="{StaticResource GeoCatMusic}" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" Margin="0,0,10,0" VerticalAlignment="Center" />
                                     <TextBlock Text="MUSIC" FontSize="11" VerticalAlignment="Center" />
                                 </StackPanel>
                             </ListBoxItem>
                             <ListBoxItem x:Name="CatVideo" Tag="video">
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="&#xE714;" FontFamily="{DynamicResource GlyphFont}" FontSize="12" Margin="0,0,10,0" VerticalAlignment="Center" />
+                                    <Path Data="{StaticResource GeoCatVideo}" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" Margin="0,0,10,0" VerticalAlignment="Center" />
                                     <TextBlock Text="VIDEOS" FontSize="11" VerticalAlignment="Center" />
                                 </StackPanel>
                             </ListBoxItem>
                             <ListBoxItem x:Name="CatApps" Tag="apps">
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="&#xE71D;" FontFamily="{DynamicResource GlyphFont}" FontSize="12" Margin="0,0,10,0" VerticalAlignment="Center" />
+                                    <Path Data="{StaticResource GeoCatApps}" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" Margin="0,0,10,0" VerticalAlignment="Center" />
                                     <TextBlock Text="APPLICATIONS" FontSize="11" VerticalAlignment="Center" />
                                 </StackPanel>
                             </ListBoxItem>
                             <ListBoxItem x:Name="CatDocuments" Tag="documents">
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="&#xE8A5;" FontFamily="{DynamicResource GlyphFont}" FontSize="12" Margin="0,0,10,0" VerticalAlignment="Center" />
+                                    <Path Data="{StaticResource GeoCatDocs}" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" Margin="0,0,10,0" VerticalAlignment="Center" />
                                     <TextBlock Text="DOCUMENTS" FontSize="11" VerticalAlignment="Center" />
                                 </StackPanel>
                             </ListBoxItem>
                             <ListBoxItem x:Name="CatArchives" Tag="archives">
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="&#xF012;" FontFamily="{DynamicResource GlyphFont}" FontSize="12" Margin="0,0,10,0" VerticalAlignment="Center" />
+                                    <Path Data="{StaticResource GeoCatArchives}" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" Margin="0,0,10,0" VerticalAlignment="Center" />
                                     <TextBlock Text="ARCHIVES" FontSize="11" VerticalAlignment="Center" />
                                 </StackPanel>
                             </ListBoxItem>
                             <ListBoxItem x:Name="CatOther" Tag="other">
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="&#xED25;" FontFamily="{DynamicResource GlyphFont}" FontSize="12" Margin="0,0,10,0" VerticalAlignment="Center" />
+                                    <Path Data="{StaticResource GeoCatOther}" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" Margin="0,0,10,0" VerticalAlignment="Center" />
                                     <TextBlock Text="OTHER" FontSize="11" VerticalAlignment="Center" />
                                 </StackPanel>
                             </ListBoxItem>
@@ -330,7 +342,7 @@
                     <!-- Empty State Overlay (Visible when Items is empty) -->
                     <Border x:Name="EmptyStateOverlay" Background="{DynamicResource Bg0Brush}" Visibility="Collapsed" SnapsToDevicePixels="True">
                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <TextBlock Text="&#xE896;" FontFamily="{DynamicResource GlyphFont}" FontSize="48" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" Margin="0,0,0,16" />
+                            <Path Data="{StaticResource GeoAdd}" Width="40" Height="40" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" HorizontalAlignment="Center" Margin="0,0,0,16" />
                             <TextBlock Text="NO DOWNLOADS" FontFamily="{DynamicResource UiFont}" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Center" Margin="0,0,0,8" />
                             <TextBlock Text="PASTE A LINK WITH CTRL+V OR USE THE BROWSER EXTENSION" FontFamily="{DynamicResource UiFont}" FontSize="11" Foreground="{DynamicResource TextDimBrush}" HorizontalAlignment="Center" Margin="0,0,0,20" />
                             <Button Style="{DynamicResource PrimaryButton}" Content="ADD URL" HorizontalAlignment="Center" Width="140" Click="PasteUrl_Click" />

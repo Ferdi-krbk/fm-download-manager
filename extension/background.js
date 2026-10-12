@@ -457,7 +457,7 @@ api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         case 'pageMedia': {
           if (sender.tab) {
             for (const m of msg.items || []) {
-              const kind = classify(m.url, m.type || '');
+              const kind = m.kind || classify(m.url, m.type || '');
               if (kind || MEDIA_EXT.test(m.url)) {
                 await addMedia(sender.tab.id, { url: m.url, type: m.type || '', size: 0, kind: kind || 'media', time: Date.now(), name: m.name });
               }

@@ -55,7 +55,7 @@ public partial class AddUrlsDialog : Window
 
         if (ResultUrls.Count == 0)
         {
-            MessageBox.Show("Please enter at least one valid http(s) URL.", Strings.AppTitle, MessageBoxButton.OK, MessageBoxImage.Warning);
+            DarkMessageBox.Show(this, "Please enter at least one valid http(s) URL.", Strings.AppTitle, MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 

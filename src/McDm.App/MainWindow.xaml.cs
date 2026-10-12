@@ -208,7 +208,7 @@ public partial class MainWindow : Window
     private void CopyUrl_Click(object s, RoutedEventArgs e)
     {
         if (Selected.FirstOrDefault() is { } i && !string.IsNullOrEmpty(i.Request.Url))
-            Clipboard.SetText(i.Request.Url);
+            ClipboardHelper.SetText(i.Request.Url);
     }
 
     private void Details_Click(object s, RoutedEventArgs e)
@@ -251,7 +251,7 @@ public partial class MainWindow : Window
         var ytDlpPath = tools.YtDlpPath;
         if (string.IsNullOrEmpty(ytDlpPath))
         {
-            MessageBox.Show("yt-dlp is not installed. Run scripts/fetch-tools.ps1 first.", Strings.AppTitle, MessageBoxButton.OK, MessageBoxImage.Warning);
+            DarkMessageBox.Show(this, "yt-dlp is not installed. Run scripts/fetch-tools.ps1 first.", Strings.AppTitle, MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
@@ -273,13 +273,13 @@ public partial class MainWindow : Window
             {
                 await p.WaitForExitAsync();
                 StatusText.Text = Strings.YtDlpUpdated;
-                MessageBox.Show(Strings.YtDlpUpdated, Strings.AppTitle, MessageBoxButton.OK, MessageBoxImage.Information);
+                DarkMessageBox.Show(this, Strings.YtDlpUpdated, Strings.AppTitle, MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
         catch (Exception ex)
         {
             StatusText.Text = string.Format(Strings.YtDlpUpdateFailed, ex.Message);
-            MessageBox.Show(string.Format(Strings.YtDlpUpdateFailed, ex.Message), Strings.AppTitle, MessageBoxButton.OK, MessageBoxImage.Warning);
+            DarkMessageBox.Show(this, string.Format(Strings.YtDlpUpdateFailed, ex.Message), Strings.AppTitle, MessageBoxButton.OK, MessageBoxImage.Warning);
         }
         finally
         {

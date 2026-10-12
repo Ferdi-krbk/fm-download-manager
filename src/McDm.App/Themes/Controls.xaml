@@ -787,26 +787,22 @@
     </Style>
 
     <!-- Custom Window Chrome Title Bar Styles -->
-    <Style x:Key="CaptionBtn" TargetType="Button">
+    <Style x:Key="WindowMinButtonStyle" TargetType="Button">
         <Setter Property="Width" Value="46" />
         <Setter Property="Height" Value="36" />
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="Foreground" Value="{DynamicResource TextDimBrush}" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Focusable" Value="False" />
-        <Setter Property="FontFamily" Value="{DynamicResource GlyphFont}" />
-        <Setter Property="FontSize" Value="10" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Border x:Name="Bd" Background="{TemplateBinding Background}" SnapsToDevicePixels="True">
-                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        <Path Data="{StaticResource GeoMin}" Fill="{DynamicResource TextDimBrush}" Stretch="Uniform" Width="10" Height="2" HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Bg3Brush}" />
-                            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Bg4Brush}" />
@@ -817,25 +813,60 @@
         </Setter>
     </Style>
 
-    <Style x:Key="CloseCaptionBtn" TargetType="Button" BasedOn="{StaticResource CaptionBtn}">
+    <Style x:Key="WindowMaxButtonStyle" TargetType="Button">
+        <Setter Property="Width" Value="46" />
+        <Setter Property="Height" Value="36" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Border x:Name="Bd" Background="{TemplateBinding Background}" SnapsToDevicePixels="True">
-                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        <Path Data="{StaticResource GeoMax}" Fill="{DynamicResource TextDimBrush}" Stretch="Uniform" Width="10" Height="10" HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource DangerBrush}" />
-                            <Setter Property="Foreground" Value="#000000" />
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Bg3Brush}" />
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="Bd" Property="Background" Value="#CC2020" />
-                            <Setter Property="Foreground" Value="#000000" />
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Bg4Brush}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
     </Style>
+
+    <Style x:Key="WindowCloseButtonStyle" TargetType="Button">
+        <Setter Property="Width" Value="46" />
+        <Setter Property="Height" Value="36" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bd" Background="{TemplateBinding Background}" SnapsToDevicePixels="True">
+                        <Path x:Name="P" Data="{StaticResource GeoClose}" Fill="{DynamicResource TextDimBrush}" Stretch="Uniform" Width="9" Height="9" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource DangerBrush}" />
+                            <Setter TargetName="P" Property="Fill" Value="#FFFFFF" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="#CC2020" />
+                            <Setter TargetName="P" Property="Fill" Value="#FFFFFF" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="CaptionBtn" TargetType="Button" BasedOn="{StaticResource WindowMinButtonStyle}" />
+    <Style x:Key="CloseCaptionBtn" TargetType="Button" BasedOn="{StaticResource WindowCloseButtonStyle}" />
 </ResourceDictionary>

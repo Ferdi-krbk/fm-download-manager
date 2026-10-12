@@ -20,9 +20,9 @@
         <Border Grid.Row="0" Background="{DynamicResource Bg1Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1">
             <DockPanel LastChildFill="True">
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" WindowChrome.IsHitTestVisibleInChrome="True">
-                    <Button Style="{DynamicResource CaptionBtn}" Content="&#xE921;" Click="Minimize_Click" />
-                    <Button Style="{DynamicResource CaptionBtn}" Content="&#xE922;" Click="Maximize_Click" />
-                    <Button Style="{DynamicResource CloseCaptionBtn}" Content="&#xE8BB;" Click="Close_Click" />
+                    <Button Style="{DynamicResource WindowMinButtonStyle}" Click="Minimize_Click" />
+                    <Button Style="{DynamicResource WindowMaxButtonStyle}" Click="Maximize_Click" />
+                    <Button Style="{DynamicResource WindowCloseButtonStyle}" Click="Close_Click" />
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0">
                     <TextBlock Text="STYLE GALLERY" FontFamily="{DynamicResource UiFont}" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />

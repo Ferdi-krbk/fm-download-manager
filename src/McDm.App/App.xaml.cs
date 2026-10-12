@@ -105,8 +105,8 @@ public partial class App : System.Windows.Application
         try { await _bridge.StartAsync(); }
         catch (Exception ex)
         {
-            MessageBox.Show($"Browser bridge could not start on port {BridgeServer.DefaultPort}:\n{ex.Message}\n\n" +
-                            "Browser integration will not work until the port is free.", Strings.AppTitle);
+            DarkMessageBox.Show(null, $"Browser bridge could not start on port {BridgeServer.DefaultPort}:\n{ex.Message}\n\n" +
+                            "Browser integration will not work until the port is free.", Strings.AppTitle, MessageBoxButton.OK, MessageBoxImage.Warning);
         }
 
         BuildTray();
@@ -195,7 +195,7 @@ public partial class App : System.Windows.Application
                         {
                             // Show confirmation prompt
                             var msg = string.Format(Strings.DownloadPromptMessage, text);
-                            var res = MessageBox.Show(msg, Strings.DownloadPromptTitle, MessageBoxButton.YesNo, MessageBoxImage.Question);
+                            var res = DarkMessageBox.Show(MainWindow, msg, Strings.DownloadPromptTitle, MessageBoxButton.YesNo, MessageBoxImage.Question);
                             if (res == MessageBoxResult.Yes)
                             {
                                 var kind = isVideo ? DownloadKind.Video : DownloadKind.File;

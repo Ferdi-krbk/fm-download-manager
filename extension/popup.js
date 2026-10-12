@@ -44,6 +44,14 @@ async function refresh() {
   $('offline').classList.toggle('hidden', reachable);
   $('pair').classList.toggle('hidden', !(reachable && !paired));
   $('launch').classList.toggle('hidden', !(st && st.canLaunch));
+  if (reachable && !paired) {
+    try {
+      const clip = (await navigator.clipboard.readText()).trim().toLowerCase();
+      if (/^[0-9a-f]{64}$/.test(clip) && !$('pairCode').value) {
+        $('pairCode').value = clip;
+      }
+    } catch {}
+  }
   if (st && st.settings) {
     $('intercept').checked = !!st.settings.intercept;
     $('sniff').checked = !!st.settings.sniff;
@@ -71,7 +79,7 @@ async function loadMedia() {
     const btn = document.createElement('button'); btn.className = 'small'; btn.textContent = t('popupDownload');
     btn.onclick = async () => {
       btn.disabled = true; btn.textContent = '…';
-      const k = m.kind === 'hls' || m.kind === 'dash' ? 'video' : 'file';
+      const k = m.kind === 'video' || m.kind === 'hls' || m.kind === 'dash' ? 'video' : 'file';
       const r = await send({ type: 'download', url: m.url, filename: k === 'file' ? m.name : '', referer: tab.url, kind: k });
       btn.textContent = r && r.ok ? t('popupSent') : t('popupError');
     };
@@ -149,7 +157,13 @@ $('pageVideo').onclick = async () => {
   if (!tab?.url) return;
   $('pageVideo').textContent = t('popupSending');
   const r = await send({ type: 'download', url: tab.url, referer: tab.url, kind: 'video' });
-  $('pageVideo').textContent = r && r.ok ? t('popupStarted') : t('popupFailed');
+  if (r && r.ok) {
+    $('pageVideo').textContent = t('popupStarted');
+  } else {
+    const isUnauth = r && r.error && r.error.toLowerCase().includes('unauthorized');
+    $('pageVideo').textContent = isUnauth ? t('popupNotPaired') : t('popupFailed');
+    if (isUnauth) refresh();
+  }
   loadDownloads();
   setTimeout(() => ($('pageVideo').textContent = t('popupPageVideo')), 2500);
 };
@@ -170,7 +184,14 @@ $('port').onchange = (e) => send({ type: 'setSettings', settings: { port: parseI
 $('minSize').onchange = (e) => send({ type: 'setSettings', settings: { minSizeMB: parseInt(e.target.value, 10) || 0 } });
 
 $('pairBtn').onclick = async () => {
-  const r = await send({ type: 'setToken', token: $('pairCode').value });
+  let val = $('pairCode').value.trim();
+  if (!val) {
+    try {
+      val = (await navigator.clipboard.readText()).trim();
+      $('pairCode').value = val;
+    } catch {}
+  }
+  const r = await send({ type: 'setToken', token: val });
   $('pairMsg').textContent = r && r.ok ? t('popupPairOk') : t('popupPairBad');
   if (r && r.ok) { $('pairCode').value = ''; refresh(); }
 };

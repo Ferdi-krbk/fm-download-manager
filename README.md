@@ -89,23 +89,34 @@
 * Harici bir torrent istemcisine (uTorrent, qBittorrent vb.) gerek kalmadan `magnet:?xt=urn:btih:...` ve `.torrent` bağlantılarını doğrudan çeker.
 * MonoTorrent 3.0.2 motoruyla DHT, eş değişimi (PEX) ve şifreli aktarım sağlar.
 
-### 3. 🎬 Süper Hızlı Medya & YouTube İndiricisi
+### 3. 🎬 Süper Hızlı Medya & YouTube İndiricisi (MP4 Garantisi)
 * `yt-dlp` ve `FFmpeg` motoruyla YouTube, Twitter/X, TikTok, Instagram ve 1000+ siteden tek tıkla video indirir.
+* **Garantili MP4 Formatı:** Tüm videolar en yüksek kalitede otomatik olarak temiz MP4/M4A formatında birleştirilir ve remux edilir (asla uyumsuz WebM dosyaları oluşturmaz).
 * **Format ve Kalite Seçici:** Bağlantı eklendiğinde açılan modern arayüzle *En Yüksek Kalite (4K/1080p)*, *720p HD* veya doğrudan *Yalnızca Ses Çıkar (MP3 / 320 kbps)* seçimi sunar.
 * **Ultra-Hızlı Başlatma:** `--concurrent-fragments 4` ve optimize edilmiş istemci argümanlarıyla indirmeler saniyeler içinde anında başlar.
 
-### 4. 📊 Donanım Hızlandırmalı Canlı Vektör Hız Grafiği
+### 4. 💬 Evrensel Altyazı Yakalama & Otomatik VTT ➔ SRT Dönüştürücü
+* **Bağımsız Altyazı İndirme:** Videoyu indirmeden yalnızca altyazı dosyasını (`.srt`) tek tıkla çekebilme imkanı.
+* **Otomatik WebVTT ➔ SubRip (.srt) Dönüşümü:** Web oynatıcılarının sunduğu ham `.vtt` altyazıları otomatik olarak VLC, TV ve tüm medya oynatıcılarla %100 uyumlu standart `.srt` dosyalarına dönüştürülür.
+* **Çoklu Dil Desteği:** Türkçe, İngilizce veya videoda tanımlı tüm yabancı dil parçalarını ve ağ üzerinden akan gizli altyazı akışlarını anında tespit eder.
+
+### 5. 🚀 IDM Tarzı Modern Yüzen İndirme Butonu (Floating Bar)
+* **Shadow DOM İzolasyonu:** Sayfa stillerinden ve sitelerin CSP/Trusted-Types güvenlik politikalarından etkilenmeyen bağımsız modern cam tasarım (Glassmorphic Pill).
+* **Akıllı Hover Algılama:** YouTube, Twitter veya film/dizi sitelerinde videonun üzerine gelindiğinde sağ üst köşede otomatik olarak belirir.
+* **Hızlı Açılır Menü:** Tek tıkla *Video İndir*, *MP3 İndir* veya *Altyazı Dili Seç* seçenekleri sunar.
+
+### 6. 📊 Donanım Hızlandırmalı Canlı Vektör Hız Grafiği
 * Sol kenar çubuğunda ve indirme ayrıntılarında WPF vektör çizimiyle gerçek zamanlı hız dalgalanmalarını gösterir.
 * **EMA Filtresi & Bezier Eğrileri:** Ağ dalgalanmalarını Exponential Moving Average ile pürüzsüzleştirir, pik hız göstergesiyle birlikte akıcı bir grafik çizer.
 
-### 5. 🎛️ Modern Hız Limiti Kadranı (Speed Limiter Slider)
+### 7. 🎛️ Modern Hız Limiti Kadranı (Speed Limiter Slider)
 * İndirme devam ederken sol paneldeki özel tasarımlı kaydırıcı veya hazır çipler (`[Oto] [2M] [5M] [10M] [20M]`) üzerinden tek tıkla internet kullanımını sınırlandırabilirsiniz.
 
-### 6. 🌐 Sıfır Tık Tarayıcı Eklentisi Eşleştirmesi
+### 8. 🌐 Sıfır Tık Tarayıcı Eklentisi Eşleştirmesi
 * **Google Chrome, Microsoft Edge ve Brave** için eklenti klasör yolunu otomatik panoya kopyalar ve geliştirici sayfasını açar.
 * Eklenti klasörüne otomatik olarak güvenlik anahtarı tohumlar (`token.json`). Kullanıcı kod kopyalayıp yapıştırmakla uğraşmadan eklenti tek tıkla yeşile döner ve eşleşir.
 
-### 7. 📂 Otomatik Kategori Klasörlemesi
+### 9. 📂 Otomatik Kategori Klasörlemesi
 * Tamamlanan indirmeleri uzantılarına göre klasörlere ayırır:
   * `İndirilenler\Videos` (mp4, mkv, webm, avi...)
   * `İndirilenler\Music` (mp3, flac, wav, aac...)
@@ -114,10 +125,10 @@
   * `İndirilenler\Documents` (pdf, docx, xlsx...)
   * `İndirilenler\Compressed` (zip, rar, 7z...)
 
-### 8. ⏱️ Zamanlayıcı & Gece Planlayıcısı (Scheduler)
+### 10. ⏱️ Zamanlayıcı & Gece Planlayıcısı (Scheduler)
 * Gece saatlerinde (örn. 02:00 – 07:00) indirmeleri otomatik başlatıp süre dolduğunda duraklatarak internet kotanızı ve bant genişliğinizi korur.
 
-### 9. 🎨 Modern Çift Tema (Dark Burgundy & AMOLED Pure Black)
+### 11. 🎨 Modern Çift Tema (Dark Burgundy & AMOLED Pure Black)
 * Varsayılan koyu bordo ve titanyum grafit tasarımı (`#C92A3E` + `#121318`).
 * Araç çubuğundaki ay simgesiyle tek tıkla **Derin Siyah AMOLED** (`#000000`) moduna geçiş imkanı.
 * Keskin Windows DIN tipografisi (**Bahnschrift**) ve akıcı oval hatlar.

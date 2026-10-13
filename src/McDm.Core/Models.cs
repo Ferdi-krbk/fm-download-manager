@@ -33,6 +33,38 @@ public sealed class DownloadRequest
     public string? CustomFormat { get; set; }
     public string? Container { get; set; }
     public bool AudioOnly { get; set; }
+    public bool SubtitlesOnly { get; set; }
+    public bool WriteSubtitles { get; set; }
+    public string? SubtitleLangs { get; set; }
+    public string? SubtitleUrl { get; set; }
+    public List<SubtitleTrackInfo>? Subtitles { get; set; }
+    public List<VideoQualityInfo>? VideoQualities { get; set; }
+    public List<AudioTrackInfo>? AudioTracks { get; set; }
+}
+
+public sealed class VideoQualityInfo
+{
+    public int Height { get; set; }
+    public string Label { get; set; } = "";
+    public string? FormatId { get; set; }
+    public long? Bitrate { get; set; }
+}
+
+public sealed class AudioTrackInfo
+{
+    public string TrackId { get; set; } = "";
+    public string Label { get; set; } = "";
+    public string Lang { get; set; } = "";
+    public string? FormatId { get; set; }
+    public bool IsDefault { get; set; }
+}
+
+public sealed class SubtitleTrackInfo
+{
+    public string Url { get; set; } = "";
+    public string Lang { get; set; } = "tr";
+    public string? Code { get => Lang; set => Lang = value ?? "tr"; }
+    public string? Label { get; set; }
 }
 
 public sealed class Chunk

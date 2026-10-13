@@ -44,6 +44,95 @@ public static class VideoTests
             return Task.CompletedTask;
         });
 
+        await test("video: VideoDownloader subtitle argument generation (standalone & embedded)", () =>
+        {
+            // Standalone subtitles only
+            var subsOnlyOpt = new VideoOptions
+            {
+                SubtitlesOnly = true,
+                SubtitleLangs = "tr,en"
+            };
+            var subsArgs = VideoDownloader.BuildArguments("https://example.com/watch?v=123", subsOnlyOpt, @"C:\Downloads", @"C:\Downloads\.temp", null, null);
+            check(subsArgs.Contains("--skip-download"), "SubtitlesOnly should include --skip-download");
+            check(subsArgs.Contains("--write-subs"), "SubtitlesOnly should include --write-subs");
+            check(subsArgs.Contains("--write-auto-subs"), "SubtitlesOnly should include --write-auto-subs");
+            check(subsArgs.Contains("--sub-langs"), "SubtitlesOnly should include --sub-langs");
+            check(subsArgs[subsArgs.IndexOf("--sub-langs") + 1] == "tr,en", "sub-langs must be tr,en");
+            check(subsArgs.Contains("--convert-subs"), "SubtitlesOnly should include --convert-subs");
+            check(subsArgs[subsArgs.IndexOf("--convert-subs") + 1] == "srt", "convert-subs must be srt");
+
+            // Video with embedded subtitles
+            var embedOpt = new VideoOptions
+            {
+                Container = "mp4",
+                WriteSubtitles = true,
+                SubtitleLangs = "tr"
+            };
+            var embedArgs = VideoDownloader.BuildArguments("https://example.com/watch?v=123", embedOpt, @"C:\Downloads", @"C:\Downloads\.temp", null, null);
+            check(!embedArgs.Contains("--skip-download"), "Video with embedded subtitles must NOT have --skip-download");
+            check(embedArgs.Contains("--embed-subs"), "WriteSubtitles should include --embed-subs");
+            check(embedArgs.Contains("--write-subs"), "WriteSubtitles should include --write-subs");
+            check(embedArgs[embedArgs.IndexOf("--sub-langs") + 1] == "tr", "sub-langs must be tr");
+
+            // Verify fallback defaults
+            var defaultSubs = new VideoOptions { SubtitlesOnly = true };
+            var defaultArgs = VideoDownloader.BuildArguments("https://example.com/watch?v=123", defaultSubs, @"C:\Downloads", @"C:\Downloads\.temp", null, null, "CustomUA", "https://example.com/movie");
+            check(defaultArgs[defaultArgs.IndexOf("--sub-langs") + 1] == "tr,en", "default sub-langs should be tr,en");
+            check(defaultArgs.Contains("--extractor-args"), "should contain --extractor-args");
+            check(defaultArgs[defaultArgs.IndexOf("--extractor-args") + 1] == "generic:impersonate", "should impersonate for anti-bot bypass");
+            check(defaultArgs.Contains("--user-agent"), "should contain --user-agent");
+            check(defaultArgs[defaultArgs.IndexOf("--user-agent") + 1] == "CustomUA", "user-agent mismatch");
+            check(defaultArgs.Contains("--referer"), "should contain --referer");
+            check(defaultArgs[defaultArgs.IndexOf("--referer") + 1] == "https://example.com/movie", "referer mismatch");
+            check(defaultArgs.Contains("--trim-filenames"), "should contain --trim-filenames");
+            check(defaultArgs[defaultArgs.IndexOf("--trim-filenames") + 1] == "60", "trim-filenames should be 60 to prevent MAX_PATH errors");
+
+            var safeNameArgs = VideoDownloader.BuildArguments("https://example.com/stream.m3u8", defaultSubs, @"C:\Downloads", @"C:\Downloads\.temp", null, null, fileName: "The Mentalist S02E09");
+            check(safeNameArgs.Contains("-o"), "should contain -o");
+            string tmpl = safeNameArgs[safeNameArgs.IndexOf("-o") + 1];
+            check(!tmpl.Contains("[%(id)s]"), "template must not contain raw [%(id)s] URL query strings");
+            check(tmpl.Contains("The Mentalist S02E09"), "template should use clean fileName: " + tmpl);
+
+            return Task.CompletedTask;
+        });
+
+        await test("video: WebVTT to SRT conversion with timestamps, numbering and tag stripping", () =>
+        {
+            var vtt = @"WEBVTT
+Kind: captions
+Language: tr
+
+NOTE This is a test subtitle note
+
+1
+00:00:01.200 --> 00:00:04.500 line:0% position:50% align:center
+<c.yellow>Merhaba dünya!</c>
+
+2
+01:15.300 --> 01:18.900
+<v Narrator>İkinci <b>satır</b> açıklaması</v>
+
+3
+01:20:00.000 --> 01:20:05.123
+Son sahne metni.
+";
+            var srt = VideoDownloader.ConvertVttToSrt(vtt);
+
+            check(srt.Contains("1\r\n00:00:01,200 --> 00:00:04,500\r\nMerhaba dünya!") ||
+                  srt.Contains("1\n00:00:01,200 --> 00:00:04,500\nMerhaba dünya!"), "first cue mismatch: " + srt);
+            check(srt.Contains("2\r\n00:01:15,300 --> 00:01:18,900\r\nİkinci satır açıklaması") ||
+                  srt.Contains("2\n00:01:15,300 --> 00:01:18,900\nİkinci satır açıklaması"), "second cue short timestamp mismatch: " + srt);
+            check(srt.Contains("3\r\n01:20:00,000 --> 01:20:05,123\r\nSon sahne metni.") ||
+                  srt.Contains("3\n01:20:00,000 --> 01:20:05,123\nSon sahne metni."), "third cue mismatch: " + srt);
+            check(!srt.Contains("WEBVTT"), "header should be stripped");
+            check(!srt.Contains("NOTE"), "notes should be stripped");
+            check(!srt.Contains("<c.yellow>"), "styling tags should be stripped");
+            check(!srt.Contains("<v Narrator>"), "voice tags should be stripped");
+            check(!srt.Contains("<b>"), "bold tags should be stripped");
+
+            return Task.CompletedTask;
+        });
+
         await test("video: VideoDownloader progress parsing & accumulator", () =>
         {
             var line1 = "MCDM_PROGRESS|downloading|1048576|10485760|10485760|524288|1|10";
@@ -146,6 +235,39 @@ public static class VideoTests
             }
 
             check(caught, "Cancellation token did not stop fake yt-dlp");
+        });
+
+        await test("video: StreamProbeService dynamic HLS manifest extraction (qualities, audio tracks, subtitles)", () =>
+        {
+            string sampleManifest = @"#EXTM3U
+#EXT-X-VERSION:3
+#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID=""audio"",NAME=""Original Audio"",DEFAULT=YES,AUTOSELECT=YES,LANGUAGE=""en"",URI=""audio/en/index.m3u8""
+#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID=""audio"",NAME=""Turkish"",DEFAULT=NO,AUTOSELECT=NO,LANGUAGE=""tr"",URI=""audio/tr/index.m3u8""
+#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID=""subs"",NAME=""Türkçe"",DEFAULT=YES,AUTOSELECT=YES,LANGUAGE=""tr"",URI=""sub/tr/sub.vtt""
+#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID=""subs"",NAME=""English"",DEFAULT=NO,AUTOSELECT=NO,LANGUAGE=""en"",URI=""sub/en/sub.vtt""
+#EXT-X-STREAM-INF:BANDWIDTH=4500000,RESOLUTION=1920x1080,AUDIO=""audio"",SUBTITLES=""subs""
+1080p/index.m3u8
+#EXT-X-STREAM-INF:BANDWIDTH=2500000,RESOLUTION=1280x720,AUDIO=""audio"",SUBTITLES=""subs""
+720p/index.m3u8
+#EXT-X-STREAM-INF:BANDWIDTH=1200000,RESOLUTION=854x480,AUDIO=""audio"",SUBTITLES=""subs""
+480p/index.m3u8
+";
+            var result = StreamProbeService.ParseHlsManifestText(sampleManifest, "https://example.com/hls/master.m3u8");
+
+            check(result.Qualities.Count == 3, "Expected 3 qualities, got " + result.Qualities.Count);
+            check(result.Qualities[0].Height == 1080, "First quality should be 1080p");
+            check(result.Qualities[1].Height == 720, "Second quality should be 720p");
+            check(result.Qualities[2].Height == 480, "Third quality should be 480p");
+
+            check(result.AudioTracks.Count == 2, "Expected 2 audio tracks, got " + result.AudioTracks.Count);
+            check(result.AudioTracks[0].TrackId == "original", "First audio track should be original");
+            check(result.AudioTracks[1].TrackId == "tr", "Second audio track should be tr");
+
+            check(result.Subtitles.Count == 2, "Expected 2 subtitles, got " + result.Subtitles.Count);
+            check(result.Subtitles[0].Lang == "tr", "First subtitle should be tr");
+            check(result.Subtitles[0].Url == "https://example.com/hls/sub/tr/sub.vtt", "Subtitle URL should be resolved against base");
+
+            return Task.CompletedTask;
         });
     }
 }

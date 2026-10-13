@@ -21,7 +21,7 @@
 
 body {
   margin: 0;
-  width: 380px;
+  width: 415px;
   font-family: Bahnschrift, 'Segoe UI Variable Display', 'Segoe UI', -apple-system, sans-serif;
   font-size: 13px;
   background: var(--bg);
@@ -326,4 +326,17 @@ button.icon {
   border-radius: 50%;
   background: var(--bg-card-hover);
   border: 1px solid var(--line-strong);
+}
+
+.badge-q {
+  display: inline-block;
+  padding: 1.5px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 4px;
+  background: rgba(201, 42, 62, 0.18);
+  color: #ff6b81;
+  border: 1px solid rgba(201, 42, 62, 0.45);
+  margin-right: 5px;
+  letter-spacing: 0.02em;
 }

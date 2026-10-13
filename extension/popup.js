@@ -78,15 +78,31 @@ async function loadMedia() {
   const list = (tab && (await send({ type: 'getMedia', tabId: tab.id }))) || [];
   const ul = $('media');
   ul.innerHTML = '';
-  $('count').textContent = list.length ? `(${list.length})` : '';
-  $('noMedia').classList.toggle('hidden', list.length > 0);
-  for (const m of list) {
+  // Filter out redundant audio-only chunks if real video exists
+  const hasVideo = list.some(m => /-v\d+|video/i.test(m.url) || (m.size && m.size > 20 * 1024 * 1024));
+  const filtered = list.filter(m => {
+    if (hasVideo && /sublist_aud|audio[_-]track|-a\d+\.m3u8/i.test(m.url) && !/-v\d+/i.test(m.url)) return false;
+    return true;
+  });
+
+  $('count').textContent = filtered.length ? `(${filtered.length})` : '';
+  $('noMedia').classList.toggle('hidden', filtered.length > 0);
+  for (const m of filtered) {
     const li = document.createElement('li');
     const info = document.createElement('div'); info.className = 'info';
-    const name = document.createElement('div'); name.className = 'name'; name.textContent = m.name || m.url; name.title = m.url;
+    const name = document.createElement('div'); name.className = 'name'; name.textContent = m.name || m.url; name.title = m.name || m.url;
     const meta = document.createElement('div'); meta.className = 'meta';
     const kind = m.kind === 'hls' ? t('kindHls') : m.kind === 'dash' ? t('kindDash') : (m.type || t('kindMedia'));
-    meta.textContent = [kind, fmtSize(m.size)].filter(Boolean).join(' · ');
+    const metaText = [kind, fmtSize(m.size)].filter(Boolean).join(' · ');
+    if (m.quality) {
+      const qSpan = document.createElement('span');
+      qSpan.className = 'badge-q';
+      qSpan.textContent = m.quality;
+      meta.appendChild(qSpan);
+      meta.appendChild(document.createTextNode(' ' + metaText));
+    } else {
+      meta.textContent = metaText;
+    }
     info.append(name, meta);
     const btn = document.createElement('button'); btn.className = 'small'; btn.textContent = t('popupDownload');
     btn.onclick = async () => {
@@ -197,23 +213,17 @@ $('pageVideo').onclick = async () => {
 
   const isKnownVideoHost = /(youtube\.com|youtu\.be|tiktok\.com|twitter\.com|x\.com|vimeo\.com|dailymotion\.com|instagram\.com|twitch\.tv|reddit\.com)/i.test(tab.url);
 
-  const mediaList = (await send({ type: 'getMedia', tabId: tab.id })) || [];
-  const best = pickBestMedia(mediaList);
-
   let targetUrl = tab.url;
   let kind = 'video';
-  let filename = '';
+  let filename = tab.title || '';
   let referer = tab.url;
 
-  if (best) {
-    targetUrl = best.url;
-    filename = best.name || '';
-    kind = best.kind === 'hls' || best.kind === 'dash' || best.kind === 'video' ? 'video' : 'file';
-    if (best.initiator && !best.initiator.startsWith('chrome-extension://')) {
-      referer = best.initiator.endsWith('/') ? best.initiator : best.initiator + '/';
-    }
-  } else if (isKnownVideoHost) {
-    // Known video platform (YouTube, TikTok, Twitter): ask content script for active video/tweet
+  if (isKnownVideoHost) {
+    // Known video platform (YouTube, TikTok, Twitter): ALWAYS use the active page URL & title!
+    targetUrl = tab.url;
+    filename = tab.title || '';
+    kind = 'video';
+    referer = tab.url;
     try {
       const res = await new Promise((resolve) => {
         api.tabs.sendMessage(tab.id, { type: 'getActiveMedia' }, (r) => {
@@ -221,8 +231,20 @@ $('pageVideo').onclick = async () => {
         });
       });
       if (res && res.url) targetUrl = res.url;
+      if (res && res.name) filename = res.name;
     } catch {}
   } else {
+    const mediaList = (await send({ type: 'getMedia', tabId: tab.id })) || [];
+    const best = pickBestMedia(mediaList);
+
+    if (best) {
+      targetUrl = best.url;
+      filename = best.name || tab.title || '';
+      kind = best.kind === 'hls' || best.kind === 'dash' || best.kind === 'video' ? 'video' : 'file';
+      if (best.initiator && !best.initiator.startsWith('chrome-extension://')) {
+        referer = best.initiator.endsWith('/') ? best.initiator : best.initiator + '/';
+      }
+    } else {
     // Generic website with no captured media yet: check for playing video/audio element
     let direct = null;
     try {
@@ -245,9 +267,26 @@ $('pageVideo').onclick = async () => {
       return;
     }
   }
+}
 
   $('pageVideo').textContent = t('popupSending');
-  const r = await send({ type: 'download', url: targetUrl, filename, referer, kind });
+  let subs = [];
+  try {
+    const bgInfo = await send({ type: 'getBestMedia', tabId: tab.id });
+    if (bgInfo && Array.isArray(bgInfo.subtitles)) subs = bgInfo.subtitles;
+  } catch {}
+
+  const r = await send({
+    type: 'download',
+    url: targetUrl,
+    filename,
+    referer,
+    kind,
+    writeSubtitles: true,
+    subtitles: subs,
+    subtitleUrl: subs.find(s => s.lang === 'tr' || s.code === 'tr')?.url || subs[0]?.url || '',
+    subtitleLangs: 'tr,en'
+  });
   if (r && r.ok) {
     $('pageVideo').textContent = t('popupStarted');
   } else {

@@ -169,34 +169,82 @@ function notify(title, message) {
   } catch {}
 }
 
-async function sendToApp({ url, filename, referer, kind, format, audioOnly }) {
+async function sendToApp({ url, filename, referer, kind, format, audioOnly, subtitlesOnly, subtitleLangs, writeSubtitles, subtitleUrl, subtitles, videoQualities, audioTracks }) {
   const settings = await getSettings();
   const ck = await cookiesFor(url);
   const isAudio = audioOnly === true || format === 'audio';
+  const isSubs = subtitlesOnly === true || format === 'subtitles';
   const payload = {
     url, filename: filename || '', referer: referer || '', kind: kind || 'file',
     audioOnly: isAudio,
+    subtitlesOnly: isSubs,
+    subtitleLangs: subtitleLangs || 'tr,en',
+    writeSubtitles: writeSubtitles === true,
+    subtitleUrl: subtitleUrl || '',
+    subtitles: subtitles || [],
+    videoQualities: videoQualities || [],
+    audioTracks: audioTracks || [],
     userAgent: navigator.userAgent, cookieHeader: ck.header, cookies: ck.list,
   };
+
   const post = async () => fetch(base(settings) + '/download', {
     method: 'POST', headers: await bridgeHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify(payload),
   });
+
+  let r;
   try {
-    let r;
-    try { r = await post(); } catch (e) {
-      // App not running: start it and try once more.
-      if (!settings.autoLaunch || !(await ensureApp(settings))) throw e;
+    try {
       r = await post();
+    } catch (e) {
+      if (settings.autoLaunch) {
+        const launched = await ensureApp(settings);
+        if (launched) r = await post();
+      }
+      if (!r) {
+        notify('FM Download Manager Kapalı', 'Masaüstü uygulaması çalışmıyor veya bağlantı kurulamadı.');
+        return { ok: false, error: 'Masaüstü uygulaması kapalı', offline: true };
+      }
     }
-    const j = await r.json();
-    if (!j.ok) throw new Error(j.error || 'app error');
-    notify(kind === 'video' ? t('notifVideoTitle') : t('notifSentTitle'), filename || url);
-    startProgress();
-    return { ok: true };
-  } catch (e) {
-    notify(t('notifOfflineTitle'), t('notifOfflineBody'));
-    return { ok: false, error: String(e) };
+  } catch (errPost) {
+    notify('FM Download Manager Kapalı', 'Masaüstü uygulamasına bağlanılamadı.');
+    return { ok: false, error: 'Masaüstü uygulaması kapalı', offline: true };
   }
+
+  if (r.status === 401) {
+    notify('Eşleştirme Gerekli', 'Uzantı henüz FM Download Manager ile eşleştirilmemiş. Eklenti menüsünden eşleştirme kodunu girin.');
+    return { ok: false, error: 'Eşleştirme gerekli (401 Unauthorized)', unauthorized: true };
+  }
+
+  if (r.status === 403) {
+    notify('Erişim Reddedildi', 'Güvenlik doğrulaması başarısız oldu (403 Forbidden).');
+    return { ok: false, error: 'Erişim reddedildi' };
+  }
+
+  let j = null;
+  try { j = await r.json(); } catch {}
+
+  if (r.status === 501 || (j && j.error && (j.error.includes('yt-dlp') || j.error.includes('missing')))) {
+    notify('yt-dlp Bulunamadı', 'Video indirmesi için yt-dlp aracı eksik. Uygulama ayarlarından yt-dlp\'yi güncelleyin.');
+    return { ok: false, error: 'yt-dlp eksik' };
+  }
+
+  if (!r.ok || (j && !j.ok)) {
+    const errorMsg = j?.error || `HTTP ${r.status}`;
+    if (errorMsg === 'cancelled by user') {
+      return { ok: false, cancelled: true, error: 'Kullanıcı vazgeçti' };
+    }
+    if (r.status === 400) {
+      notify('Geçersiz İndirme Talebi', errorMsg);
+    } else {
+      notify('İndirme Başlatılamadı', errorMsg);
+    }
+    return { ok: false, error: errorMsg };
+  }
+
+  const successTitle = isSubs ? 'Altyazı İndiriliyor' : (kind === 'video' ? t('notifVideoTitle') : t('notifSentTitle'));
+  notify(successTitle, filename || url);
+  startProgress();
+  return { ok: true, id: j?.id };
 }
 
 // Launch the app through native messaging: Safari's app extension, or the host bundled with the app
@@ -248,12 +296,21 @@ function matchesCaptureTypes(app, filename, url) {
 }
 
 // ---------- Download interception (Chrome) ----------
+const fallbackUrls = new Set();
+
 async function interceptDownload(item) {
   const settings = await getSettings();
   if (!settings.intercept) return false;
   const url = item.finalUrl || item.url;
   if (!/^https?:/i.test(url)) return false;
   if (item.byExtensionId) return false;
+
+  // If this download was re-triggered as a fallback because app handover failed, let browser handle it
+  if (fallbackUrls.has(url)) {
+    fallbackUrls.delete(url);
+    return false;
+  }
+
   if (settings.minSizeMB > 0 && item.totalBytes > 0 && item.totalBytes < settings.minSizeMB * 1024 * 1024) return false;
   let app = await ping(settings);
   if (!app && settings.autoLaunch) {
@@ -267,18 +324,50 @@ async function interceptDownload(item) {
   const minMB = Math.max(settings.minSizeMB || 0, app.minSizeMB || 0);
   if (minMB > 0 && item.totalBytes > 0 && item.totalBytes < minMB * 1024 * 1024) return false;
 
-  try { await api.downloads.cancel(item.id); } catch {}
-  if (IS_FIREFOX) {
-    // A small file can finish before the app has answered; delete the browser's duplicate copy.
-    try {
-      const [d] = await api.downloads.search({ id: item.id });
-      if (d && d.state === 'complete' && d.exists !== false) await api.downloads.removeFile(item.id);
-    } catch {}
-  }
-  try { await api.downloads.erase({ id: item.id }); } catch {}
   const filename = item.filename ? item.filename.split(/[\\/]/).pop() : '';
-  sendToApp({ url, filename, referer: item.referrer, kind: 'file' });
-  return true;
+  const result = await sendToApp({ url, filename, referer: item.referrer, kind: 'file' });
+
+  if (result.ok) {
+    // App accepted and started download: safely cancel and erase browser's copy
+    try { await api.downloads.cancel(item.id); } catch {}
+    if (IS_FIREFOX) {
+      try {
+        const [d] = await api.downloads.search({ id: item.id });
+        if (d && d.state === 'complete' && d.exists !== false) await api.downloads.removeFile(item.id);
+      } catch {}
+    }
+    try { await api.downloads.erase({ id: item.id }); } catch {}
+    return true;
+  }
+
+  if (result.cancelled) {
+    // User explicitly cancelled in the app prompt dialog: cancel browser download too
+    try { await api.downloads.cancel(item.id); } catch {}
+    try { await api.downloads.erase({ id: item.id }); } catch {}
+    return true;
+  }
+
+  // Handover to app failed (offline, unpaired, error):
+  // FALLBACK TO BROWSER DOWNLOAD: Ensure user never loses their file!
+  try {
+    const [d] = await api.downloads.search({ id: item.id });
+    if (d && (d.state === 'interrupted' || d.paused)) {
+      if (d.paused) {
+        await api.downloads.resume(item.id);
+      } else {
+        fallbackUrls.add(url);
+        await api.downloads.download({
+          url,
+          filename: filename || undefined,
+          saveAs: false,
+          conflictAction: 'uniquify'
+        });
+      }
+    }
+  } catch {}
+
+  notify('Tarayıcıya Devredildi', `Uygulamaya aktarılamadı (${result.error || 'bağlantı hatası'}). İndirme tarayıcınızda devam ediyor.`);
+  return false;
 }
 
 if (api.downloads?.onDeterminingFilename) {
@@ -341,11 +430,37 @@ async function addMedia(tabId, info) {
   if (!settings.sniff) return;
   const list = await readMedia(tabId);
 
-  // Upgrade sublist_vid to master.m3u8 so yt-dlp gets both video and audio
+  // Upgrade fragment streams to master.m3u8 so yt-dlp gets the highest quality video and audio
   let targetUrl = info.url;
-  if (info.kind === 'hls' && /sublist_vid\d*\.m3u8/i.test(targetUrl)) {
-    targetUrl = targetUrl.replace(/sublist_vid\d*\.m3u8/i, 'master.m3u8');
+  if (info.kind === 'hls') {
+    if (/sublist_vid\d*\.m3u8/i.test(targetUrl)) {
+      targetUrl = targetUrl.replace(/sublist_vid\d*\.m3u8/i, 'master.m3u8');
+    } else if (/index-f\d+-[a-z0-9-]+\.m3u8/i.test(targetUrl)) {
+      targetUrl = targetUrl.replace(/index-f\d+-[a-z0-9-]+\.m3u8/i, 'master.m3u8');
+    }
   }
+
+function cleanMediaTitle(raw) {
+  if (!raw) return '';
+  let s = raw.replace(/[\\/:*?"<>|]/g, '').trim();
+  s = s.replace(/\s*[-–|•]\s*(?:hdfilmcehennemi|filmmodu|dizipal|fullhdfilmizlesene|dizibox|sezonlukdizi|filmevreni|youtube|netflix|blutv|gain|disney\+?).*$/i, '');
+  s = s.replace(/\s+(?:izle|full izle|1080p|720p|türkçe dublaj|türkçe altyazılı|dublaj|altyazılı).*$/i, '');
+  s = s.replace(/\s*[-–|•]\s*$/, '').trim();
+  return s.slice(0, 60);
+}
+
+function detectQualityLabel(url) {
+  const u = (url || '').toLowerCase();
+  if (/4320p?|8k|-f5/i.test(u)) return '8K Ultra HD';
+  if (/2160p?|4k|-f4/i.test(u)) return '4K Ultra HD';
+  if (/1440p?|2k/i.test(u)) return '2K QHD';
+  if (/1080p?|-f3|1080/i.test(u)) return '1080p Full HD';
+  if (/720p?|-f2|720/i.test(u)) return '720p HD';
+  if (/480p?|-f1-v1|480/i.test(u)) return '480p SD';
+  if (/sublist_aud|audio[_-]track|-a\d+\.m3u8/i.test(u) && !/-v\d+/i.test(u)) return 'Ses Akışı';
+  if (/master|playlist/i.test(u)) return 'Master Kalite';
+  return '';
+}
 
   const key = normalizeKey(targetUrl);
   const idx = list.findIndex((m) => m.key === key);
@@ -354,7 +469,7 @@ async function addMedia(tabId, info) {
     try {
       const tab = await api.tabs.get(tabId);
       if (tab?.title) {
-        const clean = tab.title.replace(/[\\/:*?"<>|]/g, '').trim().slice(0, 80);
+        const clean = cleanMediaTitle(tab.title);
         if (clean) {
           const ext = info.kind === 'hls' ? '.mp4' : (guessExt(info.type) || '');
           name = clean + (ext && !clean.endsWith(ext) ? ext : '');
@@ -362,32 +477,144 @@ async function addMedia(tabId, info) {
       }
     } catch {}
   }
-  const entry = { ...info, url: targetUrl, key, name };
+  const quality = detectQualityLabel(targetUrl);
+  const entry = { ...info, url: targetUrl, key, name, quality };
   if (idx >= 0) {
     if ((info.size || 0) > (list[idx].size || 0)) list[idx] = { ...list[idx], ...entry };
-    return;
+  } else {
+    list.unshift(entry);
+    if (list.length > 40) list.length = 40;
   }
-  list.unshift(entry);
-  if (list.length > 40) list.length = 40;
   await writeMedia(tabId, list);
+
+  if (info.kind === 'hls' && !entry.videoQualities) {
+    parseHlsManifestQuick(targetUrl, tabId).then(async (parsed) => {
+      if (parsed) {
+        const currentList = await readMedia(tabId);
+        const target = currentList.find((m) => m.key === key);
+        if (target) {
+          target.videoQualities = parsed.videoQualities;
+          target.audioTracks = parsed.audioTracks;
+          target.subtitles = parsed.subtitles;
+          await writeMedia(tabId, currentList);
+        }
+      }
+    }).catch?.(() => {});
+  }
+}
+
+async function parseHlsManifestQuick(manifestUrl, tabId) {
+  try {
+    const res = await fetch(manifestUrl, { method: 'GET' });
+    if (!res.ok) return null;
+    const text = await res.text();
+    if (!text.includes('#EXTM3U')) return null;
+
+    const qualities = [];
+    const heights = new Set();
+    const audioTracks = [];
+    const audioKeys = new Set();
+    const subtitles = [];
+
+    const lines = text.split(/\r?\n/);
+    for (const line of lines) {
+      const l = line.trim();
+      if (l.startsWith('#EXT-X-STREAM-INF:')) {
+        const m = l.match(/RESOLUTION=(\d+)x(\d+)/i);
+        if (m) {
+          const h = parseInt(m[2], 10);
+          if (h && !heights.has(h)) {
+            heights.add(h);
+            const label = h >= 2160 ? `${h}p 4K Ultra HD` : h >= 1440 ? `${h}p 2K QHD` : h >= 1080 ? `${h}p Full HD` : h >= 720 ? `${h}p HD` : `${h}p SD`;
+            qualities.push({ height: h, label });
+          }
+        }
+      } else if (l.startsWith('#EXT-X-MEDIA:') && /TYPE=AUDIO/i.test(l)) {
+        const nameM = l.match(/NAME="([^"]+)"/i);
+        const langM = l.match(/LANGUAGE="([^"]+)"/i);
+        const name = nameM ? nameM[1] : 'Audio';
+        const lang = langM ? langM[1] : '';
+        const key = `${name}_${lang}`.toLowerCase();
+        if (!audioKeys.has(key)) {
+          audioKeys.add(key);
+          let trackId = 'best';
+          let label = name;
+          if (/original|eng/i.test(name) || lang === 'en') {
+            trackId = 'original';
+            label = 'Orijinal Ses (Original Audio)';
+          } else if (/turk|dublaj/i.test(name) || lang === 'tr') {
+            trackId = 'tr';
+            label = 'Türkçe Dublaj (Turkish)';
+          } else {
+            trackId = lang || name;
+            label = lang ? `${name} (${lang})` : name;
+          }
+          audioTracks.push({ trackId, label, lang });
+        }
+      } else if (l.startsWith('#EXT-X-MEDIA:') && /TYPE=SUBTITLES/i.test(l)) {
+        const nameM = l.match(/NAME="([^"]+)"/i);
+        const langM = l.match(/LANGUAGE="([^"]+)"/i);
+        const uriM = l.match(/URI="([^"]+)"/i);
+        const name = nameM ? nameM[1] : 'Subtitle';
+        const lang = langM ? langM[1] : 'tr';
+        let subUrl = uriM ? uriM[1] : '';
+        if (subUrl) {
+          try { subUrl = new URL(subUrl, manifestUrl).href; } catch {}
+        }
+        let label = name;
+        if (/turk/i.test(name) || lang === 'tr') label = 'Türkçe Altyazı';
+        else if (/eng/i.test(name) || lang === 'en') label = 'İngilizce Altyazı';
+        const subObj = { label, lang, url: subUrl, time: Date.now() };
+        subtitles.push(subObj);
+        if (tabId) addSubtitle(tabId, subObj).catch?.(() => {});
+      }
+    }
+    qualities.sort((a, b) => b.height - a.height);
+    return { videoQualities: qualities, audioTracks, subtitles };
+  } catch {
+    return null;
+  }
+}
+
+function getStreamQualityScore(url) {
+  const u = (url || '').toLowerCase();
+  if (/-f4|2160p?|4k/i.test(u)) return 4000;
+  if (/-f3|1080p?|1080/i.test(u)) return 3000;
+  if (/-f2|720p?|720/i.test(u)) return 2000;
+  if (/-f1-v1|480p?|480/i.test(u)) return 1000;
+  if (/-v\d+/i.test(u)) return 500;
+  if (/master|playlist/i.test(u)) return 2500;
+  return 100;
 }
 
 function pickBestMedia(list) {
   if (!list || !list.length) return null;
+  const isAudioOnly = (url) => /sublist_aud|audio[_-]track|audio[_-]\d+|-a\d+\.m3u8/i.test(url) && !/-v\d+/i.test(url);
+
+  // 1. Master or playlist HLS that is not audio-only
   const masterHls = list.find((m) =>
     m.kind === 'hls' &&
-    (/master|playlist|manifest|index\.m3u8/i.test(m.url) || !/sublist|chunk|aud|vid\d/i.test(m.url))
+    /master|playlist|manifest/i.test(m.url) &&
+    !isAudioOnly(m.url)
   );
   if (masterHls) return masterHls;
-  const directVideo = list.find((m) =>
-    (m.kind === 'video' || m.kind === 'media') &&
-    !/aud/i.test(m.url) &&
-    !/sublist/i.test(m.url)
+
+  // 2. Video streams (prioritize video streams with highest quality score f3 > f2 > f1)
+  const videoStreams = list.filter((m) =>
+    (m.kind === 'hls' || m.kind === 'video' || m.kind === 'media') &&
+    !isAudioOnly(m.url)
   );
-  if (directVideo) return directVideo;
-  const videoHls = list.find((m) => m.kind === 'hls' && !/aud|audio/i.test(m.url));
-  if (videoHls) return videoHls;
-  const nonAudio = list.find((m) => !/sublist_aud|audio[_-]track/i.test(m.url));
+  if (videoStreams.length > 0) {
+    videoStreams.sort((a, b) => {
+      const scoreA = getStreamQualityScore(a.url);
+      const scoreB = getStreamQualityScore(b.url);
+      if (scoreA !== scoreB) return scoreB - scoreA;
+      return (b.size || 0) - (a.size || 0);
+    });
+    return videoStreams[0];
+  }
+
+  const nonAudio = list.find((m) => !isAudioOnly(m.url));
   return nonAudio || list[0];
 }
 
@@ -435,6 +662,37 @@ function classify(url, ct) {
   return null;
 }
 
+const tabSubtitles = new Map(); // tabId -> Array<{ url, lang, label, time }>
+
+async function readSubtitles(tabId) {
+  if (api.storage.session) {
+    const key = 'subs:' + tabId;
+    const r = await api.storage.session.get(key);
+    return r[key] || [];
+  }
+  return tabSubtitles.get(tabId) || [];
+}
+
+async function addSubtitle(tabId, sub) {
+  if (!tabId || tabId < 0 || !sub || !sub.url) return;
+  let list = await readSubtitles(tabId);
+  if (!list.some(s => s.url === sub.url)) {
+    list.push(sub);
+    if (list.length > 30) list.shift();
+    if (api.storage.session) {
+      await api.storage.session.set({ ['subs:' + tabId]: list });
+    } else {
+      tabSubtitles.set(tabId, list);
+    }
+  }
+}
+async function clearSubtitles(tabId) {
+  if (api.storage.session) {
+    try { await api.storage.session.remove('subs:' + tabId); } catch {}
+  }
+  tabSubtitles.delete(tabId);
+}
+
 if (api.webRequest?.onHeadersReceived) {
   api.webRequest.onHeadersReceived.addListener(
     (d) => {
@@ -442,7 +700,25 @@ if (api.webRequest?.onHeadersReceived) {
       let host = '';
       try { host = new URL(d.url).hostname; } catch {}
       if (IGNORED_HOSTS.test(host)) return;
-      const ct = headerVal(d.responseHeaders, 'content-type');
+      const ct = headerVal(d.responseHeaders, 'content-type').toLowerCase();
+
+      // Check for subtitles (.vtt, .srt, .sub, .ass, text/vtt, caption/track endpoints)
+      const uLower = d.url.toLowerCase();
+      const isSub = /\.(vtt|srt|sub|ass)(\?|#|$)/i.test(d.url) ||
+                    /text\/vtt|application\/x-subrip|text\/srt/i.test(ct) ||
+                    ((uLower.includes('subtitle') || uLower.includes('caption') || uLower.includes('/sub/') || uLower.includes('/tracks/') || uLower.includes('sublist') || uLower.includes('altyazi')) &&
+                     (uLower.includes('.vtt') || uLower.includes('.srt') || uLower.includes('.txt') || /vtt|sub/i.test(ct)));
+      if (isSub && !/audio|video|sublist_aud|sublist_vid/i.test(uLower)) {
+        let lang = 'tr';
+        let label = 'Altyazı';
+        if (/[\b_/-](tr|tur|turkish|turkce)[\b_./-]/i.test(uLower) || uLower.includes('_tr') || uLower.includes('turk') || uLower.includes('altyazi')) { lang = 'tr'; label = 'Türkçe'; }
+        else if (/[\b_/-](en|eng|english)[\b_./-]/i.test(uLower) || uLower.includes('_en') || uLower.includes('eng')) { lang = 'en'; label = 'English'; }
+        else if (/[\b_/-](de|ger|german)[\b_./-]/i.test(uLower)) { lang = 'de'; label = 'Deutsch'; }
+        else if (/[\b_/-](fr|fre|french)[\b_./-]/i.test(uLower)) { lang = 'fr'; label = 'Français'; }
+        else if (/[\b_/-](es|spa|spanish)[\b_./-]/i.test(uLower)) { lang = 'es'; label = 'Español'; }
+        addSubtitle(d.tabId, { url: d.url, lang, label, time: Date.now() }).catch?.(() => {});
+      }
+
       const kind = classify(d.url, ct);
       if (!kind) return;
       let size = parseInt(headerVal(d.responseHeaders, 'content-length'), 10) || 0;
@@ -463,10 +739,20 @@ if (api.webRequest?.onHeadersReceived) {
   );
 }
 
+const dismissedTabs = new Set();
+
 api.tabs.onUpdated.addListener((tabId, info) => {
-  if (info.status === 'loading' && info.url) clearMedia(tabId);
+  if (info.url) {
+    clearMedia(tabId);
+    clearSubtitles(tabId);
+    dismissedTabs.delete(tabId);
+  }
 });
-api.tabs.onRemoved.addListener((tabId) => clearMedia(tabId));
+api.tabs.onRemoved.addListener((tabId) => {
+  clearMedia(tabId);
+  clearSubtitles(tabId);
+  dismissedTabs.delete(tabId);
+});
 
 // ---------- Context menu ----------
 const menus = api.contextMenus || api.menus;
@@ -568,6 +854,24 @@ api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             }
           }
           sendResponse({ ok: true });
+          break;
+        }
+        case 'dismissTabBar': {
+          const tabId = sender.tab?.id;
+          if (tabId) {
+            dismissedTabs.add(tabId);
+            try { api.tabs.sendMessage(tabId, { type: 'tab_bar_dismissed' }).catch?.(() => {}); } catch {}
+          }
+          sendResponse({ ok: true });
+          break;
+        }
+        case 'getBestMedia': {
+          const tabId = msg.tabId || sender.tab?.id;
+          const list = tabId ? await readMedia(tabId) : [];
+          const best = pickBestMedia(list);
+          const subs = tabId ? await readSubtitles(tabId) : [];
+          const isDismissed = tabId ? dismissedTabs.has(tabId) : false;
+          sendResponse({ best, list, subtitles: subs, dismissed: isDismissed });
           break;
         }
         default: sendResponse(null);

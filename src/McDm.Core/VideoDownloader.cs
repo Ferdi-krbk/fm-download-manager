@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace McDm.Core;
 
@@ -82,6 +83,11 @@ public sealed class VideoOptions
     public int MaxHeight { get; set; } = 1080;
     public string? CustomFormat { get; set; }
     public bool AudioOnly { get; set; }
+    public bool SubtitlesOnly { get; set; }
+    public bool WriteSubtitles { get; set; }
+    public string? SubtitleLangs { get; set; }
+    public string? SubtitleUrl { get; set; }
+    public List<SubtitleTrackInfo>? Subtitles { get; set; }
 }
 
 /// <summary>One parsed --progress-template line.</summary>
@@ -133,21 +139,21 @@ public sealed class VideoDownloader
     // ───────────────────────── argument construction ─────────────────────────
 
     public static string FormatSelector(VideoOptions o) =>
-        !string.IsNullOrWhiteSpace(o.CustomFormat) ? o.CustomFormat : "bv*+ba/b/best";
+        !string.IsNullOrWhiteSpace(o.CustomFormat) ? o.CustomFormat : "bv*[ext=mp4]+ba[ext=m4a]/bv*+ba/b[ext=mp4]/b/best";
 
     public static string FormatSort(VideoOptions o)
     {
-        if (!string.IsNullOrWhiteSpace(o.CustomFormat)) return "";
         var parts = new List<string>();
         if (o.MaxHeight > 0) parts.Add("res:" + o.MaxHeight.ToString(CultureInfo.InvariantCulture));
-        if (o.Container == "mp4") parts.Add("ext:mp4:m4a");   // prefer streams that can be merged into MP4 without re-encoding
+        if (o.Container is null or "mp4" or "") parts.Add("ext:mp4:m4a");   // prefer streams that can be merged into MP4 without re-encoding
         return string.Join(",", parts);
     }
 
     /// <summary>Everything after the executable. Public so tests can assert on it.</summary>
     public static List<string> BuildArguments(string url, VideoOptions o, string outputDir, string workDir,
                                               string? cookiesFile, string? ffmpegLocation,
-                                              string? userAgent = null, string? referer = null)
+                                              string? userAgent = null, string? referer = null,
+                                              string? fileName = null)
     {
         var cacheDir = Path.Combine(AppPaths.DataDirectory, "yt-dlp-cache");
         try { Directory.CreateDirectory(cacheDir); } catch { }
@@ -161,21 +167,28 @@ public sealed class VideoDownloader
             "--no-colors",
             "--encoding", "utf-8",
             "--windows-filenames",
-            "--trim-filenames", "150",
+            "--trim-filenames", "60",
             "--no-mtime",
             "--concurrent-fragments", "8",
             "--buffer-size", "1024K",
             "--throttled-rate", "100K",
             "--no-check-certificates",
             "--socket-timeout", "10",
-            "--extractor-retries", "2",
-            "--file-access-retries", "2",
+            "--extractor-retries", "5",
+            "--file-access-retries", "10",
+            "--fragment-retries", "15",
+            "--retry-sleep", "fragment:exp=1:3",
+            "--skip-unavailable-fragments",
             "--cache-dir", cacheDir,
             "-c",                                  // continue partial downloads (resume)
-            "--no-part-if-exists-placeholder-never-used".Length > 0 ? "--no-overwrites" : "",
-            "-f", FormatSelector(o),
+            "--force-overwrites",
         };
         a.RemoveAll(string.IsNullOrEmpty);
+        if (!IsYouTubeUrl(url))
+        {
+            a.Add("--extractor-args");
+            a.Add("generic:impersonate");
+        }
         if (!string.IsNullOrWhiteSpace(userAgent))
         {
             a.Add("--user-agent");
@@ -191,23 +204,67 @@ public sealed class VideoDownloader
                 a.Add($"Origin:{refUri.Scheme}://{refUri.Authority}");
             }
         }
-        var sort = FormatSort(o);
-        if (sort.Length > 0) { a.Add("-S"); a.Add(sort); }
-        if (o.AudioOnly || o.Container == "mp3")
+
+        if (o.SubtitlesOnly)
         {
-            a.Add("-x");
-            a.Add("--audio-format");
-            a.Add("mp3");
+            a.Add("--skip-download");
+            a.Add("--write-subs");
+            a.Add("--write-auto-subs");
+            a.Add("--sub-langs");
+            a.Add(!string.IsNullOrWhiteSpace(o.SubtitleLangs) ? o.SubtitleLangs : "tr,en");
+            a.Add("--convert-subs");
+            a.Add("srt");
+            a.Add("--no-abort-on-error");
         }
         else
         {
-            a.Add("--merge-output-format"); a.Add(o.Container is "mkv" or "webm" ? o.Container : "mp4");
+            a.Add("-f");
+            a.Add(FormatSelector(o));
+            var sort = FormatSort(o);
+            if (sort.Length > 0) { a.Add("-S"); a.Add(sort); }
+            if (o.AudioOnly || o.Container == "mp3")
+            {
+                a.Add("-x");
+                a.Add("--audio-format");
+                a.Add("mp3");
+            }
+            else
+            {
+                string targetContainer = o.Container is "mkv" or "webm" ? o.Container : "mp4";
+                a.Add("--merge-output-format"); a.Add(targetContainer);
+                a.Add("--remux-video"); a.Add(targetContainer);
+            }
+
+            if (o.WriteSubtitles)
+            {
+                a.Add("--write-subs");
+                a.Add("--write-auto-subs");
+                a.Add("--sub-langs");
+                a.Add(!string.IsNullOrWhiteSpace(o.SubtitleLangs) ? o.SubtitleLangs : "tr,en");
+                a.Add("--convert-subs");
+                a.Add("srt");
+                a.Add("--embed-subs");
+                a.Add("--no-abort-on-error");
+            }
         }
         if (ffmpegLocation != null) { a.Add("--ffmpeg-location"); a.Add(ffmpegLocation); }
         if (cookiesFile != null) { a.Add("--cookies"); a.Add(cookiesFile); }
         a.Add("-P"); a.Add(outputDir);
         a.Add("-P"); a.Add("temp:" + workDir);
-        a.Add("-o"); a.Add("%(title).150B [%(id)s].%(ext)s");
+        string safeName = !string.IsNullOrWhiteSpace(fileName)
+            ? FileNames.Sanitize(Path.GetFileNameWithoutExtension(fileName))
+            : "";
+        if (!string.IsNullOrWhiteSpace(safeName) &&
+            !safeName.StartsWith("index-", StringComparison.OrdinalIgnoreCase) &&
+            !safeName.StartsWith("master", StringComparison.OrdinalIgnoreCase))
+        {
+            if (safeName.Length > 60) safeName = safeName[..60].Trim();
+            a.Add("-o"); a.Add(safeName + ".%(ext)s");
+        }
+        else
+        {
+            a.Add("-o"); a.Add("%(title).60B.%(ext)s");
+        }
         a.Add("--progress-template");
         a.Add("download:" + ProgressPrefix + "|%(progress.status)s|%(progress.downloaded_bytes)s|%(progress.total_bytes)s|" +
               "%(progress.total_bytes_estimate)s|%(progress.speed)s|%(progress.fragment_index)s|%(progress.fragment_count)s");
@@ -297,13 +354,66 @@ public sealed class VideoDownloader
             Container = !string.IsNullOrWhiteSpace(item.Request.Container) ? item.Request.Container : baseOpt.Container,
             MaxHeight = baseOpt.MaxHeight,
             CustomFormat = item.Request.CustomFormat,
-            AudioOnly = item.Request.AudioOnly || item.Request.Container == "mp3"
+            AudioOnly = item.Request.AudioOnly || item.Request.Container == "mp3",
+            SubtitlesOnly = item.Request.SubtitlesOnly,
+            WriteSubtitles = item.Request.WriteSubtitles || item.Request.SubtitlesOnly,
+            SubtitleLangs = !string.IsNullOrWhiteSpace(item.Request.SubtitleLangs) ? item.Request.SubtitleLangs : "tr,en",
+            SubtitleUrl = item.Request.SubtitleUrl,
+            Subtitles = item.Request.Subtitles
         };
         string outDir = string.IsNullOrEmpty(item.Directory) ? Directory.GetCurrentDirectory() : item.Directory;
         Directory.CreateDirectory(outDir);
         item.Directory = outDir;
         if (string.IsNullOrEmpty(item.WorkDir)) item.WorkDir = Path.Combine(outDir, ".mcdm-video-" + item.Id);
         Directory.CreateDirectory(item.WorkDir);
+
+        string? targetSubUrl = !string.IsNullOrWhiteSpace(opt.SubtitleUrl)
+            ? opt.SubtitleUrl
+            : (opt.Subtitles?.FirstOrDefault(s => s.Lang == opt.SubtitleLangs || s.Code == opt.SubtitleLangs)?.Url ??
+               opt.Subtitles?.FirstOrDefault(s => s.Lang == "tr" || s.Code == "tr")?.Url ??
+               opt.Subtitles?.FirstOrDefault(s => s.Lang == "en" || s.Code == "en")?.Url ??
+               opt.Subtitles?.FirstOrDefault()?.Url);
+
+        // 1. Direct subtitle-only download (fast HTTP download + VTT->SRT conversion)
+        if (opt.SubtitlesOnly && !string.IsNullOrWhiteSpace(targetSubUrl))
+        {
+            item.Stage = "Altyazılar İndiriliyor...";
+            var srt = await DownloadSubtitleFileAsync(targetSubUrl, item.Request, ct);
+            if (!string.IsNullOrWhiteSpace(srt))
+            {
+                string baseName = Path.GetFileNameWithoutExtension(string.IsNullOrWhiteSpace(item.FileName) ? "subtitle" : item.FileName);
+                string subLang = !string.IsNullOrWhiteSpace(opt.SubtitleLangs) ? opt.SubtitleLangs : "tr";
+                string srtFile = Path.Combine(outDir, $"{baseName}.{subLang}.srt");
+                await File.WriteAllTextAsync(srtFile, srt, new UTF8Encoding(false), ct);
+
+                item.SavePath = srtFile;
+                item.FileName = Path.GetFileName(srtFile);
+                long sz = new FileInfo(srtFile).Length;
+                item.TotalBytes = sz;
+                item.DownloadedBytes = sz;
+                item.Status = DownloadStatus.Completed;
+                item.Stage = "Tamamlandı";
+                try { Directory.Delete(item.WorkDir!, recursive: true); } catch { }
+                item.WorkDir = null;
+                return;
+            }
+        }
+
+        // 2. Pre-fetch external subtitle if video download requires subtitles
+        string? manualSrtPath = null;
+        if (opt.WriteSubtitles && !string.IsNullOrWhiteSpace(targetSubUrl))
+        {
+            try
+            {
+                var srt = await DownloadSubtitleFileAsync(targetSubUrl, item.Request, ct);
+                if (!string.IsNullOrWhiteSpace(srt))
+                {
+                    manualSrtPath = Path.Combine(item.WorkDir, "manual_sub.srt");
+                    await File.WriteAllTextAsync(manualSrtPath, srt, new UTF8Encoding(false), ct);
+                }
+            }
+            catch { }
+        }
 
         string? cookieFile = null;
         try
@@ -329,10 +439,37 @@ public sealed class VideoDownloader
                 // Browser cookies triggered YouTube's reload/bot check. Retry cleanly without cookies.
                 await ExecuteYtDlpOnceAsync(item, opt, outDir, null, tool, ct);
             }
+
+            // 3. Post-process video with subtitle (save .srt alongside and embed with ffmpeg)
+            if (!string.IsNullOrEmpty(item.SavePath) && File.Exists(item.SavePath))
+            {
+                try
+                {
+                    string baseName = Path.GetFileNameWithoutExtension(item.SavePath);
+                    string subLang = !string.IsNullOrWhiteSpace(opt.SubtitleLangs) ? opt.SubtitleLangs : "tr";
+                    string finalSrt = Path.Combine(outDir, $"{baseName}.{subLang}.srt");
+                    if (manualSrtPath != null && File.Exists(manualSrtPath))
+                    {
+                        File.Copy(manualSrtPath, finalSrt, overwrite: true);
+                    }
+
+                    string? srtToEmbed = File.Exists(finalSrt) ? finalSrt : Directory.GetFiles(outDir, $"{baseName}*.srt").FirstOrDefault();
+                    if (srtToEmbed != null && File.Exists(srtToEmbed) && _ffmpeg() is { } ffmpegPath && File.Exists(ffmpegPath))
+                    {
+                        EmbedSubtitleWithFfmpeg(ffmpegPath, item.SavePath, srtToEmbed);
+                    }
+                }
+                catch { }
+            }
         }
         finally
         {
             if (cookieFile != null) SegmentedDownloader.TryDelete(cookieFile);
+            if (!string.IsNullOrEmpty(item.WorkDir) && Directory.Exists(item.WorkDir))
+            {
+                try { Directory.Delete(item.WorkDir, recursive: true); } catch { }
+                item.WorkDir = null;
+            }
         }
     }
 
@@ -346,7 +483,7 @@ public sealed class VideoDownloader
             StandardOutputEncoding = Encoding.UTF8, StandardErrorEncoding = Encoding.UTF8,
         };
         foreach (var l in tool.Lead) psi.ArgumentList.Add(l);
-        foreach (var a in BuildArguments(item.Request.Url, opt, outDir, item.WorkDir!, cookieFile, _ffmpeg(), item.Request.UserAgent, item.Request.Referer))
+        foreach (var a in BuildArguments(item.Request.Url, opt, outDir, item.WorkDir!, cookieFile, _ffmpeg(), item.Request.UserAgent, item.Request.Referer, item.FileName))
             psi.ArgumentList.Add(a);
         psi.Environment["PYTHONUNBUFFERED"] = "1";
         psi.Environment["PYTHONIOENCODING"] = "utf-8";
@@ -373,7 +510,18 @@ public sealed class VideoDownloader
             else if (line.StartsWith(TitlePrefix + "|", StringComparison.Ordinal))
             {
                 var title = FileNames.Sanitize(line[(TitlePrefix.Length + 1)..].Trim());
-                if (string.IsNullOrEmpty(item.SavePath)) item.FileName = title;
+                if (string.IsNullOrEmpty(item.SavePath))
+                {
+                    bool hasCleanCurrent = !string.IsNullOrWhiteSpace(item.FileName) &&
+                                           !item.FileName.StartsWith("index-", StringComparison.OrdinalIgnoreCase) &&
+                                           !item.FileName.StartsWith("master", StringComparison.OrdinalIgnoreCase);
+                    bool isGenericNew = title.StartsWith("index-", StringComparison.OrdinalIgnoreCase) ||
+                                        title.StartsWith("master", StringComparison.OrdinalIgnoreCase);
+                    if (!hasCleanCurrent || !isGenericNew)
+                    {
+                        item.FileName = title;
+                    }
+                }
             }
             else if (line.StartsWith(FilePrefix + "|", StringComparison.Ordinal))
             {
@@ -398,6 +546,10 @@ public sealed class VideoDownloader
             {
                 item.Stage = "Merging";
                 item.Speed = 0;
+            }
+            else if (line.Contains("Writing video subtitles") || line.Contains("Downloading subtitles"))
+            {
+                item.Stage = "Altyazılar İndiriliyor...";
             }
             else if (line.Contains("Extracting URL:") || line.Contains("[youtube]") || line.Contains("[twitter]") || line.Contains("[tiktok]") || line.Contains("[generic]"))
             {
@@ -454,7 +606,21 @@ public sealed class VideoDownloader
                 .Select(f => new FileInfo(f))
                 .OrderByDescending(fi => fi.LastWriteTimeUtc)
                 .ToList();
-            if (candidates.Count > 0) finalPath = candidates[0].FullName;
+            if (candidates.Count > 0)
+            {
+                if (opt.SubtitlesOnly)
+                {
+                    var subFile = candidates.FirstOrDefault(f => f.Extension.Equals(".srt", StringComparison.OrdinalIgnoreCase) ||
+                                                                 f.Extension.Equals(".vtt", StringComparison.OrdinalIgnoreCase));
+                    finalPath = (subFile ?? candidates[0]).FullName;
+                }
+                else
+                {
+                    var mediaFile = candidates.FirstOrDefault(f => !f.Extension.Equals(".srt", StringComparison.OrdinalIgnoreCase) &&
+                                                                   !f.Extension.Equals(".vtt", StringComparison.OrdinalIgnoreCase));
+                    finalPath = (mediaFile ?? candidates[0]).FullName;
+                }
+            }
         }
 
         if (finalPath == null || !File.Exists(finalPath))
@@ -470,8 +636,123 @@ public sealed class VideoDownloader
         long size = new FileInfo(full).Length;
         item.TotalBytes = size; item.DownloadedBytes = size;
         item.Stage = null; item.Speed = 0; item.ActiveConnections = 0;
-        try { Directory.Delete(item.WorkDir!, recursive: true); } catch { }
-        item.WorkDir = null;
+    }
+
+    public static string ConvertVttToSrt(string vtt)
+    {
+        var lines = vtt.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+        var sb = new StringBuilder();
+        int counter = 1;
+        bool inCue = false;
+
+        for (int i = 0; i < lines.Length; i++)
+        {
+            var line = lines[i].Trim();
+            if (string.IsNullOrEmpty(line))
+            {
+                if (inCue)
+                {
+                    sb.AppendLine();
+                    inCue = false;
+                }
+                continue;
+            }
+
+            if (line.StartsWith("WEBVTT", StringComparison.OrdinalIgnoreCase) ||
+                line.StartsWith("NOTE", StringComparison.OrdinalIgnoreCase) ||
+                line.StartsWith("STYLE", StringComparison.OrdinalIgnoreCase) ||
+                line.StartsWith("REGION", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var match = Regex.Match(line, @"^(?:(\d{2}):)?(\d{2}:\d{2})\.(\d{3})\s*-->\s*(?:(\d{2}):)?(\d{2}:\d{2})\.(\d{3})");
+            if (match.Success)
+            {
+                sb.AppendLine((counter++).ToString());
+                string sH = match.Groups[1].Success ? match.Groups[1].Value : "00";
+                string sMs = match.Groups[3].Value;
+                string eH = match.Groups[4].Success ? match.Groups[4].Value : "00";
+                string eMs = match.Groups[6].Value;
+
+                sb.AppendLine($"{sH}:{match.Groups[2].Value},{sMs} --> {eH}:{match.Groups[5].Value},{eMs}");
+                inCue = true;
+                continue;
+            }
+
+            if (inCue)
+            {
+                var clean = Regex.Replace(line, @"<[^>]+>", "");
+                sb.AppendLine(clean);
+            }
+        }
+
+        return sb.ToString().Trim() + "\r\n";
+    }
+
+    public static bool EmbedSubtitleWithFfmpeg(string ffmpeg, string videoPath, string srtPath)
+    {
+        try
+        {
+            string ext = Path.GetExtension(videoPath).ToLowerInvariant();
+            if (ext != ".mp4" && ext != ".mkv" && ext != ".webm") return false;
+            string tempOut = Path.Combine(Path.GetDirectoryName(videoPath)!, "temp_embed_" + Guid.NewGuid().ToString("N")[..8] + ext);
+            string subCodec = ext == ".mkv" ? "srt" : "mov_text";
+
+            var psi = new ProcessStartInfo(ffmpeg)
+            {
+                CreateNoWindow = true,
+                UseShellExecute = false
+            };
+            psi.ArgumentList.Add("-y");
+            psi.ArgumentList.Add("-i");
+            psi.ArgumentList.Add(videoPath);
+            psi.ArgumentList.Add("-i");
+            psi.ArgumentList.Add(srtPath);
+            psi.ArgumentList.Add("-c:v");
+            psi.ArgumentList.Add("copy");
+            psi.ArgumentList.Add("-c:a");
+            psi.ArgumentList.Add("copy");
+            psi.ArgumentList.Add("-c:s");
+            psi.ArgumentList.Add(subCodec);
+            psi.ArgumentList.Add(tempOut);
+
+            using var proc = Process.Start(psi);
+            if (proc != null && proc.WaitForExit(45000) && proc.ExitCode == 0 && File.Exists(tempOut))
+            {
+                File.Move(tempOut, videoPath, true);
+                return true;
+            }
+        }
+        catch { }
+        return false;
+    }
+
+    public static async Task<string?> DownloadSubtitleFileAsync(string subUrl, DownloadRequest req, CancellationToken ct)
+    {
+        try
+        {
+            using var http = new HttpClient();
+            if (!string.IsNullOrEmpty(req.UserAgent))
+                http.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", req.UserAgent);
+            if (!string.IsNullOrEmpty(req.Referer))
+                http.DefaultRequestHeaders.TryAddWithoutValidation("Referer", req.Referer);
+            if (!string.IsNullOrEmpty(req.CookieHeader))
+                http.DefaultRequestHeaders.TryAddWithoutValidation("Cookie", req.CookieHeader);
+
+            var resp = await http.GetAsync(subUrl, ct);
+            if (!resp.IsSuccessStatusCode) return null;
+            var content = await resp.Content.ReadAsStringAsync(ct);
+            if (string.IsNullOrWhiteSpace(content)) return null;
+
+            if (content.StartsWith("WEBVTT", StringComparison.OrdinalIgnoreCase) || subUrl.Contains(".vtt", StringComparison.OrdinalIgnoreCase))
+                return ConvertVttToSrt(content);
+            return content;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private static string Trim(string s) => s.Length > 300 ? s[..300] + "…" : s;

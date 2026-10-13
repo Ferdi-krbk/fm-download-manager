@@ -272,7 +272,24 @@ public partial class App : System.Windows.Application
                         bool isVideo = req.Kind == DownloadKind.Video || VideoDownloader.IsVideoUrl(req.Url);
                         if (isVideo)
                         {
-                            var qDlg = new VideoQualityDialog(req.Url, req.FileName)
+                            if (req.SubtitlesOnly)
+                            {
+                                req.Kind = DownloadKind.Video;
+                                tcs.SetResult(true);
+                                return;
+                            }
+
+                            var launcher = toolPaths.YtDlpPath is { Length: > 0 } yp ? new ToolLauncher(yp) : null;
+                            var qDlg = new VideoQualityDialog(
+                                req.Url,
+                                req.FileName,
+                                req.WriteSubtitles || true,
+                                req.SubtitleLangs ?? "tr,en",
+                                req.Subtitles,
+                                req.VideoQualities,
+                                req.AudioTracks,
+                                req,
+                                launcher)
                             {
                                 Topmost = true,
                                 WindowStartupLocation = WindowStartupLocation.CenterScreen
@@ -284,6 +301,12 @@ public partial class App : System.Windows.Application
                             {
                                 req.Kind = DownloadKind.Video;
                                 req.CustomFormat = qDlg.SelectedFormat;
+                                req.WriteSubtitles = qDlg.DownloadSubtitles;
+                                req.SubtitleLangs = qDlg.SubtitleLangs;
+                                if (!string.IsNullOrEmpty(qDlg.SelectedSubtitleUrl))
+                                {
+                                    req.SubtitleUrl = qDlg.SelectedSubtitleUrl;
+                                }
                                 if (qDlg.AudioOnly)
                                 {
                                     req.Container = "mp3";

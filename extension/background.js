@@ -922,6 +922,23 @@ api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           sendResponse({ ok: true });
           break;
         }
+        case 'pageSubtitles': {
+          const tabId = sender.tab?.id || msg.tabId;
+          if (tabId && Array.isArray(msg.subtitles)) {
+            for (const s of msg.subtitles) {
+              if (s && s.url) {
+                await addSubtitle(tabId, {
+                  url: s.url,
+                  lang: s.code || s.lang || 'und',
+                  label: s.label || 'Altyazı',
+                  time: Date.now()
+                });
+              }
+            }
+          }
+          sendResponse({ ok: true });
+          break;
+        }
         case 'dismissTabBar': {
           const tabId = sender.tab?.id;
           if (tabId) {

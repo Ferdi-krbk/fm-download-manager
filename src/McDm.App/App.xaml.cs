@@ -238,6 +238,7 @@ public partial class App : System.Windows.Application
             {
                 Container = _settings.PreferredVideoFormat,
                 MaxHeight = _settings.MaxVideoResolution,
+                SpeedLimitBytes = _manager != null ? _manager.SpeedLimiter.BytesPerSecond : ((long)_settings.SpeedLimitKbps * 1024L)
             });
 
         _torrentEngine = new TorrentDownloader();
@@ -250,6 +251,11 @@ public partial class App : System.Windows.Application
             MaxConcurrentDownloads = _settings.MaxConcurrentDownloads,
             AutoCategorizeSubfolders = _settings.AutoCategorizeSubfolders,
         };
+
+        if (_settings.SpeedLimitKbps > 0)
+        {
+            _manager.SpeedLimiter.BytesPerSecond = (long)_settings.SpeedLimitKbps * 1024;
+        }
 
         _manager.ItemCompleted += item =>
         {

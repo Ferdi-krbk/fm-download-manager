@@ -32,6 +32,48 @@ async function currentTab() {
   return tabs && tabs[0];
 }
 
+async function getTabSubtitles(tabId) {
+  let subs = [];
+  if (tabId) {
+    try {
+      const resp = await new Promise((resolve) => {
+        api.tabs.sendMessage(tabId, { type: 'detectSubtitles' }, (r) => {
+          resolve(api.runtime.lastError ? null : r);
+        });
+      });
+      if (resp && Array.isArray(resp.subtitles) && resp.subtitles.length > 0) {
+        subs = resp.subtitles;
+      }
+    } catch {}
+  }
+
+  try {
+    const bgInfo = await send({ type: 'getBestMedia', tabId });
+    if (bgInfo && Array.isArray(bgInfo.subtitles)) {
+      for (const s of bgInfo.subtitles) {
+        if (s && s.url && !subs.some(x => x.url === s.url)) {
+          subs.push({
+            code: s.lang || s.code || 'und',
+            label: s.label || 'Altyazı',
+            url: s.url
+          });
+        }
+      }
+    }
+  } catch {}
+
+  return subs;
+}
+
+function chooseBestSubUrl(subs, targetLang = 'tr') {
+  if (!subs || !subs.length) return '';
+  const nonForcedTr = subs.find(s => (s.code === targetLang || s.lang === targetLang) && !/forced/i.test(s.url || '') && !/forced/i.test(s.label || ''));
+  if (nonForcedTr?.url) return nonForcedTr.url;
+  const anyTr = subs.find(s => s.code === targetLang || s.lang === targetLang);
+  if (anyTr?.url) return anyTr.url;
+  return subs[0]?.url || '';
+}
+
 async function refresh() {
   const st = await send({ type: 'status' });
   const online = !!(st && st.online);
@@ -108,8 +150,24 @@ async function loadMedia() {
     btn.onclick = async () => {
       btn.disabled = true; btn.textContent = '…';
       const k = m.kind === 'video' || m.kind === 'hls' || m.kind === 'dash' ? 'video' : 'file';
+      const isVid = k === 'video';
       const ref = (m.initiator && !m.initiator.startsWith('chrome-extension://')) ? (m.initiator.endsWith('/') ? m.initiator : m.initiator + '/') : tab.url;
-      const r = await send({ type: 'download', url: m.url, filename: k === 'file' ? m.name : '', referer: ref, kind: k });
+      const subs = isVid ? await getTabSubtitles(tab?.id) : [];
+      const chosenSub = isVid ? chooseBestSubUrl(subs, 'tr') : '';
+
+      const r = await send({
+        type: 'download',
+        url: m.url,
+        filename: k === 'file' ? m.name : '',
+        referer: ref,
+        kind: k,
+        writeSubtitles: isVid,
+        subtitles: subs,
+        subtitleUrl: chosenSub,
+        subtitleLangs: 'tr,en',
+        videoQualities: m.videoQualities || [],
+        audioTracks: m.audioTracks || []
+      });
       if (r && r.ok) {
         btn.textContent = '✓ ' + t('popupSent');
         btn.classList.add('success');
@@ -217,6 +275,7 @@ $('pageVideo').onclick = async () => {
   let kind = 'video';
   let filename = tab.title || '';
   let referer = tab.url;
+  let best = null;
 
   if (isKnownVideoHost) {
     // Known video platform (YouTube, TikTok, Twitter): ALWAYS use the active page URL & title!
@@ -235,7 +294,7 @@ $('pageVideo').onclick = async () => {
     } catch {}
   } else {
     const mediaList = (await send({ type: 'getMedia', tabId: tab.id })) || [];
-    const best = pickBestMedia(mediaList);
+    best = pickBestMedia(mediaList);
 
     if (best) {
       targetUrl = best.url;
@@ -270,11 +329,9 @@ $('pageVideo').onclick = async () => {
 }
 
   $('pageVideo').textContent = t('popupSending');
-  let subs = [];
-  try {
-    const bgInfo = await send({ type: 'getBestMedia', tabId: tab.id });
-    if (bgInfo && Array.isArray(bgInfo.subtitles)) subs = bgInfo.subtitles;
-  } catch {}
+  const isVid = kind === 'video' || kind === 'hls' || kind === 'dash';
+  const subs = isVid ? await getTabSubtitles(tab?.id) : [];
+  const chosenSub = isVid ? chooseBestSubUrl(subs, 'tr') : '';
 
   const r = await send({
     type: 'download',
@@ -282,10 +339,12 @@ $('pageVideo').onclick = async () => {
     filename,
     referer,
     kind,
-    writeSubtitles: true,
+    writeSubtitles: isVid,
     subtitles: subs,
-    subtitleUrl: subs.find(s => s.lang === 'tr' || s.code === 'tr')?.url || subs[0]?.url || '',
-    subtitleLangs: 'tr,en'
+    subtitleUrl: chosenSub,
+    subtitleLangs: 'tr,en',
+    videoQualities: best?.videoQualities || [],
+    audioTracks: best?.audioTracks || []
   });
   if (r && r.ok) {
     $('pageVideo').textContent = t('popupStarted');

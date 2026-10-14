@@ -410,6 +410,9 @@ public partial class MainWindow : Window
             _manager.DefaultDownloadDirectory = updated.DownloadDirectory;
             _manager.DefaultConnections = updated.ConnectionsPerDownload;
             _manager.MaxConcurrentDownloads = updated.MaxConcurrentDownloads;
+            _manager.SpeedLimiter.BytesPerSecond = (long)updated.SpeedLimitKbps * 1024;
+            SldSpeedLimit.Value = Math.Round((double)updated.SpeedLimitKbps / 1024);
+            TxtSpeedLimitVal.Text = updated.SpeedLimitKbps > 0 ? $"{updated.SpeedLimitKbps / 1024} MB/s" : "Sınırsız";
 
             // Apply culture change if user switched language
             if (updated.Language == "tr") Strings.Culture = new System.Globalization.CultureInfo("tr");

@@ -457,6 +457,15 @@
       if (!list.some(x => x.code === 'en')) list.push({ code: 'en', label: 'English', url: null });
       list.push({ code: 'tr,en', label: 'Türkçe + İngilizce', url: null });
     }
+
+    if (list && list.length > 0) {
+      try {
+        api.runtime.sendMessage({ type: 'pageSubtitles', subtitles: list }, () => {
+          if (api.runtime.lastError) {}
+        });
+      } catch {}
+    }
+
     return list;
   }
 
@@ -1027,6 +1036,7 @@
       if (isDismissedForPage || isPageDismissed()) return;
       showBarFor(v);
       scheduleHide(4000);
+      detectSubtitleTracks().catch?.(() => {});
     }, { passive: true });
 
     const player = getPlayerContainer(v);
@@ -1058,6 +1068,7 @@
   setTimeout(() => {
     if (isDismissedForPage || isPageDismissed()) return;
     scanAllVideos();
+    detectSubtitleTracks().catch?.(() => {});
     const activeVideo = Array.from(document.querySelectorAll('video')).find(v => {
       const r = v.getBoundingClientRect();
       return r.width >= MIN_WIDTH && r.height >= MIN_HEIGHT;
@@ -1067,6 +1078,10 @@
       scheduleHide(4500);
     }
   }, 400);
+
+  setTimeout(() => {
+    detectSubtitleTracks().catch?.(() => {});
+  }, 2000);
 
   // Fail-safe global capture mousemove: detect cursor over any video or player element even with complex overlays
   let lastMouseMoveTime = 0;
@@ -1177,5 +1192,16 @@
 
   document.addEventListener('fullscreenchange', () => {
     setTimeout(updatePosition, 100);
+  });
+
+  api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (msg?.type === 'detectSubtitles') {
+      detectSubtitleTracks().then((subs) => {
+        sendResponse({ subtitles: subs || [], ok: true });
+      }).catch(() => {
+        sendResponse({ subtitles: [], ok: false });
+      });
+      return true;
+    }
   });
 })();

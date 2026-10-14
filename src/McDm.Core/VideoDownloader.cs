@@ -89,6 +89,8 @@ public sealed class VideoOptions
     public string? SubtitleUrl { get; set; }
     public List<SubtitleTrackInfo>? Subtitles { get; set; }
     public string? SubtitleContent { get; set; }
+    /// <summary>Speed limit in bytes per second (0 = unlimited).</summary>
+    public long SpeedLimitBytes { get; set; }
 }
 
 /// <summary>One parsed --progress-template line.</summary>
@@ -245,6 +247,11 @@ public sealed class VideoDownloader
                 a.Add("--no-abort-on-error");
             }
         }
+        if (o.SpeedLimitBytes > 0)
+        {
+            a.Add("--limit-rate");
+            a.Add($"{o.SpeedLimitBytes}");
+        }
         if (ffmpegLocation != null) { a.Add("--ffmpeg-location"); a.Add(ffmpegLocation); }
         if (cookiesFile != null) { a.Add("--cookies"); a.Add(cookiesFile); }
         a.Add("-P"); a.Add(outputDir);
@@ -389,7 +396,8 @@ public sealed class VideoDownloader
             SubtitleLangs = !string.IsNullOrWhiteSpace(item.Request.SubtitleLangs) ? item.Request.SubtitleLangs : "tr,en",
             SubtitleUrl = item.Request.SubtitleUrl,
             Subtitles = item.Request.Subtitles,
-            SubtitleContent = item.Request.SubtitleContent
+            SubtitleContent = item.Request.SubtitleContent,
+            SpeedLimitBytes = baseOpt.SpeedLimitBytes
         };
         string outDir = string.IsNullOrEmpty(item.Directory) ? Directory.GetCurrentDirectory() : item.Directory;
         Directory.CreateDirectory(outDir);

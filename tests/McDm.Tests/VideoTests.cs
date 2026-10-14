@@ -28,6 +28,12 @@ public static class VideoTests
             check(args[args.IndexOf("-S") + 1].Contains("res:720"), "sort should contain res:720");
             check(args.Contains("--"), "should contain end-of-options marker");
             check(args[^1] == "https://example.com/watch?v=123", "last arg must be url");
+            check(!args.Contains("--limit-rate"), "unlimited download should not have --limit-rate");
+
+            var optThrottled = new VideoOptions { Container = "mp4", MaxHeight = 720, SpeedLimitBytes = 2097152 };
+            var argsThrottled = VideoDownloader.BuildArguments("https://example.com/watch?v=123", optThrottled, @"C:\Downloads", @"C:\Downloads\.temp", null, null);
+            check(argsThrottled.Contains("--limit-rate"), "throttled download should have --limit-rate");
+            check(argsThrottled[argsThrottled.IndexOf("--limit-rate") + 1] == "2097152", "--limit-rate value mismatch");
 
             var req = new DownloadRequest
             {

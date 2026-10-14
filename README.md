@@ -22,6 +22,7 @@
 
 <p align="center">
   <a href="#-live-showcase">Showcase</a> •
+  <a href="docs/tanitim.html">🎬 Interactive Showcase</a> •
   <a href="#-feature-matrix">Features</a> •
   <a href="#-deep-dive-capabilities">Capabilities</a> •
   <a href="#-architecture">Architecture</a> •
@@ -38,7 +39,8 @@
 </p>
 
 <p align="center">
-  <b>⚡ Real-Time Multi-Part Download Engine &amp; Waveform Vector Speed Telemetry in Action</b>
+  <b>⚡ Real-Time Multi-Part Download Engine &amp; Waveform Vector Speed Telemetry in Action</b><br>
+  <a href="docs/tanitim.html"><b>👉 Click here to open the Interactive HTML Showcase in your browser</b></a>
 </p>
 
 ---

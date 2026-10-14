@@ -22,7 +22,7 @@
 
 <p align="center">
   <a href="#-canlı-önizleme-showcase">Canlı Önizleme</a> •
-  <a href="docs/tanitim.html">🎬 İnteraktif Tanıtım</a> •
+  <a href="https://htmlpreview.github.io/?https://github.com/Ferdi-krbk/fm-download-manager/blob/main/docs/tanitim.html" target="_blank">🎬 İnteraktif Tanıtım</a> •
   <a href="#-karşılaştırma-ve-özellik-matrisi">Özellik Matrisi</a> •
   <a href="#-derinlemesine-yetenekler">Yetenekler</a> •
   <a href="#-mimari">Mimari</a> •
@@ -40,7 +40,7 @@
 
 <p align="center">
   <b>⚡ Gerçek Zamanlı Çok Parçalı İndirme ve Canlı Dalga Formlu Vektör Hız Grafiği (EMA Telemetrisi)</b><br>
-  <a href="docs/tanitim.html"><b>👉 İnteraktif HTML Tanıtımını Tarayıcıda Açmak İçin Tıklayın</b></a>
+  <a href="https://htmlpreview.github.io/?https://github.com/Ferdi-krbk/fm-download-manager/blob/main/docs/tanitim.html" target="_blank"><b>👉 İnteraktif HTML Tanıtımını Tarayıcıda Canlı Açmak İçin Tıklayın</b></a>
 </p>
 
 ---

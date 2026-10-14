@@ -22,7 +22,7 @@
 
 <p align="center">
   <a href="#-live-showcase">Showcase</a> •
-  <a href="docs/tanitim.html">🎬 Interactive Showcase</a> •
+  <a href="https://htmlpreview.github.io/?https://github.com/Ferdi-krbk/fm-download-manager/blob/main/docs/tanitim.html" target="_blank">🎬 Interactive Showcase</a> •
   <a href="#-feature-matrix">Features</a> •
   <a href="#-deep-dive-capabilities">Capabilities</a> •
   <a href="#-architecture">Architecture</a> •
@@ -40,7 +40,7 @@
 
 <p align="center">
   <b>⚡ Real-Time Multi-Part Download Engine &amp; Waveform Vector Speed Telemetry in Action</b><br>
-  <a href="docs/tanitim.html"><b>👉 Click here to open the Interactive HTML Showcase in your browser</b></a>
+  <a href="https://htmlpreview.github.io/?https://github.com/Ferdi-krbk/fm-download-manager/blob/main/docs/tanitim.html" target="_blank"><b>👉 Click here to launch the Live Interactive Showcase</b></a>
 </p>
 
 ---

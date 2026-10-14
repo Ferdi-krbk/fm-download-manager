@@ -12,7 +12,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Ferdi-krbk/fm-download-manager/releases/latest"><img src="https://img.shields.io/badge/S%C3%BCr%C3%BCm-v3.4.3-crimson.svg?style=for-the-badge&logo=windows&logoColor=white" alt="Sürüm v3.4.3"></a>
+  <a href="https://github.com/Ferdi-krbk/fm-download-manager/releases/latest"><img src="https://img.shields.io/badge/S%C3%BCr%C3%BCm-v3.4.6-crimson.svg?style=for-the-badge&logo=windows&logoColor=white" alt="Sürüm v3.4.6"></a>
   <a href="https://dotnet.microsoft.com/download/dotnet/8.0"><img src="https://img.shields.io/badge/.NET-8.0%20LTS-purple.svg?style=for-the-badge&logo=dotnet&logoColor=white" alt=".NET 8 LTS"></a>
   <a href="https://github.com/Ferdi-krbk/fm-download-manager"><img src="https://img.shields.io/badge/Motor-MonoTorrent%203.0-blue.svg?style=for-the-badge&logo=bittorrent&logoColor=white" alt="BitTorrent"></a>
   <a href="https://github.com/Ferdi-krbk/fm-download-manager"><img src="https://img.shields.io/badge/Medya-yt--dlp%20%2B%20FFmpeg-red.svg?style=for-the-badge&logo=youtube&logoColor=white" alt="yt-dlp"></a>
@@ -201,15 +201,25 @@ flowchart TD
 ## 📦 Hızlı Kurulum
 
 ### Yöntem 1: Windows Kurulum Paketi (Önerilen)
-1. Güncel kurulum dosyasını indirin: [FMDownloadManager-Setup-3.4.3.exe](https://github.com/Ferdi-krbk/fm-download-manager/releases/download/v3.4.3/FMDownloadManager-Setup-3.4.3.exe).
+1. Güncel kurulum dosyasını indirin: [FMDownloadManager-Setup-3.4.6.exe](https://github.com/Ferdi-krbk/fm-download-manager/releases/download/v3.4.6/FMDownloadManager-Setup-3.4.6.exe).
 2. Kurulumu çalıştırın (yönetici izni gerektirmeden `%LOCALAPPDATA%\Programs\FM Download Manager` dizinine yüklenir).
 3. Kurulum tamamlandığında tarayıcı eklentisi klasörü ve kurulum rehberi otomatik olarak açılır.
 
 ### Yöntem 2: Tarayıcı Eklentisi Kurulumu
+> [!IMPORTANT]
+> **GitHub'dan veya harici yerlerden ayrık eklenti zip'i indirmeyin!**
+> Eklentiyi her zaman doğrudan programın kurulu olduğu klasörden tarayıcınıza ekleyin:
+> `%LOCALAPPDATA%\Programs\FM Download Manager\extension`
+> *(Ayrı bir zip çıkartıp eklerseniz, program güncellendiğinde eklentiniz otomatik güncellenmez ve eski sürümde kalırsınız!)*
+
 1. Chrome, Edge veya Brave tarayıcınızda `chrome://extensions` adresine gidin.
-2. Sağ üstteki **Geliştirici Modu**nu açın.
-3. **Paketlenmemiş öge yükle** butonuna basarak program dizinindeki `extension` klasörünü seçin.
-4. Eklenti yerel anahtarı (`token.json`) otomatik okur ve yeşil renkle eşleşir!
+2. Sağ üst köşedeki **Geliştirici Modu** anahtarını açın.
+3. **Paketlenmemiş öge yükle** butonuna tıklayın.
+4. Programın kurulu olduğu eklenti klasörünü seçin:
+   `%LOCALAPPDATA%\Programs\FM Download Manager\extension`
+   *(Windows + R tuşlarına basıp bu yolu yapıştırarak klasörü seçebilirsiniz)*.
+5. Eklenti yerel anahtarı (`token.json`) otomatik algılar ve simgesi yeşile dönerek anında eşleşir!
+   *(Program her güncellendiğinde tarayıcı eklentiniz de otomatik olarak güncellenir!)*
 
 ---
 

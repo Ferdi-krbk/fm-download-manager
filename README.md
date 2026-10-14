@@ -1,101 +1,164 @@
 <p align="center">
-  <img src="docs/icon.png" width="110" height="110" alt="FM Download Manager Logo" />
+  <a href="https://github.com/Ferdi-krbk/fm-download-manager">
+    <img src="docs/icon.png" width="128" height="128" alt="FM Download Manager Logo" />
+  </a>
 </p>
 
 <h1 align="center">FM Download Manager</h1>
 
 <p align="center">
-  <b>Modern, lightweight, and high-performance download manager for Windows 10 & 11.</b><br>
-  <i>Engineered with dynamic multi-part acceleration, native BitTorrent engine, intelligent media sniffer, and IDM-style floating controls.</i>
+  <b>Ultra-Fast Multi-Threaded Acceleration • Native BitTorrent Client • Universal Media & Dual-Audio Pipeline • IDM-Style Floating Controls</b><br>
+  <i>Designed from scratch for Windows 10 &amp; 11 with hardware-accelerated .NET 8 WPF.</i>
 </p>
 
 <p align="center">
-  <a href="https://github.com/Ferdi-krbk/fm-download-manager/releases"><img src="https://img.shields.io/badge/Release-v3.4.3-crimson.svg?style=for-the-badge&logo=windows" alt="Release v3.4.3"></a>
-  <a href="https://dotnet.microsoft.com/download/dotnet/8.0"><img src="https://img.shields.io/badge/.NET-8.0%20LTS-purple.svg?style=for-the-badge&logo=dotnet" alt=".NET 8 LTS"></a>
-  <a href="https://github.com/Ferdi-krbk/fm-download-manager"><img src="https://img.shields.io/badge/BitTorrent-MonoTorrent-blue.svg?style=for-the-badge&logo=bittorrent" alt="MonoTorrent"></a>
-  <a href="https://github.com/Ferdi-krbk/fm-download-manager"><img src="https://img.shields.io/badge/Media-yt--dlp%20%2B%20FFmpeg-red.svg?style=for-the-badge&logo=youtube" alt="yt-dlp + FFmpeg"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge" alt="License MIT"></a>
-  <a href="README.tr.md"><img src="https://img.shields.io/badge/Dil-T%C3%BCrk%C3%A7e-red.svg?style=for-the-badge" alt="Türkçe Dökümantasyon"></a>
+  <a href="https://github.com/Ferdi-krbk/fm-download-manager/releases/latest"><img src="https://img.shields.io/badge/Release-v3.4.3-crimson.svg?style=for-the-badge&logo=windows&logoColor=white" alt="Release v3.4.3"></a>
+  <a href="https://dotnet.microsoft.com/download/dotnet/8.0"><img src="https://img.shields.io/badge/.NET-8.0%20LTS-purple.svg?style=for-the-badge&logo=dotnet&logoColor=white" alt=".NET 8 LTS"></a>
+  <a href="https://github.com/Ferdi-krbk/fm-download-manager"><img src="https://img.shields.io/badge/Engine-MonoTorrent%203.0-blue.svg?style=for-the-badge&logo=bittorrent&logoColor=white" alt="BitTorrent"></a>
+  <a href="https://github.com/Ferdi-krbk/fm-download-manager"><img src="https://img.shields.io/badge/Media-yt--dlp%20%2B%20FFmpeg-red.svg?style=for-the-badge&logo=youtube&logoColor=white" alt="yt-dlp"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-emerald.svg?style=for-the-badge" alt="MIT License"></a>
+  <a href="README.tr.md"><img src="https://img.shields.io/badge/Dokümantasyon-Türkçe-rose.svg?style=for-the-badge" alt="Türkçe"></a>
 </p>
 
 <p align="center">
-  <a href="#-overview">Overview</a> •
-  <a href="#-key-features">Key Features</a> •
-  <a href="#-supported-media--streaming-protocols">Supported Media</a> •
+  <a href="#-live-showcase">Showcase</a> •
+  <a href="#-feature-matrix">Features</a> •
+  <a href="#-deep-dive-capabilities">Capabilities</a> •
   <a href="#-architecture">Architecture</a> •
-  <a href="#-installation">Installation</a> •
-  <a href="#-keyboard-shortcuts">Shortcuts</a> •
-  <a href="#-building-from-source">Build</a>
+  <a href="#-quickstart--installation">Installation</a> •
+  <a href="#-shortcuts">Shortcuts</a>
 </p>
 
 ---
+
+## 🎬 Live Showcase
 
 <p align="center">
-  <img src="docs/ui/clean_poster.jpg" width="95%" alt="FM Download Manager Showcase" />
+  <img src="docs/ui/demo_turbo.gif" width="100%" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);" alt="Live Desktop Dashboard in Action" />
+</p>
+
+<p align="center">
+  <b>⚡ Real-Time Multi-Part Download Engine &amp; Waveform Vector Speed Telemetry in Action</b>
 </p>
 
 ---
 
-## 📌 Overview
+## ✨ Visual Feature Highlights
 
-**FM Download Manager** is an open-source, modern desktop download manager built natively in C# / WPF on **.NET 8**. Designed as a clean, bloatware-free alternative to legacy software, it focuses on raw download throughput, minimal memory footprint, and reliable browser integration.
-
-* **100% Local & Private:** No telemetry, no background analytics, no ads, and no external cloud dependencies.
-* **Modern Windows Native:** Built with hardware-accelerated WPF, crisp Bahnschrift typography, and dual dark themes (Deep Burgundy & Pure AMOLED Black).
-* **Universal Browser Bridge:** Secure local HTTP bridge (`127.0.0.1:48213`) connecting Chromium browsers (Chrome, Edge, Brave) via 256-bit token authentication.
+<table width="100%">
+  <tr>
+    <td width="50%" valign="top">
+      <h3 align="center">🚀 IDM-Style Floating Bar</h3>
+      <p align="center">
+        <img src="docs/ui/afis_1_hero.jpg" width="100%" alt="Floating Bar & Zero-Click Pairing" />
+      </p>
+      <ul>
+        <li><b>Zero-Interference Shadow DOM:</b> Renders isolated from host website styles.</li>
+        <li><b>Strict CSP &amp; Trusted-Types Safe:</b> 100% pure DOM node construction (zero <code>innerHTML</code>).</li>
+        <li><b>Capture-Phase Hover:</b> Detects mouse movements over embedded players and YouTube videos instantly.</li>
+      </ul>
+    </td>
+    <td width="50%" valign="top">
+      <h3 align="center">🎧 Dual-Audio &amp; Subtitle Pipeline</h3>
+      <p align="center">
+        <img src="docs/ui/afis_2_performance.jpg" width="100%" alt="Dual Audio & Performance Engine" />
+      </p>
+      <ul>
+        <li><b>Dual-Audio Stream Pairing:</b> Auto-muxes video with preferred audio tracks (Dubbed + Original) on 3rd-party players.</li>
+        <li><b>Auto VTT ➔ SRT Converter:</b> Cleans timestamps and HTML tags into standard SubRip subtitles.</li>
+        <li><b>3 Download Modes:</b> Video + Subtitles, Standalone <code>.srt</code>, or Raw Clean Video.</li>
+      </ul>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <h3 align="center">🌐 Zero-Click Browser Pairing</h3>
+      <p align="center">
+        <img src="docs/ui/browser_setup.png" width="100%" alt="Browser Setup Hub" />
+      </p>
+      <ul>
+        <li><b>Automated Token Seeding:</b> Unpacks <code>token.json</code> straight to the extension folder.</li>
+        <li><b>One-Click Pairing:</b> Turns green instantly without copy-pasting cryptic tokens.</li>
+        <li><b>Chromium Universal:</b> Full native support for Google Chrome, Microsoft Edge, and Brave.</li>
+      </ul>
+    </td>
+    <td width="50%" valign="top">
+      <h3 align="center">📊 Vector Speed Graph &amp; Limiter</h3>
+      <p align="center">
+        <img src="docs/ui/speed_limiter.png" width="100%" alt="Bandwidth Limiter Dial" />
+      </p>
+      <ul>
+        <li><b>EMA Filtered Telemetry:</b> Exponential Moving Average eliminates erratic spike noise.</li>
+        <li><b>Interactive Speed Dial:</b> Instant preset chips (<code>Auto</code>, <code>2M</code>, <code>5M</code>, <code>10M</code>, <code>20M</code>).</li>
+        <li><b>Scheduled Off-Peak Queues:</b> Set automated midnight download windows.</li>
+      </ul>
+    </td>
+  </tr>
+</table>
 
 ---
 
-## ⚡ Key Features
+## 💎 Feature Matrix
 
-### 1. Dynamic Resegmentation Engine
-Traditional multi-part downloaders divide files into fixed chunks. If a single connection slows down or stalls, the entire download halts at the end. FM Download Manager dynamically monitors active chunks: when a worker finishes its segment early, it automatically splits the slowest remaining chunk in half and downloads the remainder in parallel, ensuring full line-rate bandwidth utilization.
+| Feature | FM Download Manager v3.4.3 | Traditional Browsers | Legacy Download Managers |
+|---|:---:|:---:|:---:|
+| **Dynamic Resegmentation** | ✅ **Active Real-Time Split** | ❌ Single Stream | ⚠️ Fixed segments only |
+| **BitTorrent & Magnet Support** | ✅ **Native (MonoTorrent 3.0)** | ❌ None | ❌ Requires separate app |
+| **YouTube 4K & MP3 Extraction** | ✅ **Guaranteed MP4 Remux** | ❌ Blocked | ⚠️ Often breaks / WebM only |
+| **Dual-Audio Pairing (TR/EN)** | ✅ **Full Video + Audio Mux** | ❌ Downloads audio only | ❌ Corrupt / 19 MB audio file |
+| **Universal VTT ➔ SRT Subtitles** | ✅ **3 Modes + VLC Standard** | ❌ None | ❌ None |
+| **CSP / Trusted Types Floating Bar** | ✅ **Shadow DOM Safe** | ❌ None | ⚠️ Breaks on modern sites |
+| **Zero-Click Browser Pairing** | ✅ **Automated Token Seed** | — | ❌ Manual setup / Ads |
+| **Telemetry & Advertising** | 🛡️ **100% Free & Zero Tracking** | ⚠️ High Telemetry | ❌ Adware / Premium Paywalls |
 
-### 2. Native BitTorrent & Magnet Integration
-Built on the robust **MonoTorrent 3.0** library:
-* Direct handling of `magnet:?xt=urn:btih:...` links and `.torrent` files without requiring secondary torrent clients (such as qBittorrent or uTorrent).
-* Distributed Hash Table (DHT), Peer Exchange (PEX), Local Peer Discovery (LSD), and encrypted peer connections.
+---
 
-### 3. High-Fidelity Media Pipeline (Guaranteed MP4 Output)
-Powered by customized `yt-dlp` and `FFmpeg` toolchains:
-* Single-click capture from YouTube, Twitter/X, TikTok, Instagram, Reddit, Vimeo, Facebook, and 1000+ web platforms.
-* **Clean MP4 Remuxing:** High-resolution video and audio streams are automatically paired and remuxed into clean, universally playable `.mp4` containers (eliminating incompatible WebM playback issues).
-* **Quality Selector:** Intuitive dialog for picking *Ultra Quality (4K60 / 1080p60)*, *720p HD*, or extracting *Audio Only (MP3 / 320 kbps)*.
+## ⚡ Deep-Dive Capabilities
 
-### 4. Dual-Audio & Multi-Track Stream Pairing
-Web video players often serve adaptive HLS (`.m3u8`) or DASH (`.mpd`) streams containing multiple independent audio tracks (e.g. Dubbed and Original languages):
-* Resolves the common issue where downloaders only capture the isolated audio stream (~20 MB) instead of the full video.
-* Accurately pairs the requested video resolution with the desired audio stream, outputting a complete, high-bitrate media file.
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│  FM DOWNLOAD MANAGER v3.4.3 — UNIVERSAL MEDIA & TURBO PIPELINE        │
+├────────────────────────────────────────────────────────────────────────┤
+│  ⚡ 1 Gbps Turbo Multi-Part Engine  │  🧲 Native BitTorrent & Magnet   │
+│  📊 Vector Waveform EMA Graph       │  🎛️ Bandwidth Limiter Dial       │
+│  🎬 YouTube 4K60 / MP3 Remuxer      │  💬 Auto VTT ➔ SRT Subtitles     │
+│  🎧 Dual-Audio Stream Pairing       │  🎥 3rd-Party Player Integration │
+│  🌐 Zero-Click Extension Pairing    │  ⏱️ Off-Peak Night Scheduler     │
+│  🎨 Burgundy & AMOLED Dark Themes   │  🔒 256-Bit Token Security       │
+└────────────────────────────────────────────────────────────────────────┘
+```
 
-### 5. Universal Subtitle Extraction & VTT ➔ SRT Converter
-Full control over embedded and remote subtitles:
-* **3 Download Modes:**
-  1. *Video + Subtitles:* Downloads the video while simultaneously packaging the selected subtitle.
+### 1. ⚡ Dynamic Resegmentation Engine
+When downloading large files (ISOs, games, archives), fixed multi-part downloaders often suffer from tail latency: if one TCP connection crawls, the entire process waits. 
+FM Download Manager monitors byte delivery across all active threads. When an idle connection frees up, it locates the slowest active segment, slices its remaining byte range in two, and downloads the second half in parallel.
+
+### 2. 🧲 Native BitTorrent & Magnet Swarm
+No need to install separate heavy torrent clients:
+* Magnet links (`magnet:?xt=urn:...`) and `.torrent` files are handled directly inside the queue.
+* Built on **MonoTorrent 3.0** with full support for DHT, Peer Exchange (PEX), Local Peer Discovery (LSD), and encrypted peer transfers.
+
+### 3. 🎬 Media Pipeline & Clean MP4 Containers
+Integrated with a tuned `yt-dlp` and `FFmpeg` pipeline:
+* Single-click extraction from YouTube, Twitter/X, TikTok, Instagram, Reddit, Vimeo, Facebook, and 1000+ sources.
+* **Guaranteed MP4 Output:** Automatically remuxes separate DASH video and audio streams into clean, universally playable `.mp4` files (no WebM compatibility headaches).
+* **Format Dialog:** Pick between *Ultra Quality (4K60 / 1080p60)*, *720p HD*, or extract *Audio Only (MP3 / 320 kbps)*.
+
+### 4. 🎧 Dual-Audio & Multi-Track Pairing
+Modern web video players deliver adaptive HLS (`.m3u8`) or DASH (`.mpd`) streams containing multiple audio channels (e.g., Dubbed + Original languages).
+* **The Problem:** Standard tools often download only the first isolated audio stream (~20 MB) leaving you with a blank audio file.
+* **The Solution:** FM Download Manager pairs the requested resolution with the selected audio track, remuxing both into an intact ~700 MB - 2 GB full-length MP4 video.
+
+### 5. 💬 Universal Subtitle Extractor & VTT ➔ SRT Converter
+* **3 Flexible Modes:**
+  1. *Video + Subtitles:* Embeds or downloads the subtitle track alongside the video.
   2. *Subtitles Only (`.srt`):* Grabs the subtitle file in seconds without downloading video bytes.
-  3. *Clean Video:* Downloads the raw video stream with no subtitle overhead.
-* **Automatic VTT ➔ SRT Normalization:** Online players typically stream subtitles in raw WebVTT format. FM Download Manager normalizes timestamps, strips styling tags, and outputs standard SubRip (`.srt`) files compatible with Smart TVs, media servers, and VLC.
+  3. *Raw Clean Video:* Fetches video without subtitle data.
+* **Automatic Normalization:** Web players serve raw WebVTT with timing artifacts. FM Download Manager converts them on the fly to standard SubRip (`.srt`) compatible with VLC, Smart TVs, and mobile players.
 
-### 6. IDM-Style Floating Media Bar
-* **Shadow DOM Isolation:** Injected into pages via an encapsulated Shadow DOM barrier, completely immune to host page CSS conflicts.
-* **Trusted Types & CSP Compliant:** Engineered with 100% pure DOM node construction, satisfying strict Content Security Policies on modern platforms like YouTube.
-* **Hover Detection:** Appears smoothly at the top-right corner when hovering over video elements or embedded iframe players.
-
-### 7. Bandwidth Management & Vector Speed Graph
-* **Vector Waveform Display:** Real-time throughput graph utilizing Exponential Moving Average (EMA) filtering to smooth out erratic network spikes.
-* **Speed Limiter Slider:** Dynamic control slider with instant presets (`[Auto] [2M] [5M] [10M] [20M]`) to limit download speed on the fly without interrupting transfers.
-* **Night Queue Scheduler:** Set automated start/stop windows (e.g., 02:00 – 07:00) to schedule large downloads during off-peak hours.
-
----
-
-## 🎬 Supported Media & Streaming Protocols
-
-| Category | Supported Sources & Formats | Capabilities |
-|---|---|---|
-| **Major Platforms** | YouTube, Twitter/X, TikTok, Instagram, Reddit, Vimeo, Facebook | Up to 4K60 HDR, MP3 320k, Subtitle extraction, Instant hover bar |
-| **3rd-Party Web Players** | HLS (`.m3u8`), DASH (`.mpd`), MP4/WebM direct embeds | Dual-Audio stream pairing (Dubbed + Original), resolution selector |
-| **Subtitle Formats** | WebVTT (`.vtt`), SubRip (`.srt`), Player Caption Streams | Auto VTT ➔ SRT conversion, multi-language selector, standalone download |
-| **BitTorrent** | Magnet URIs, `.torrent` metadata files | Multi-file torrent support, DHT/PEX, encrypted peer communication |
-| **Direct Web Downloads** | HTTP/1.1, HTTP/2, Chunked, Range-based transfers | Dynamic multi-threading (up to 16 connections), auto-retry, atomic state |
+### 6. 🚀 Modern Shadow DOM Floating Bar
+* Injected into pages via an encapsulated Shadow DOM barrier, immune to website stylesheet conflicts.
+* Engineered with pure DOM node construction, satisfying strict Content Security Policies (CSP) and Trusted Types on modern platforms.
+* Smooth capture-phase hover activation over video elements and embedded player iframes.
 
 ---
 
@@ -110,14 +173,14 @@ flowchart TD
     end
 
     subgraph Desktop["FM Download Manager (C# / .NET 8 WPF)"]
-        UI["WPF Desktop UI (Dark Burgundy & AMOLED)"]
+        UI["Hardware-Accelerated UI (Burgundy & AMOLED)"]
         BRIDGE["Local Kestrel Bridge (127.0.0.1:48213)"]
-        MGR["Download Manager (Queue & State Engine)"]
+        MGR["Download Manager (Queue & State Store)"]
         
-        subgraph Engines["Download Engines"]
-            SEG["Segmented Downloader (HTTP Multi-Part)"]
+        subgraph Engines["High-Performance Engines"]
+            SEG["Segmented Downloader (Parallel HTTP)"]
             TOR["Torrent Engine (MonoTorrent 3.0)"]
-            VID["Video Pipeline (yt-dlp + FFmpeg Remuxer)"]
+            VID["Media Pipeline (yt-dlp + FFmpeg Remuxer)"]
         end
     end
 
@@ -131,69 +194,64 @@ flowchart TD
     MGR --> VID
     SEG -- "Range Requests" --> WebServer["Remote File Host"]
     TOR -- "P2P Swarm" --> P2P["BitTorrent Peers"]
-    VID -- "Adaptive Stream Fetch" --> MediaHost["HLS / DASH / Web Video"]
+    VID -- "Adaptive Streams" --> MediaHost["HLS / DASH / Web Video"]
 ```
 
 ---
 
-## 📦 Installation
+## 📦 Quickstart & Installation
 
-### Option 1: Windows Installer (Recommended)
-1. Download `FMDownloadManager-Setup-3.4.3.exe` from the [Latest Releases](https://github.com/Ferdi-krbk/fm-download-manager/releases).
-2. Run the installer. It installs the application to `%LOCALAPPDATA%\Programs\FM Download Manager` (no administrator privileges required).
-3. The installer automatically unpacks the companion browser extension and opens the browser setup page.
+### Option 1: Standalone Windows Installer (Recommended)
+1. Grab the latest installer: [FMDownloadManager-Setup-3.4.3.exe](https://github.com/Ferdi-krbk/fm-download-manager/releases/download/v3.4.3/FMDownloadManager-Setup-3.4.3.exe).
+2. Run the setup (installs to `%LOCALAPPDATA%\Programs\FM Download Manager` without admin privileges).
+3. The setup automatically unpacks the companion browser extension and opens the quick setup guide.
 
 ### Option 2: Browser Extension Setup
-1. In Google Chrome, Microsoft Edge, or Brave, open `chrome://extensions`.
-2. Toggle on **Developer Mode** (top right corner).
-3. Click **Load unpacked** and select the extension directory (found in the program folder under `extension` or downloaded from releases).
-4. The extension automatically detects the local bridge token and pairs with a green indicator.
+1. In Chrome, Edge, or Brave, open `chrome://extensions`.
+2. Enable **Developer Mode** (top-right toggle).
+3. Click **Load unpacked** and choose the `extension` folder inside the installation directory.
+4. The extension automatically reads the local security key (`token.json`) and pairs with a green indicator!
 
 ---
 
 ## ⌨️ Keyboard Shortcuts
 
-| Shortcut | Description |
+| Shortcut | Action |
 |---|---|
-| `Ctrl + N` | Add new download URL (File, Media, or Magnet) |
-| `Ctrl + V` | Paste URL from clipboard |
-| `Ctrl + F` | Focus instant search box |
+| `Ctrl + N` | Add new download (Direct link, Video URL, or Magnet URI) |
+| `Ctrl + V` | Automatically paste URL from clipboard |
+| `Ctrl + F` | Focus instant search & filter box |
 | `Space` | Pause or Resume selected download |
-| `Delete` | Remove selected task from list |
-| `Shift + Delete` | Remove task and delete downloaded file from disk |
+| `Delete` | Remove task from queue |
+| `Shift + Delete` | Remove task and permanently delete file from disk |
 | `Ctrl + Shift + T` | Toggle between Dark Burgundy and Deep AMOLED Black themes |
-| `Ctrl + ,` | Open Settings dialog |
+| `Ctrl + ,` | Open Preferences dialog |
 
 ---
 
 ## 🛠️ Building from Source
 
-### Prerequisites
-* Windows 10 or 11 (x64)
-* [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
-* Git for Windows
-
 ```bash
-# Clone the repository
+# 1. Clone the repository
 git clone https://github.com/Ferdi-krbk/fm-download-manager.git
 cd fm-download-manager
 
-# Restore dependencies & build
+# 2. Restore & build solution
 dotnet restore
 dotnet build -c Release
 
-# Run automated test suites (Full matrix)
+# 3. Run full automated test suite (68 tests)
 node tests/test_full_download_matrix.js
 dotnet test tests/McDm.Tests/McDm.Tests.csproj
 
-# Run application
+# 4. Launch application
 dotnet run --project src/McDm.App/McDm.App.csproj
 ```
 
 ---
 
-## 📄 License & Acknowledgments
+## 📄 License & Credits
 
-* **License:** Licensed under the [MIT License](LICENSE).
-* **Upstream Heritage:** Inspired by the macOS open-source project [MC Download Manager](https://github.com/mstcvk/mc-download-manager) by [Mesut Çevik](https://github.com/mstcvk). Fully rewritten and architected for Windows 10 & 11.
-* **Core Libraries:** Powered by [.NET 8](https://github.com/dotnet), [MonoTorrent](https://github.com/alanmcgovern/monotorrent), [yt-dlp](https://github.com/yt-dlp/yt-dlp), and [FFmpeg](https://ffmpeg.org/).
+* **License:** Distributed under the open-source [MIT License](LICENSE).
+* **Upstream Heritage:** Inspired by the macOS open-source project [MC Download Manager](https://github.com/mstcvk/mc-download-manager) by [Mesut Çevik](https://github.com/mstcvk). Fully rewritten and customized for modern Windows 10 & 11.
+* **Core Technologies:** Built with [.NET 8](https://github.com/dotnet), [MonoTorrent](https://github.com/alanmcgovern/monotorrent), [yt-dlp](https://github.com/yt-dlp/yt-dlp), and [FFmpeg](https://ffmpeg.org/).

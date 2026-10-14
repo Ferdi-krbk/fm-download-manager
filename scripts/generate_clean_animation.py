@@ -102,7 +102,7 @@ def main():
         # Clean Version Badge
         draw_rounded_rect(draw, (win_x + 208, win_y + 11, win_x + 265, win_y + 29), radius=4,
                           fill=(35, 18, 24), outline=ACCENT_RED, width=1)
-        draw.text((win_x + 216, win_y + 13), "v3.2.0", fill=ACCENT_RED_HOVER, font=font_sm)
+        draw.text((win_x + 216, win_y + 13), "v3.4.3", fill=ACCENT_RED_HOVER, font=font_sm)
 
         # Window Controls (mac/win subtle dots or icons)
         draw.text((win_x + win_w - 75, win_y + 12), "─   □   ✕", fill=TEXT_DIM, font=font_sm)
@@ -223,14 +223,14 @@ def main():
         draw.text((content_x + 625, r1_y + 22), "16", fill=GREEN_SUCCESS, font=font_bold_md)
         draw.text((content_x + 675, r1_y + 22), "İndiriliyor", fill=ACCENT_RED_HOVER, font=font_reg)
 
-        # Row 2: YouTube 4K stream
+        # Row 2: Media with Dual-Audio & Subtitles
         r2_y = r1_y + 74
         draw_rounded_rect(draw, (content_x, r2_y, content_x + content_w, r2_y + 64), radius=6, fill=SURFACE, outline=LINE_BORDER, width=1)
 
-        draw.text((content_x + 14, r2_y + 12), "YouTube 4K 60FPS HDR Showcase.mp4", fill=TEXT_MAIN, font=font_bold_md)
-        draw.text((content_x + 14, r2_y + 36), "YouTube · 2160p (Hız Kalkanı Aktif)", fill=GREEN_SUCCESS, font=font_sm)
+        draw.text((content_x + 14, r2_y + 12), "The_Matrix_Resurrections_1080p.mp4", fill=TEXT_MAIN, font=font_bold_md)
+        draw.text((content_x + 14, r2_y + 36), "Çift Ses (TR Dublaj + Orijinal) · Türkçe Altyazı (.srt)", fill=(229, 62, 62), font=font_sm)
 
-        draw.text((content_x + 320, r2_y + 22), "4,8 GB", fill=TEXT_DIM, font=font_reg)
+        draw.text((content_x + 320, r2_y + 22), "2,4 GB", fill=TEXT_DIM, font=font_reg)
 
         prog2 = 0.35 + 0.10 * (f_idx / num_frames)
         draw_rounded_rect(draw, (content_x + 400, r2_y + 26, content_x + 400 + pb_w, r2_y + 34), radius=4, fill=(35, 38, 50))

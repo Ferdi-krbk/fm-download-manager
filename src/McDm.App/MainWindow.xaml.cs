@@ -487,7 +487,7 @@ public partial class MainWindow : Window
         });
     }
 
-    private void UpdateAvailable_Click(object sender, RoutedEventArgs e)
+    private async void UpdateAvailable_Click(object sender, RoutedEventArgs e)
     {
         if (_latestUpdate == null) return;
         var notes = string.IsNullOrWhiteSpace(_latestUpdate.ReleaseNotes) ? "" :
@@ -496,10 +496,34 @@ public partial class MainWindow : Window
                   $"Kurulu Sürüm: v{UpdateChecker.CurrentVersion}\n" +
                   $"Yeni Sürüm: v{_latestUpdate.LatestVersion}\n\n" +
                   (notes.Length > 0 ? $"Yenilikler:\n{notes}\n\n" : "") +
-                  "GitHub indirme sayfasını açmak istiyor musunuz?";
+                  "Güncellemeyi hemen indirip kurmak istiyor musunuz?";
         var res = DarkMessageBox.Show(this, msg, Strings.AppTitle, MessageBoxButton.YesNo, MessageBoxImage.Information);
         if (res == MessageBoxResult.Yes)
         {
+            if (!string.IsNullOrEmpty(_latestUpdate.DownloadUrl))
+            {
+                try
+                {
+                    TxtUpdateVersion.Text = "İndiriliyor...";
+                    BtnUpdateAvailable.IsEnabled = false;
+                    var tempFile = Path.Combine(Path.GetTempPath(), $"FMDownloadManager-Setup-{_latestUpdate.LatestVersion}.exe");
+                    using (var http = new System.Net.Http.HttpClient())
+                    using (var stream = await http.GetStreamAsync(_latestUpdate.DownloadUrl))
+                    using (var fs = new FileStream(tempFile, FileMode.Create, FileAccess.Write, FileShare.None))
+                    {
+                        await stream.CopyToAsync(fs);
+                    }
+
+                    Process.Start(new ProcessStartInfo(tempFile) { UseShellExecute = true });
+                    Application.Current.Shutdown();
+                    return;
+                }
+                catch
+                {
+                    BtnUpdateAvailable.IsEnabled = true;
+                    TxtUpdateVersion.Text = $"v{_latestUpdate.LatestVersion} Yayında!";
+                }
+            }
             try { Process.Start(new ProcessStartInfo(_latestUpdate.ReleaseUrl) { UseShellExecute = true }); } catch { }
         }
     }

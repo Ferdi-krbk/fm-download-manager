@@ -88,6 +88,7 @@ public sealed class VideoOptions
     public string? SubtitleLangs { get; set; }
     public string? SubtitleUrl { get; set; }
     public List<SubtitleTrackInfo>? Subtitles { get; set; }
+    public string? SubtitleContent { get; set; }
 }
 
 /// <summary>One parsed --progress-template line.</summary>
@@ -345,6 +346,37 @@ public sealed class VideoDownloader
 
     // ───────────────────────── run ─────────────────────────
 
+    public static SubtitleTrackInfo? PickBestSubtitle(List<SubtitleTrackInfo>? list, string? preferredLang)
+    {
+        if (list == null || list.Count == 0) return null;
+        string lang = !string.IsNullOrWhiteSpace(preferredLang) ? preferredLang : "tr";
+
+        // 1. Exact language, non-forced
+        var nonForcedLang = list.FirstOrDefault(s =>
+            (s.Lang.Equals(lang, StringComparison.OrdinalIgnoreCase) || s.Code.Equals(lang, StringComparison.OrdinalIgnoreCase) ||
+             (lang == "tr" && (s.Label.Contains("Türkçe", StringComparison.OrdinalIgnoreCase) || s.Url.Contains("-tr-", StringComparison.OrdinalIgnoreCase) || s.Url.Contains("_tr", StringComparison.OrdinalIgnoreCase)))) &&
+            !s.Url.Contains("forced", StringComparison.OrdinalIgnoreCase) && !s.Label.Contains("forced", StringComparison.OrdinalIgnoreCase));
+        if (nonForcedLang != null) return nonForcedLang;
+
+        // 2. Language match even if forced
+        var anyLang = list.FirstOrDefault(s =>
+            s.Lang.Equals(lang, StringComparison.OrdinalIgnoreCase) || s.Code.Equals(lang, StringComparison.OrdinalIgnoreCase) ||
+            (lang == "tr" && (s.Label.Contains("Türkçe", StringComparison.OrdinalIgnoreCase) || s.Url.Contains("turk", StringComparison.OrdinalIgnoreCase))));
+        if (anyLang != null) return anyLang;
+
+        // 3. Turkish non-forced
+        var trNonForced = list.FirstOrDefault(s =>
+            (s.Lang.Equals("tr", StringComparison.OrdinalIgnoreCase) || s.Code.Equals("tr", StringComparison.OrdinalIgnoreCase) || s.Label.Contains("Türkçe", StringComparison.OrdinalIgnoreCase)) &&
+            !s.Url.Contains("forced", StringComparison.OrdinalIgnoreCase));
+        if (trNonForced != null) return trNonForced;
+
+        // 4. Any non-forced
+        var anyNonForced = list.FirstOrDefault(s => !s.Url.Contains("forced", StringComparison.OrdinalIgnoreCase) && !s.Label.Contains("forced", StringComparison.OrdinalIgnoreCase));
+        if (anyNonForced != null) return anyNonForced;
+
+        return list[0];
+    }
+
     public async Task RunAsync(DownloadItem item, CancellationToken ct)
     {
         var tool = _ytDlp() ?? throw new FatalDownloadException("yt-dlp is not installed");
@@ -359,7 +391,8 @@ public sealed class VideoDownloader
             WriteSubtitles = item.Request.WriteSubtitles || item.Request.SubtitlesOnly,
             SubtitleLangs = !string.IsNullOrWhiteSpace(item.Request.SubtitleLangs) ? item.Request.SubtitleLangs : "tr,en",
             SubtitleUrl = item.Request.SubtitleUrl,
-            Subtitles = item.Request.Subtitles
+            Subtitles = item.Request.Subtitles,
+            SubtitleContent = item.Request.SubtitleContent
         };
         string outDir = string.IsNullOrEmpty(item.Directory) ? Directory.GetCurrentDirectory() : item.Directory;
         Directory.CreateDirectory(outDir);
@@ -367,50 +400,60 @@ public sealed class VideoDownloader
         if (string.IsNullOrEmpty(item.WorkDir)) item.WorkDir = Path.Combine(outDir, ".mcdm-video-" + item.Id);
         Directory.CreateDirectory(item.WorkDir);
 
+        var bestSub = PickBestSubtitle(opt.Subtitles, opt.SubtitleLangs);
         string? targetSubUrl = !string.IsNullOrWhiteSpace(opt.SubtitleUrl)
             ? opt.SubtitleUrl
-            : (opt.Subtitles?.FirstOrDefault(s => s.Lang == opt.SubtitleLangs || s.Code == opt.SubtitleLangs)?.Url ??
-               opt.Subtitles?.FirstOrDefault(s => s.Lang == "tr" || s.Code == "tr")?.Url ??
-               opt.Subtitles?.FirstOrDefault(s => s.Lang == "en" || s.Code == "en")?.Url ??
-               opt.Subtitles?.FirstOrDefault()?.Url);
+            : bestSub?.Url;
+
+        if (bestSub != null && !string.IsNullOrWhiteSpace(bestSub.Url) &&
+            targetSubUrl != null && targetSubUrl.Contains("forced", StringComparison.OrdinalIgnoreCase) &&
+            !bestSub.Url.Contains("forced", StringComparison.OrdinalIgnoreCase))
+        {
+            targetSubUrl = bestSub.Url;
+        }
+
+        string? rawSubContent = !string.IsNullOrWhiteSpace(opt.SubtitleContent) ? opt.SubtitleContent : null;
+        string? srtContent = null;
+        if (!string.IsNullOrWhiteSpace(rawSubContent))
+        {
+            srtContent = rawSubContent.StartsWith("WEBVTT", StringComparison.OrdinalIgnoreCase) || (targetSubUrl?.Contains(".vtt", StringComparison.OrdinalIgnoreCase) ?? false)
+                ? ConvertVttToSrt(rawSubContent)
+                : rawSubContent;
+        }
+        else if (!string.IsNullOrWhiteSpace(targetSubUrl))
+        {
+            srtContent = await DownloadSubtitleFileAsync(targetSubUrl, item.Request, ct);
+        }
 
         // 1. Direct subtitle-only download (fast HTTP download + VTT->SRT conversion)
-        if (opt.SubtitlesOnly && !string.IsNullOrWhiteSpace(targetSubUrl))
+        if (opt.SubtitlesOnly && !string.IsNullOrWhiteSpace(srtContent))
         {
-            item.Stage = "Altyazılar İndiriliyor...";
-            var srt = await DownloadSubtitleFileAsync(targetSubUrl, item.Request, ct);
-            if (!string.IsNullOrWhiteSpace(srt))
-            {
-                string baseName = Path.GetFileNameWithoutExtension(string.IsNullOrWhiteSpace(item.FileName) ? "subtitle" : item.FileName);
-                string subLang = !string.IsNullOrWhiteSpace(opt.SubtitleLangs) ? opt.SubtitleLangs : "tr";
-                string srtFile = Path.Combine(outDir, $"{baseName}.{subLang}.srt");
-                await File.WriteAllTextAsync(srtFile, srt, new UTF8Encoding(false), ct);
+            item.Stage = "Altyazılar Kaydediliyor...";
+            string baseName = Path.GetFileNameWithoutExtension(string.IsNullOrWhiteSpace(item.FileName) ? "subtitle" : item.FileName);
+            string subLang = !string.IsNullOrWhiteSpace(opt.SubtitleLangs) ? opt.SubtitleLangs : "tr";
+            string srtFile = Path.Combine(outDir, $"{baseName}.{subLang}.srt");
+            await File.WriteAllTextAsync(srtFile, srtContent, new UTF8Encoding(false), ct);
 
-                item.SavePath = srtFile;
-                item.FileName = Path.GetFileName(srtFile);
-                long sz = new FileInfo(srtFile).Length;
-                item.TotalBytes = sz;
-                item.DownloadedBytes = sz;
-                item.Status = DownloadStatus.Completed;
-                item.Stage = "Tamamlandı";
-                try { Directory.Delete(item.WorkDir!, recursive: true); } catch { }
-                item.WorkDir = null;
-                return;
-            }
+            item.SavePath = srtFile;
+            item.FileName = Path.GetFileName(srtFile);
+            long sz = new FileInfo(srtFile).Length;
+            item.TotalBytes = sz;
+            item.DownloadedBytes = sz;
+            item.Status = DownloadStatus.Completed;
+            item.Stage = "Tamamlandı";
+            try { Directory.Delete(item.WorkDir!, recursive: true); } catch { }
+            item.WorkDir = null;
+            return;
         }
 
         // 2. Pre-fetch external subtitle if video download requires subtitles
         string? manualSrtPath = null;
-        if (opt.WriteSubtitles && !string.IsNullOrWhiteSpace(targetSubUrl))
+        if (opt.WriteSubtitles && !string.IsNullOrWhiteSpace(srtContent))
         {
             try
             {
-                var srt = await DownloadSubtitleFileAsync(targetSubUrl, item.Request, ct);
-                if (!string.IsNullOrWhiteSpace(srt))
-                {
-                    manualSrtPath = Path.Combine(item.WorkDir, "manual_sub.srt");
-                    await File.WriteAllTextAsync(manualSrtPath, srt, new UTF8Encoding(false), ct);
-                }
+                manualSrtPath = Path.Combine(item.WorkDir, "manual_sub.srt");
+                await File.WriteAllTextAsync(manualSrtPath, srtContent, new UTF8Encoding(false), ct);
             }
             catch { }
         }
@@ -493,6 +536,7 @@ public sealed class VideoDownloader
         string? lastError = null;
         var acc = new ProgressAccumulator();
         var clock = Stopwatch.StartNew();
+        var startUtc = DateTime.UtcNow.AddSeconds(-5);
         item.Stage = null;
         item.ActiveConnections = 1;
 
@@ -604,6 +648,7 @@ public sealed class VideoDownloader
                             !f.EndsWith(".ytdl", StringComparison.OrdinalIgnoreCase) &&
                             !f.EndsWith(".mcdm-part", StringComparison.OrdinalIgnoreCase))
                 .Select(f => new FileInfo(f))
+                .Where(fi => fi.LastWriteTimeUtc >= startUtc)
                 .OrderByDescending(fi => fi.LastWriteTimeUtc)
                 .ToList();
             if (candidates.Count > 0)
@@ -612,19 +657,23 @@ public sealed class VideoDownloader
                 {
                     var subFile = candidates.FirstOrDefault(f => f.Extension.Equals(".srt", StringComparison.OrdinalIgnoreCase) ||
                                                                  f.Extension.Equals(".vtt", StringComparison.OrdinalIgnoreCase));
-                    finalPath = (subFile ?? candidates[0]).FullName;
+                    if (subFile != null) finalPath = subFile.FullName;
                 }
                 else
                 {
                     var mediaFile = candidates.FirstOrDefault(f => !f.Extension.Equals(".srt", StringComparison.OrdinalIgnoreCase) &&
                                                                    !f.Extension.Equals(".vtt", StringComparison.OrdinalIgnoreCase));
-                    finalPath = (mediaFile ?? candidates[0]).FullName;
+                    if (mediaFile != null) finalPath = mediaFile.FullName;
                 }
             }
         }
 
         if (finalPath == null || !File.Exists(finalPath))
-            throw new FatalDownloadException("yt-dlp finished but reported no output file");
+        {
+            if (opt.SubtitlesOnly)
+                throw new FatalDownloadException("Altyazı akışı bulunamadı veya indirilemedi.");
+            throw new FatalDownloadException("yt-dlp tamamlandı ancak indirilen dosya bulunamadı.");
+        }
 
         var full = Path.GetFullPath(finalPath);
         var root = Path.GetFullPath(outDir).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;

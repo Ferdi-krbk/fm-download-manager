@@ -652,6 +652,21 @@
       subsListEl.appendChild(noSubDiv);
       return;
     }
+
+    // Sort: Non-forced Turkish first, then non-forced English, then other non-forced, then forced
+    choices.sort((a, b) => {
+      const aForced = /forced/i.test(a.url || '') || /forced/i.test(a.label || '');
+      const bForced = /forced/i.test(b.url || '') || /forced/i.test(b.label || '');
+      if (aForced !== bForced) return aForced ? 1 : -1;
+      const aTr = a.code === 'tr' || /türkçe|turk/i.test(a.label || '');
+      const bTr = b.code === 'tr' || /türkçe|turk/i.test(b.label || '');
+      if (aTr !== bTr) return aTr ? -1 : 1;
+      const aEn = a.code === 'en' || /english/i.test(a.label || '');
+      const bEn = b.code === 'en' || /english/i.test(b.label || '');
+      if (aEn !== bEn) return aEn ? -1 : 1;
+      return 0;
+    });
+
     choices.forEach(c => {
       const row = document.createElement('div');
       row.className = 'fm-sub-item';
@@ -794,9 +809,37 @@
       if (s.url && !finalSubList.some(x => x.url === s.url)) finalSubList.push(s);
     });
 
-    const finalSubUrl = chosenSubUrl ||
-      (finalSubList.find(s => s.code === 'tr' || s.lang === 'tr' || s.code === subLang || s.lang === subLang)?.url) ||
-      (finalSubList[0]?.url) || '';
+    function selectBestSub(list, targetLang) {
+      if (!list || !list.length) return '';
+      const req = targetLang || 'tr';
+      // 1. Non-forced requested language
+      const nonForcedMatch = list.find(s => {
+        const isL = s.code === req || s.lang === req || (req === 'tr' && /türkçe|turk/i.test(s.label || s.url));
+        const isF = /forced/i.test(s.url || '') || /forced/i.test(s.label || '');
+        return isL && !isF;
+      });
+      if (nonForcedMatch?.url) return nonForcedMatch.url;
+
+      // 2. Non-forced Turkish
+      const nonForcedTr = list.find(s => {
+        const isL = s.code === 'tr' || s.lang === 'tr' || /türkçe|turk/i.test(s.label || s.url);
+        const isF = /forced/i.test(s.url || '') || /forced/i.test(s.label || '');
+        return isL && !isF;
+      });
+      if (nonForcedTr?.url) return nonForcedTr.url;
+
+      // 3. Any requested language
+      const anyMatch = list.find(s => s.code === req || s.lang === req || (req === 'tr' && /türkçe|turk/i.test(s.label || s.url)));
+      if (anyMatch?.url) return anyMatch.url;
+
+      // 4. Any non-forced
+      const anyNonForced = list.find(s => !/forced/i.test(s.url || '') && !/forced/i.test(s.label || ''));
+      if (anyNonForced?.url) return anyNonForced.url;
+
+      return list[0]?.url || '';
+    }
+
+    const finalSubUrl = chosenSubUrl || selectBestSub(finalSubList, subLang);
 
     try {
       api.runtime.sendMessage({

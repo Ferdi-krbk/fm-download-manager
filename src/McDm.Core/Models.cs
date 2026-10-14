@@ -40,6 +40,7 @@ public sealed class DownloadRequest
     public List<SubtitleTrackInfo>? Subtitles { get; set; }
     public List<VideoQualityInfo>? VideoQualities { get; set; }
     public List<AudioTrackInfo>? AudioTracks { get; set; }
+    public string? SubtitleContent { get; set; }
 }
 
 public sealed class VideoQualityInfo

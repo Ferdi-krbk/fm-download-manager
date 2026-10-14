@@ -418,10 +418,28 @@ public partial class App : System.Windows.Application
             if (info != null && info.HasUpdate)
             {
                 var res = DarkMessageBox.Show(_window,
-                    $"Yeni bir sürüm yayınlandı!\n\nFM Download Manager v{info.LatestVersion}\n\nGitHub indirme sayfasını açmak ister misiniz?",
+                    $"Yeni bir sürüm yayınlandı!\n\nFM Download Manager v{info.LatestVersion}\n\nGüncellemeyi hemen indirip kurmak istiyor musunuz?",
                     Strings.AppTitle, MessageBoxButton.YesNo, MessageBoxImage.Information);
                 if (res == MessageBoxResult.Yes)
                 {
+                    if (!string.IsNullOrEmpty(info.DownloadUrl))
+                    {
+                        try
+                        {
+                            var tempFile = Path.Combine(Path.GetTempPath(), $"FMDownloadManager-Setup-{info.LatestVersion}.exe");
+                            using (var http = new HttpClient())
+                            using (var stream = await http.GetStreamAsync(info.DownloadUrl))
+                            using (var fs = new FileStream(tempFile, FileMode.Create, FileAccess.Write, FileShare.None))
+                            {
+                                await stream.CopyToAsync(fs);
+                            }
+
+                            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(tempFile) { UseShellExecute = true });
+                            Application.Current.Shutdown();
+                            return;
+                        }
+                        catch { }
+                    }
                     try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(info.ReleaseUrl) { UseShellExecute = true }); } catch { }
                 }
             }

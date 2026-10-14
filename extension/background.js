@@ -174,17 +174,57 @@ async function sendToApp({ url, filename, referer, kind, format, audioOnly, subt
   const ck = await cookiesFor(url);
   const isAudio = audioOnly === true || format === 'audio';
   const isSubs = subtitlesOnly === true || format === 'subtitles';
+
+  let chosenSub = subtitleUrl || '';
+  if (!chosenSub && subtitles && subtitles.length > 0) {
+    const nonForcedTr = subtitles.find(s => (s.code === 'tr' || s.lang === 'tr') && !/forced/i.test(s.url || '') && !/forced/i.test(s.label || ''));
+    chosenSub = nonForcedTr?.url || subtitles[0]?.url || '';
+  }
+
+  let subtitleContent = '';
+  if ((isSubs || writeSubtitles) && chosenSub && /^https?:/i.test(chosenSub)) {
+    try {
+      const subRes = await fetch(chosenSub, {
+        headers: {
+          'Referer': referer || '',
+          'Accept': 'text/vtt,text/plain,*/*'
+        },
+        credentials: 'include'
+      });
+      if (subRes.ok) {
+        subtitleContent = await subRes.text();
+      }
+    } catch (e) {
+      console.warn('[FM] Pre-fetch subtitle failed in extension:', e);
+    }
+  }
+
+  let mergedCookieHeader = ck.header || '';
+  let mergedCookies = ck.list ? [...ck.list] : [];
+  if (chosenSub && /^https?:/i.test(chosenSub)) {
+    try {
+      const subCk = await cookiesFor(chosenSub);
+      if (subCk?.header) {
+        mergedCookieHeader = (mergedCookieHeader ? mergedCookieHeader + '; ' : '') + subCk.header;
+      }
+      if (subCk?.list?.length) {
+        mergedCookies.push(...subCk.list);
+      }
+    } catch {}
+  }
+
   const payload = {
     url, filename: filename || '', referer: referer || '', kind: kind || 'file',
     audioOnly: isAudio,
     subtitlesOnly: isSubs,
     subtitleLangs: subtitleLangs || 'tr,en',
     writeSubtitles: writeSubtitles === true,
-    subtitleUrl: subtitleUrl || '',
+    subtitleUrl: chosenSub || subtitleUrl || '',
     subtitles: subtitles || [],
+    subtitleContent: subtitleContent || '',
     videoQualities: videoQualities || [],
     audioTracks: audioTracks || [],
-    userAgent: navigator.userAgent, cookieHeader: ck.header, cookies: ck.list,
+    userAgent: navigator.userAgent, cookieHeader: mergedCookieHeader, cookies: mergedCookies,
   };
 
   const post = async () => fetch(base(settings) + '/download', {
@@ -711,11 +751,17 @@ if (api.webRequest?.onHeadersReceived) {
       if (isSub && !/audio|video|sublist_aud|sublist_vid/i.test(uLower)) {
         let lang = 'tr';
         let label = 'Altyazı';
-        if (/[\b_/-](tr|tur|turkish|turkce)[\b_./-]/i.test(uLower) || uLower.includes('_tr') || uLower.includes('turk') || uLower.includes('altyazi')) { lang = 'tr'; label = 'Türkçe'; }
-        else if (/[\b_/-](en|eng|english)[\b_./-]/i.test(uLower) || uLower.includes('_en') || uLower.includes('eng')) { lang = 'en'; label = 'English'; }
-        else if (/[\b_/-](de|ger|german)[\b_./-]/i.test(uLower)) { lang = 'de'; label = 'Deutsch'; }
-        else if (/[\b_/-](fr|fre|french)[\b_./-]/i.test(uLower)) { lang = 'fr'; label = 'Français'; }
-        else if (/[\b_/-](es|spa|spanish)[\b_./-]/i.test(uLower)) { lang = 'es'; label = 'Español'; }
+        const isForced = /forced/i.test(uLower);
+        if (/[\b_/-](tr|tur|turkish|turkce)[\b_./-]/i.test(uLower) || uLower.includes('_tr') || uLower.includes('turk') || uLower.includes('altyazi')) {
+          lang = 'tr'; label = isForced ? 'Türkçe (Zorunlu/Forced)' : 'Türkçe';
+        }
+        else if (/[\b_/-](en|eng|english)[\b_./-]/i.test(uLower) || uLower.includes('_en') || uLower.includes('eng')) {
+          lang = 'en'; label = isForced ? 'English (Forced)' : 'English';
+        }
+        else if (/[\b_/-](de|ger|german)[\b_./-]/i.test(uLower)) { lang = 'de'; label = isForced ? 'Deutsch (Forced)' : 'Deutsch'; }
+        else if (/[\b_/-](fr|fre|french)[\b_./-]/i.test(uLower)) { lang = 'fr'; label = isForced ? 'Français (Forced)' : 'Français'; }
+        else if (/[\b_/-](es|spa|spanish)[\b_./-]/i.test(uLower)) { lang = 'es'; label = isForced ? 'Español (Forced)' : 'Español'; }
+        else if (isForced) { label = 'Zorunlu Altyazı (Forced)'; }
         addSubtitle(d.tabId, { url: d.url, lang, label, time: Date.now() }).catch?.(() => {});
       }
 
@@ -742,7 +788,7 @@ if (api.webRequest?.onHeadersReceived) {
 const dismissedTabs = new Set();
 
 api.tabs.onUpdated.addListener((tabId, info) => {
-  if (info.url) {
+  if (info.url || info.status === 'loading') {
     clearMedia(tabId);
     clearSubtitles(tabId);
     dismissedTabs.delete(tabId);

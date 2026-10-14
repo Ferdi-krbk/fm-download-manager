@@ -27,14 +27,37 @@
 
 ---
 
-## ⚡ Öne Çıkan Özellikler
+## ⚡ Öne Çıkan Özellikler (v3.4.3)
 
-- 🚀 **Maksimum Bant Genişliği:** Parçalı (segmented) indirme motoru (dosya başına 16 paralel bağlantıya kadar).
-- 🌐 **Kusursuz Tarayıcı Entegrasyonu:** **Chrome, Edge ve Brave** indirmelerini oturum çerezleri, Referer ve başlık bilgileriyle anında yakalar.
-- 🎬 **4K Video İndirme:** Web sayfalarındaki videoları tek tıkla yakalayan `yt-dlp` ve `FFmpeg` destekli video indirici (4K MP4/MKV desteği).
-- 🛡️ **Kesintisiz Devamlılık:** Atomik `.mcdm` durum dosyası sayesinde duraklatma/devam etme, sunucu ETag değiştiğinde otomatik sıfırdan başlama ve ağ kopmalarına karşı dayanıklılık.
-- 🎨 **Modern Native Arayüz:** Sistem tepsisi entegrasyonu, kategorilere ayrılmış görünüm, pano izleyicisi ve bağlantı detay penceresi içeren hızlı WPF arayüzü.
-- 🔒 **Sıfır Telemetri & Tamamen Yerel:** 256-bit eşleştirme anahtarı (`X-MCDM-Token`) ile korunan yerel HTTP köprüsü. Buluta veya harici sunuculara bağımlılık yoktur.
+- 🚀 **Maksimum Bant Genişliği:** Parçalı (segmented) indirme motoru (dosya başına 16 paralel bağlantıya kadar, dinamik yeniden segmentasyon).
+- 🧲 **Dahili BitTorrent Motoru:** Harici istemciye gerek kalmadan magnet bağlantıları ve `.torrent` dosyalarını doğrudan çeker (MonoTorrent 3.0).
+- 🎬 **YouTube 4K & Evrensel Medya:** `yt-dlp` ve `FFmpeg` motoruyla 4K60/1080p MP4 ve 320 kbps MP3 indirme garantisi (uyumsuz WebM formatlarına son).
+- 🎧 **Çift Ses (Dual-Audio) Garantisi:** Rapidrame, HDFilmcehennemi ve benzeri video oynatıcılarda Türkçe Dublaj ve Orijinal ses parçalı videolarda videoyu seçilen sesle birleştirerek tam MP4 indirir (sadece ses inme hatası giderilmiştir).
+- 💬 **3 Modlu Altyazı Yakalama & Otomatik VTT ➔ SRT:**
+  1. *Video ile Birlikte:* Videoyu seçilen dilde altyazıyla kaydetme.
+  2. *Yalnızca Altyazı (.srt):* Videoyu indirmeden doğrudan `.srt` altyazıyı çekme.
+  3. *Altyazısız Ham Video:* Temiz video akışını indirme.
+  *Tarayıcıda akan dinamik WebVTT altyazıları otomatik olarak VLC/TV uyumlu standart `.srt` formatına dönüştürülür.*
+- 🚀 **IDM Tarzı Yüzen İndirme Çubuğu (Floating Bar):** Shadow DOM ve Trusted-Types güvenliğiyle sitelerin güvenlik politikalarına takılmadan videonun üzerine gelindiğinde anında açılan modern cam hap buton.
+- 🌐 **Sıfır Tık Eklenti Eşleştirmesi:** **Chrome, Edge ve Brave** için `token.json` ile tek tıkla otomatik eşleşen tarayıcı entegrasyonu.
+- 📊 **Canlı Vektör Hız Grafiği & Limit Kadranı:** WPF vektör çizimiyle anlık hız dalgalanmaları (EMA filtresi) ve indirme esnasında ayarlanabilen hız sınırlayıcı.
+- ⏱️ **Gece Kuyruk Planlayıcısı:** Kotanızı korumak için gece saatlerinde otomatik başlayan zamanlayıcı.
+- 🔒 **Sıfır Telemetri & Tamamen Yerel:** 256-bit eşleştirme anahtarı (`X-MCDM-Token`) ile korunan yerel köprü.
+
+---
+
+## 🎬 Desteklenen Platformlar & Oynatıcılar
+
+| Platform / Oynatıcı | Video İndirme (4K/1080p MP4) | Çift Ses (Dual-Audio TR Dublaj + Orijinal) | Altyazı (.srt) Desteği | Yüzen Çubuk (Floating Bar) |
+|---|:---:|:---:|:---:|:---:|
+| **YouTube** | ✅ (4K60 / 1080p60 MP4) | ✅ Otomatik Eşleme | ✅ TR, EN, Otomatik (.srt) | ✅ Akıllı Hover |
+| **HDFilmcehennemi** | ✅ (Full HD 1080p) | ✅ TR Dublaj / Orijinal Eşleme | ✅ VTT ➔ SRT Otomatik | ✅ Tam Uyumlu |
+| **Rapidrame** | ✅ (Full HD 1080p MP4) | ✅ Çift Ses Garantili Remux | ✅ VTT ➔ SRT Otomatik | ✅ Tam Uyumlu |
+| **FilmMakinesi** | ✅ (HD / Full HD) | ✅ Çoklu Ses Desteği | ✅ Türkçe / İngilizce SRT | ✅ Tam Uyumlu |
+| **DiziPal** | ✅ (720p / 1080p) | ✅ Orijinal + Dublaj | ✅ Gömülü & Ağ Altyazıları | ✅ Tam Uyumlu |
+| **Closeload / Vidmoly** | ✅ (Hızlı Akış) | ✅ Tek / Çift Ses | ✅ SRT İndirme | ✅ Tam Uyumlu |
+| **Twitter/X & TikTok** | ✅ (En Yüksek Çözünürlük) | ✅ Dahili Ses | — | ✅ Anında Hover |
+| **1000+ Popüler Web Sitesi** | ✅ (`yt-dlp` Entegrasyonu) | ✅ Tüm Ses Akışları | ✅ Tüm Altyazı Parçaları | ✅ Genel Yakalayıcı |
 
 ---
 
@@ -42,6 +65,9 @@
 
 ### 🗂️ Akıllı Kategori Ayrımı ve Arama
 İndirilen dosyalar dosya türüne göre otomatik olarak ayrılır (*Tümü, Resimler, Müzik, Video, Programlar, Belgeler, Arşivler, Diğer*). Anlık arama kutusu ve sıralanabilir sütunlar içerir.
+
+### 💬 Evrensel Altyazı Dönüştürücü (VTT ➔ SRT)
+Tarayıcı oynatıcılarında kullanılan WebVTT altyazılarını arka planda temizler; zaman kodlarını, renk ve stil etiketlerini standart SubRip formatına dönüştürerek televizyon, VLC ve telefonlarda Türkçe karakter sorunu olmadan altyazılı izlemenizi sağlar.
 
 ### 📊 Bağlantı ve Parça Görselleştirici (IDM Tarzı)
 Her bir parçanın bayt aralığını, indirilme yüzdesini ve anlık transfer hızını detaylı pencerede inceleyin.

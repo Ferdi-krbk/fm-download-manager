@@ -67,11 +67,12 @@
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│  FM DOWNLOAD MANAGER v3.3.0 - UNIVERSAL MEDIA & TURBO EDITION          │
+│  FM DOWNLOAD MANAGER v3.4.3 - UNIVERSAL MEDIA, DUAL-AUDIO & SUBTITLES  │
 ├────────────────────────────────────────────────────────────────────────┤
 │  ⚡ 1 Gbps Turbo Motor (32 Segment) │  🧲 Dahili BitTorrent & Magnet   │
 │  📊 Canlı Vektör Hız Grafiği (EMA)  │  🎛️ Anlık Hız Limiti Kadranı     │
-│  🎬 YouTube 4K / MP3 & Hız Kalkanı  │  📂 Kategoriye Göre Otomatik Dizin│
+│  🎬 YouTube 4K / MP3 & Hız Kalkanı  │  💬 Otomatik VTT ➔ SRT Altyazı   │
+│  🎧 Dual-Audio Çift Ses Desteği     │  🎥 Film / Dizi Siteleri Uyumu   │
 │  🌐 Tek Tıkla Eklenti Kurulumu      │  ⏱️ Gece Kuyruk Planlayıcı       │
 │  🎨 Bordo & AMOLED Çift Tema        │  🔒 256-Bit Yerel Token Güvenliği│
 └────────────────────────────────────────────────────────────────────────┘
@@ -95,28 +96,55 @@
 * **Format ve Kalite Seçici:** Bağlantı eklendiğinde açılan modern arayüzle *En Yüksek Kalite (4K/1080p)*, *720p HD* veya doğrudan *Yalnızca Ses Çıkar (MP3 / 320 kbps)* seçimi sunar.
 * **Ultra-Hızlı Başlatma:** `--concurrent-fragments 4` ve optimize edilmiş istemci argümanlarıyla indirmeler saniyeler içinde anında başlar.
 
-### 4. 💬 Evrensel Altyazı Yakalama & Otomatik VTT ➔ SRT Dönüştürücü
-* **Bağımsız Altyazı İndirme:** Videoyu indirmeden yalnızca altyazı dosyasını (`.srt`) tek tıkla çekebilme imkanı.
-* **Otomatik WebVTT ➔ SubRip (.srt) Dönüşümü:** Web oynatıcılarının sunduğu ham `.vtt` altyazıları otomatik olarak VLC, TV ve tüm medya oynatıcılarla %100 uyumlu standart `.srt` dosyalarına dönüştürülür.
-* **Çoklu Dil Desteği:** Türkçe, İngilizce veya videoda tanımlı tüm yabancı dil parçalarını ve ağ üzerinden akan gizli altyazı akışlarını anında tespit eder.
+### 4. 🎧 Özel Film & Dizi Platformları ve Dual-Audio (Çift Ses) Desteği
+* **Rapidrame & HDFilmcehennemi Uyumu:** Türkçe Dublaj ve Orijinal ses parçası barındıran çift sesli videolarda, sadece ses dosyasının inmesi hatası tamamen ortadan kaldırılmıştır.
+* **Kusursuz Ses+Görüntü Eşleme:** Seçtiğiniz çözünürlük (`1080p`, `720p` vb.) tercih edilen ses parçasıyla otomatik olarak eşleştirilir ve ~700 MB - 2 GB aralığında eksiksiz MP4 video olarak teslim edilir.
+* **Desteklenen Başlıca Platformlar:**
+  * **HDFilmcehennemi**
+  * **Rapidrame Player**
+  * **FilmMakinesi**
+  * **DiziPal**
+  * **Closeload & Vidmoly**
+  * **YouTube, Twitter/X, TikTok, Instagram, Reddit, Facebook, NotebookLM** ve 1000+ video kaynağı.
 
-### 5. 🚀 IDM Tarzı Modern Yüzen İndirme Butonu (Floating Bar)
-* **Shadow DOM İzolasyonu:** Sayfa stillerinden ve sitelerin CSP/Trusted-Types güvenlik politikalarından etkilenmeyen bağımsız modern cam tasarım (Glassmorphic Pill).
-* **Akıllı Hover Algılama:** YouTube, Twitter veya film/dizi sitelerinde videonun üzerine gelindiğinde sağ üst köşede otomatik olarak belirir.
-* **Hızlı Açılır Menü:** Tek tıkla *Video İndir*, *MP3 İndir* veya *Altyazı Dili Seç* seçenekleri sunar.
+### 5. 💬 Evrensel Altyazı Yakalama & Otomatik VTT ➔ SRT Dönüştürücü
+* **3 Farklı İndirme Seçeneği:**
+  1. **Video ile Birlikte:** Videoyu seçtiğiniz dildeki altyazıyla birlikte indirme.
+  2. **Yalnızca Altyazı (.srt):** Videoyu indirmeye gerek kalmadan, doğrudan `.srt` altyazı dosyasını saniyeler içinde kaydetme.
+  3. **Yalnızca Video (Altyazısız):** Temiz, ham video akışını indirme.
+* **Otomatik WebVTT ➔ SubRip (.srt) Dönüşümü:** Web oynatıcılarının sunduğu ham `.vtt` altyazıları otomatik olarak zaman damgası ve etiket temizliğinden geçirilerek VLC, televizyonlar ve tüm yerel oynatıcılarla %100 uyumlu standart `.srt` formatına dönüştürülür.
+* **Gizli Akışları Yakalama:** Oynatıcıda o an seçili olmasa dahi ağ üzerinden akan Türkçe, İngilizce ve diğer dillerdeki tüm altyazı akışlarını otomatik listeler.
 
-### 6. 📊 Donanım Hızlandırmalı Canlı Vektör Hız Grafiği
+### 6. 🚀 IDM Tarzı Modern Yüzen İndirme Butonu (Floating Bar)
+* **Shadow DOM & Trusted-Types Güvenliği:** Sayfa stillerinden ve sitelerin CSP/Trusted-Types güvenlik politikalarından etkilenmeyen bağımsız modern cam tasarım (Glassmorphic Pill). Saf DOM node inşasıyla YouTube üzerinde sıfır hata garantisi.
+* **Akıllı Hover & Mousemove Yakalama:** YouTube veya film/dizi sitelerinde farenizi videonun üzerine getirdiğiniz anda sağ üst köşede pürüzsüz bir animasyonla belirir.
+* **Hızlı Menü:** Tek tıkla *Video İndir*, *MP3 İndir* veya *Altyazı İndir* seçeneklerine erişim sağlar.
+
+### 7. 📊 Desteklenen Platform & Özellik Matrisi
+
+| Platform / Oynatıcı | Video İndirme (4K/1080p MP4) | Çift Ses / Dual-Audio (TR Dublaj + Orijinal) | Altyazı (.srt) Desteği | Yüzen Çubuk (Floating Bar) |
+|---|:---:|:---:|:---:|:---:|
+| **YouTube** | ✅ (4K60 / 1080p60 MP4) | ✅ Otomatik Eşleme | ✅ TR, EN, Otomatik (.srt) | ✅ Akıllı Hover |
+| **HDFilmcehennemi** | ✅ (Full HD 1080p) | ✅ TR Dublaj / Orijinal Eşleme | ✅ VTT ➔ SRT Otomatik | ✅ Tam Uyumlu |
+| **Rapidrame** | ✅ (Full HD 1080p MP4) | ✅ Çift Ses Garantili Remux | ✅ VTT ➔ SRT Otomatik | ✅ Tam Uyumlu |
+| **FilmMakinesi** | ✅ (HD / Full HD) | ✅ Çoklu Ses Desteği | ✅ Türkçe / İngilizce SRT | ✅ Tam Uyumlu |
+| **DiziPal** | ✅ (720p / 1080p) | ✅ Orijinal + Dublaj | ✅ Gömülü & Ağ Altyazıları | ✅ Tam Uyumlu |
+| **Closeload / Vidmoly** | ✅ (Hızlı Akış) | ✅ Tek / Çift Ses | ✅ SRT İndirme | ✅ Tam Uyumlu |
+| **Twitter/X & TikTok** | ✅ (En Yüksek Çözünürlük) | ✅ Dahili Ses | — | ✅ Anında Hover |
+| **1000+ Popüler Web Sitesi** | ✅ (`yt-dlp` Entegrasyonu) | ✅ Tüm Ses Akışları | ✅ Tüm Altyazı Parçaları | ✅ Genel Yakalayıcı |
+
+### 8. 📊 Donanım Hızlandırmalı Canlı Vektör Hız Grafiği
 * Sol kenar çubuğunda ve indirme ayrıntılarında WPF vektör çizimiyle gerçek zamanlı hız dalgalanmalarını gösterir.
 * **EMA Filtresi & Bezier Eğrileri:** Ağ dalgalanmalarını Exponential Moving Average ile pürüzsüzleştirir, pik hız göstergesiyle birlikte akıcı bir grafik çizer.
 
-### 7. 🎛️ Modern Hız Limiti Kadranı (Speed Limiter Slider)
+### 9. 🎛️ Modern Hız Limiti Kadranı (Speed Limiter Slider)
 * İndirme devam ederken sol paneldeki özel tasarımlı kaydırıcı veya hazır çipler (`[Oto] [2M] [5M] [10M] [20M]`) üzerinden tek tıkla internet kullanımını sınırlandırabilirsiniz.
 
-### 8. 🌐 Sıfır Tık Tarayıcı Eklentisi Eşleştirmesi
+### 10. 🌐 Sıfır Tık Tarayıcı Eklentisi Eşleştirmesi
 * **Google Chrome, Microsoft Edge ve Brave** için eklenti klasör yolunu otomatik panoya kopyalar ve geliştirici sayfasını açar.
 * Eklenti klasörüne otomatik olarak güvenlik anahtarı tohumlar (`token.json`). Kullanıcı kod kopyalayıp yapıştırmakla uğraşmadan eklenti tek tıkla yeşile döner ve eşleşir.
 
-### 9. 📂 Otomatik Kategori Klasörlemesi
+### 11. 📂 Otomatik Kategori Klasörlemesi
 * Tamamlanan indirmeleri uzantılarına göre klasörlere ayırır:
   * `İndirilenler\Videos` (mp4, mkv, webm, avi...)
   * `İndirilenler\Music` (mp3, flac, wav, aac...)
@@ -125,10 +153,10 @@
   * `İndirilenler\Documents` (pdf, docx, xlsx...)
   * `İndirilenler\Compressed` (zip, rar, 7z...)
 
-### 10. ⏱️ Zamanlayıcı & Gece Planlayıcısı (Scheduler)
+### 12. ⏱️ Zamanlayıcı & Gece Planlayıcısı (Scheduler)
 * Gece saatlerinde (örn. 02:00 – 07:00) indirmeleri otomatik başlatıp süre dolduğunda duraklatarak internet kotanızı ve bant genişliğinizi korur.
 
-### 11. 🎨 Modern Çift Tema (Dark Burgundy & AMOLED Pure Black)
+### 13. 🎨 Modern Çift Tema (Dark Burgundy & AMOLED Pure Black)
 * Varsayılan koyu bordo ve titanyum grafit tasarımı (`#C92A3E` + `#121318`).
 * Araç çubuğundaki ay simgesiyle tek tıkla **Derin Siyah AMOLED** (`#000000`) moduna geçiş imkanı.
 * Keskin Windows DIN tipografisi (**Bahnschrift**) ve akıcı oval hatlar.

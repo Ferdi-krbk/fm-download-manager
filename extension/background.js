@@ -744,24 +744,44 @@ if (api.webRequest?.onHeadersReceived) {
 
       // Check for subtitles (.vtt, .srt, .sub, .ass, text/vtt, caption/track endpoints)
       const uLower = d.url.toLowerCase();
-      const isSub = /\.(vtt|srt|sub|ass)(\?|#|$)/i.test(d.url) ||
-                    /text\/vtt|application\/x-subrip|text\/srt/i.test(ct) ||
-                    ((uLower.includes('subtitle') || uLower.includes('caption') || uLower.includes('/sub/') || uLower.includes('/tracks/') || uLower.includes('sublist') || uLower.includes('altyazi')) &&
-                     (uLower.includes('.vtt') || uLower.includes('.srt') || uLower.includes('.txt') || /vtt|sub/i.test(ct)));
-      if (isSub && !/audio|video|sublist_aud|sublist_vid/i.test(uLower)) {
-        let lang = 'tr';
+      // Exclude HLS playlists, video segments, and audio streams that are NOT subtitles
+      const isHlsOrMedia = /sublist_(aud|vid|\d+)|playlist|manifest|\.m3u8/i.test(uLower) ||
+                           /\/hls\//i.test(uLower) && !/\.(vtt|srt|sub|ass)(\?|#|$)/i.test(uLower);
+      const isSub = !isHlsOrMedia && (
+        /\.(vtt|srt|sub|ass)(\?|#|$)/i.test(d.url) ||
+        /text\/vtt|application\/x-subrip|text\/srt/i.test(ct) ||
+        ((uLower.includes('subtitle') || uLower.includes('caption') || uLower.includes('/sub/') || uLower.includes('/tracks/') || uLower.includes('altyazi')) &&
+         (uLower.includes('.vtt') || uLower.includes('.srt') || /vtt|sub/i.test(ct)))
+      );
+
+      if (isSub && !/audio|video/i.test(uLower)) {
+        let lang = 'und';
         let label = 'Altyazı';
-        const isForced = /forced/i.test(uLower);
-        if (/[\b_/-](tr|tur|turkish|turkce)[\b_./-]/i.test(uLower) || uLower.includes('_tr') || uLower.includes('turk') || uLower.includes('altyazi')) {
-          lang = 'tr'; label = isForced ? 'Türkçe (Zorunlu/Forced)' : 'Türkçe';
-        }
-        else if (/[\b_/-](en|eng|english)[\b_./-]/i.test(uLower) || uLower.includes('_en') || uLower.includes('eng')) {
+        const isForced = /forced|zorunlu/i.test(uLower);
+
+        // Delimiter-isolated language detection (never match 'tr' inside 'bluraytrdual' or 'track')
+        if (/(?:^|[-_./])(tr|tur|turkish|turkce)(?:[-_./]|$)/i.test(uLower) || uLower.includes('altyazi')) {
+          lang = 'tr'; label = isForced ? 'Türkçe (Zorunlu)' : 'Türkçe';
+        } else if (/(?:^|[-_./])(en|eng|english)(?:[-_./]|$)/i.test(uLower)) {
           lang = 'en'; label = isForced ? 'English (Forced)' : 'English';
+        } else if (/(?:^|[-_./])(pt|por|portuguese)(?:[-_./]|$)/i.test(uLower)) {
+          lang = 'pt'; label = isForced ? 'Português (Forced)' : 'Português';
+        } else if (/(?:^|[-_./])(es|spa|spanish)(?:[-_./]|$)/i.test(uLower)) {
+          lang = 'es'; label = isForced ? 'Español (Forced)' : 'Español';
+        } else if (/(?:^|[-_./])(fr|fre|french)(?:[-_./]|$)/i.test(uLower)) {
+          lang = 'fr'; label = isForced ? 'Français (Forced)' : 'Français';
+        } else if (/(?:^|[-_./])(de|ger|german)(?:[-_./]|$)/i.test(uLower)) {
+          lang = 'de'; label = isForced ? 'Deutsch (Forced)' : 'Deutsch';
+        } else if (/(?:^|[-_./])(it|ita|italian)(?:[-_./]|$)/i.test(uLower)) {
+          lang = 'it'; label = isForced ? 'Italiano (Forced)' : 'Italiano';
+        } else if (/(?:^|[-_./])(ru|rus|russian)(?:[-_./]|$)/i.test(uLower)) {
+          lang = 'ru'; label = isForced ? 'Русский (Forced)' : 'Русский';
+        } else if (/(?:^|[-_./])(ar|ara|arabic)(?:[-_./]|$)/i.test(uLower)) {
+          lang = 'ar'; label = isForced ? 'العربية (Forced)' : 'العربية';
+        } else if (isForced) {
+          label = 'Zorunlu Altyazı';
         }
-        else if (/[\b_/-](de|ger|german)[\b_./-]/i.test(uLower)) { lang = 'de'; label = isForced ? 'Deutsch (Forced)' : 'Deutsch'; }
-        else if (/[\b_/-](fr|fre|french)[\b_./-]/i.test(uLower)) { lang = 'fr'; label = isForced ? 'Français (Forced)' : 'Français'; }
-        else if (/[\b_/-](es|spa|spanish)[\b_./-]/i.test(uLower)) { lang = 'es'; label = isForced ? 'Español (Forced)' : 'Español'; }
-        else if (isForced) { label = 'Zorunlu Altyazı (Forced)'; }
+
         addSubtitle(d.tabId, { url: d.url, lang, label, time: Date.now() }).catch?.(() => {});
       }
 

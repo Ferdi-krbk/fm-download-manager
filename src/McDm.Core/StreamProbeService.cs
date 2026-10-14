@@ -244,7 +244,7 @@ public static class StreamProbeService
                 var uriMatch = Regex.Match(trimmed, @"URI=""([^""]+)""", RegexOptions.IgnoreCase);
 
                 string name = nameMatch.Success ? nameMatch.Groups[1].Value : "Subtitle";
-                string lang = langMatch.Success ? langMatch.Groups[1].Value : "tr";
+                string lang = langMatch.Success ? langMatch.Groups[1].Value.ToLowerInvariant() : "und";
                 string uri = uriMatch.Success ? uriMatch.Groups[1].Value : "";
 
                 string subUrl = "";
@@ -258,10 +258,31 @@ public static class StreamProbeService
                 if (subKeys.Add(subKey))
                 {
                     string label = name;
-                    if (name.Contains("türk", StringComparison.OrdinalIgnoreCase) || lang.Equals("tr", StringComparison.OrdinalIgnoreCase))
-                        label = "Türkçe Altyazı";
-                    else if (name.Contains("eng", StringComparison.OrdinalIgnoreCase) || lang.Equals("en", StringComparison.OrdinalIgnoreCase))
-                        label = "İngilizce Altyazı";
+                    if (name.Contains("türk", StringComparison.OrdinalIgnoreCase) || lang.Equals("tr", StringComparison.OrdinalIgnoreCase) || subUrl.Contains("-tr-"))
+                    {
+                        lang = "tr";
+                        label = "Türkçe";
+                    }
+                    else if (name.Contains("eng", StringComparison.OrdinalIgnoreCase) || lang.Equals("en", StringComparison.OrdinalIgnoreCase) || subUrl.Contains("-en-"))
+                    {
+                        lang = "en";
+                        label = "English";
+                    }
+                    else if (lang.Equals("pt", StringComparison.OrdinalIgnoreCase) || subUrl.Contains("-pt-"))
+                    {
+                        lang = "pt";
+                        label = "Português";
+                    }
+                    else if (lang.Equals("es", StringComparison.OrdinalIgnoreCase) || subUrl.Contains("-es-"))
+                    {
+                        lang = "es";
+                        label = "Español";
+                    }
+                    else if (lang.Equals("fr", StringComparison.OrdinalIgnoreCase) || subUrl.Contains("-fr-"))
+                    {
+                        lang = "fr";
+                        label = "Français";
+                    }
 
                     result.Subtitles.Add(new SubtitleTrackInfo
                     {

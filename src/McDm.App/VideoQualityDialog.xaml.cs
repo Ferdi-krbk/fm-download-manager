@@ -250,15 +250,97 @@ public partial class VideoQualityDialog : Window
     private void PopulateSubtitles()
     {
         CmbSubtitleLang.Items.Clear();
+
+        var cleaned = new List<SubtitleTrackInfo>();
+        var seenUrls = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var s in _subtitles)
+        {
+            var u = s.Url?.Trim() ?? "";
+            var uLower = u.ToLowerInvariant();
+
+            // Exclude HLS playlists, segments, and audio/video files
+            if (uLower.Contains("sublist_") || uLower.Contains(".m3u8") || uLower.Contains("playlist") || uLower.Contains("manifest"))
+                continue;
+            if (uLower.Contains("/hls/") && !uLower.EndsWith(".vtt") && !uLower.EndsWith(".srt"))
+                continue;
+
+            if (!string.IsNullOrEmpty(u) && !seenUrls.Add(u))
+                continue;
+
+            var lang = (s.Lang ?? "").Trim().ToLowerInvariant();
+            var label = (s.Label ?? "").Trim();
+            bool isForced = uLower.Contains("forced") || uLower.Contains("zorunlu") || label.Contains("Forced", StringComparison.OrdinalIgnoreCase) || label.Contains("Zorunlu", StringComparison.OrdinalIgnoreCase);
+
+            // Refine language code from isolated delimiters in URL if unknown or generic
+            if (string.IsNullOrEmpty(lang) || lang == "und" || (lang == "tr" && label.Equals("Altyazı", StringComparison.OrdinalIgnoreCase)))
+            {
+                var match = System.Text.RegularExpressions.Regex.Match(uLower, @"(?:^|[-_./])(tr|tur|turkish|turkce|en|eng|english|pt|por|portuguese|es|spa|spanish|fr|fre|french|de|ger|german|it|ita|italian|ru|rus|russian|ar|ara|arabic)(?:[-_./]|$)");
+                if (match.Success)
+                {
+                    var val = match.Groups[1].Value;
+                    if (val.StartsWith("tr") || val.StartsWith("tur")) lang = "tr";
+                    else if (val.StartsWith("en") || val.StartsWith("eng")) lang = "en";
+                    else if (val.StartsWith("pt") || val.StartsWith("por")) lang = "pt";
+                    else if (val.StartsWith("es") || val.StartsWith("spa")) lang = "es";
+                    else if (val.StartsWith("fr")) lang = "fr";
+                    else if (val.StartsWith("de") || val.StartsWith("ger")) lang = "de";
+                    else if (val.StartsWith("it")) lang = "it";
+                    else if (val.StartsWith("ru")) lang = "ru";
+                    else if (val.StartsWith("ar")) lang = "ar";
+                }
+                else if (uLower.Contains("altyazi"))
+                {
+                    lang = "tr";
+                }
+            }
+
+            string baseName = lang switch
+            {
+                "tr" => "Türkçe",
+                "en" => "İngilizce",
+                "pt" => "Portekizce",
+                "es" => "İspanyolca",
+                "fr" => "Fransızca",
+                "de" => "Almanca",
+                "it" => "İtalyanca",
+                "ru" => "Rusça",
+                "ar" => "Arapça",
+                _ => !string.IsNullOrEmpty(label) && !label.Equals("Altyazı", StringComparison.OrdinalIgnoreCase) ? label : "Altyazı"
+            };
+
+            var finalLabel = isForced ? $"{baseName} (Zorunlu)" : baseName;
+            cleaned.Add(new SubtitleTrackInfo { Url = s.Url, Lang = lang, Label = finalLabel });
+        }
+
+        // Sort: Non-forced Turkish first, then forced Turkish, then English, then others
+        cleaned.Sort((a, b) =>
+        {
+            bool aTr = a.Lang == "tr";
+            bool bTr = b.Lang == "tr";
+            if (aTr != bTr) return aTr ? -1 : 1;
+            if (aTr && bTr)
+            {
+                bool aF = a.Label?.Contains("Zorunlu") == true;
+                bool bF = b.Label?.Contains("Zorunlu") == true;
+                if (aF != bF) return aF ? 1 : -1;
+            }
+            bool aEn = a.Lang == "en";
+            bool bEn = b.Lang == "en";
+            if (aEn != bEn) return aEn ? -1 : 1;
+            return string.Compare(a.Label, b.Label, StringComparison.OrdinalIgnoreCase);
+        });
+
+        _subtitles = cleaned;
+
         if (_subtitles.Count > 0)
         {
             foreach (var s in _subtitles)
             {
-                var lbl = !string.IsNullOrWhiteSpace(s.Label) ? s.Label : s.Lang;
                 CmbSubtitleLang.Items.Add(new ComboBoxItem
                 {
-                    Content = $"{lbl} ({s.Lang})",
-                    Tag = s.Lang
+                    Content = s.Label,
+                    Tag = s
                 });
             }
             if (_subtitles.Count > 1)
@@ -351,29 +433,23 @@ public partial class VideoQualityDialog : Window
     private void Start_Click(object sender, RoutedEventArgs e)
     {
         DownloadSubtitles = ChkDownloadSubtitles.IsChecked == true;
-        if (CmbSubtitleLang.SelectedItem is ComboBoxItem cbi && cbi.Tag is string tag)
+        if (CmbSubtitleLang.SelectedItem is ComboBoxItem cbi)
         {
-            if (tag == "none")
+            if (cbi.Tag is SubtitleTrackInfo track)
             {
-                DownloadSubtitles = false;
+                SelectedSubtitleUrl = track.Url;
+                SubtitleLangs = track.Lang switch
+                {
+                    "tr" => "tr,tur,Turkish,turkish,tr-TR,tr-tr",
+                    "en" => "en,eng,English,english,en-US,en-us",
+                    _ => track.Lang
+                };
             }
-            else if (tag == "tr")
+            else if (cbi.Tag is string tag)
             {
-                SubtitleLangs = "tr,tur,Turkish,turkish,tr-TR,tr-tr";
-            }
-            else if (tag == "en")
-            {
-                SubtitleLangs = "en,eng,English,english,en-US,en-us";
-            }
-            else
-            {
-                SubtitleLangs = tag;
-            }
-
-            var matchedSub = _subtitles.FirstOrDefault(s => s.Lang == tag || s.Code == tag);
-            if (matchedSub != null && !string.IsNullOrWhiteSpace(matchedSub.Url))
-            {
-                SelectedSubtitleUrl = matchedSub.Url;
+                if (tag == "none") DownloadSubtitles = false;
+                else if (tag == "all") SubtitleLangs = "all";
+                else SubtitleLangs = tag;
             }
         }
 

@@ -307,8 +307,62 @@
   `;
 
   // Subtitle track detection across network sniff, DOM <track>, and page script JSON
+  function resolveSubtitleMetadata(url, rawCode, rawLabel) {
+    const u = (url || '').toLowerCase();
+    let code = (rawCode || '').toLowerCase().trim();
+    let label = (rawLabel || '').trim();
+    const isForced = /forced|zorunlu/i.test(u) || /forced|zorunlu/i.test(label);
+
+    const langMap = {
+      tr: 'Türkçe',
+      en: 'English',
+      pt: 'Português',
+      es: 'Español',
+      fr: 'Français',
+      de: 'Deutsch',
+      it: 'Italiano',
+      ru: 'Русский',
+      ar: 'العربية'
+    };
+
+    if (!code || code === 'und' || !langMap[code]) {
+      const m = u.match(/(?:^|[-_./])(tr|tur|turkish|turkce|en|eng|english|pt|por|portuguese|es|spa|spanish|fr|fre|french|de|ger|german|it|ita|italian|ru|rus|russian|ar|ara|arabic)(?:[-_./]|$)/i);
+      if (m) {
+        const k = m[1].toLowerCase();
+        if (k.startsWith('tr') || k.startsWith('tur')) code = 'tr';
+        else if (k.startsWith('en') || k.startsWith('eng')) code = 'en';
+        else if (k.startsWith('pt') || k.startsWith('por')) code = 'pt';
+        else if (k.startsWith('es') || k.startsWith('spa')) code = 'es';
+        else if (k.startsWith('fr')) code = 'fr';
+        else if (k.startsWith('de') || k.startsWith('ger')) code = 'de';
+        else if (k.startsWith('it')) code = 'it';
+        else if (k.startsWith('ru')) code = 'ru';
+        else if (k.startsWith('ar')) code = 'ar';
+      } else if (u.includes('altyazi')) {
+        code = 'tr';
+      } else {
+        code = 'und';
+      }
+    }
+
+    const baseName = langMap[code] || (label && !label.toLowerCase().includes('altyazı') ? label : 'Altyazı');
+    const finalLabel = isForced ? `${baseName} (Zorunlu)` : baseName;
+    return { code, label: finalLabel, isForced };
+  }
+
   async function detectSubtitleTracks() {
-    const list = [];
+    const rawList = [];
+
+    function addTrack(url, code, label) {
+      if (!url) return;
+      const u = url.toLowerCase();
+      // Exclude HLS playlists, video segments, and non-subtitle files
+      if (/sublist_(aud|vid|\d+)|playlist|manifest|\.m3u8/i.test(u)) return;
+      if (/\/hls\//i.test(u) && !/\.(vtt|srt|sub|ass)(\?|#|$)/i.test(u)) return;
+
+      const meta = resolveSubtitleMetadata(url, code, label);
+      rawList.push({ url, code: meta.code, label: meta.label, isForced: meta.isForced });
+    }
 
     // 1. Sniffed network subtitles from background.js
     try {
@@ -317,9 +371,7 @@
       });
       if (bgData?.subtitles) {
         bgData.subtitles.forEach(s => {
-          if (s.url && !list.some(x => x.url === s.url)) {
-            list.push({ code: s.lang || 'tr', label: s.label || 'Altyazı', url: s.url });
-          }
+          if (s.url) addTrack(s.url, s.lang, s.label);
         });
       }
     } catch {}
@@ -331,30 +383,24 @@
         if (v.textTracks) {
           for (let i = 0; i < v.textTracks.length; i++) {
             const tt = v.textTracks[i];
-            if (tt.label || tt.language) {
-              const code = tt.language || 'tr';
-              const label = tt.label || (code === 'tr' ? 'Türkçe' : code);
-              const trackTag = Array.from(v.querySelectorAll('track')).find(t => (t.srclang === code || t.label === label));
-              const u = trackTag?.src || trackTag?.getAttribute('src');
-              if (u && !list.some(x => x.url === u)) {
-                list.push({ code, label, url: u });
-              }
-            }
+            const code = tt.language || '';
+            const label = tt.label || '';
+            const trackTag = Array.from(v.querySelectorAll('track')).find(t => (t.srclang === code || t.label === label));
+            const u = trackTag?.src || trackTag?.getAttribute('src');
+            if (u) addTrack(u, code, label);
           }
         }
       });
       const tracks = document.querySelectorAll('track');
       tracks.forEach(t => {
         const src = t.src || t.getAttribute('src');
-        const code = t.getAttribute('srclang') || t.getAttribute('lang') || 'tr';
-        const label = t.getAttribute('label') || (code === 'tr' ? 'Türkçe' : (code === 'en' ? 'English' : code));
-        if (src && !list.some(x => x.url === src)) {
-          list.push({ code, label, url: src });
-        }
+        const code = t.getAttribute('srclang') || t.getAttribute('lang') || '';
+        const label = t.getAttribute('label') || '';
+        if (src) addTrack(src, code, label);
       });
     } catch {}
 
-    // 3. Script tags & player configurations (JW Player, VideoJS, YouTube)
+    // 3. Script tags & player configurations
     try {
       const scripts = document.querySelectorAll('script');
       for (const s of scripts) {
@@ -372,7 +418,7 @@
                 const code = c.languageCode;
                 const label = c.name?.simpleText || (c.name?.runs && c.name.runs[0]?.text) || code;
                 const u = c.baseUrl;
-                if (!list.some(x => x.code === code)) list.push({ code, label, url: u });
+                if (u) addTrack(u, code, label);
               });
             } catch {}
           }
@@ -387,29 +433,23 @@
             if (u.startsWith('/') || u.startsWith('.')) {
               try { u = new URL(u, location.href).href; } catch {}
             }
-            if (!list.some(x => x.url === u)) {
-              let code = 'tr';
-              let label = 'Altyazı';
-              if (/tr|turk/i.test(u)) { code = 'tr'; label = 'Türkçe'; }
-              else if (/en|eng/i.test(u)) { code = 'en'; label = 'English'; }
-              list.push({ code, label, url: u });
-            }
+            addTrack(u, '', '');
           });
         }
       }
     } catch {}
 
-    // 4. Iframe search (nested player configurations)
-    try {
-      const iframes = document.querySelectorAll('iframe');
-      iframes.forEach(f => {
-        const src = f.src || '';
-        const m = src.match(/https?:\/\/[^&"'#]+\.(?:vtt|srt)(?:\?[^&"'#]*)?/i);
-        if (m && !list.some(x => x.url === m[0])) {
-          list.push({ code: 'tr', label: 'Türkçe Altyazı', url: m[0] });
-        }
-      });
-    } catch {}
+    // Deduplicate strictly by normalized URL
+    const seenUrls = new Set();
+    const list = [];
+    rawList.forEach(item => {
+      let norm = item.url;
+      try { norm = new URL(item.url).pathname; } catch {}
+      if (!seenUrls.has(norm)) {
+        seenUrls.add(norm);
+        list.push(item);
+      }
+    });
 
     const isYouTube = /(youtube\.com|youtu\.be)/i.test(location.hostname);
     if (isYouTube) {
@@ -653,18 +693,18 @@
       return;
     }
 
-    // Sort: Non-forced Turkish first, then non-forced English, then other non-forced, then forced
+    // Sort: Non-forced Turkish first, then forced Turkish, then English, then other non-forced, then other forced
     choices.sort((a, b) => {
-      const aForced = /forced/i.test(a.url || '') || /forced/i.test(a.label || '');
-      const bForced = /forced/i.test(b.url || '') || /forced/i.test(b.label || '');
-      if (aForced !== bForced) return aForced ? 1 : -1;
-      const aTr = a.code === 'tr' || /türkçe|turk/i.test(a.label || '');
-      const bTr = b.code === 'tr' || /türkçe|turk/i.test(b.label || '');
+      const aTr = a.code === 'tr';
+      const bTr = b.code === 'tr';
       if (aTr !== bTr) return aTr ? -1 : 1;
-      const aEn = a.code === 'en' || /english/i.test(a.label || '');
-      const bEn = b.code === 'en' || /english/i.test(b.label || '');
+      if (aTr && bTr) {
+        if (a.isForced !== b.isForced) return a.isForced ? 1 : -1;
+      }
+      const aEn = a.code === 'en';
+      const bEn = b.code === 'en';
       if (aEn !== bEn) return aEn ? -1 : 1;
-      return 0;
+      return (a.label || '').localeCompare(b.label || '');
     });
 
     choices.forEach(c => {
@@ -812,29 +852,25 @@
     function selectBestSub(list, targetLang) {
       if (!list || !list.length) return '';
       const req = targetLang || 'tr';
+
       // 1. Non-forced requested language
-      const nonForcedMatch = list.find(s => {
-        const isL = s.code === req || s.lang === req || (req === 'tr' && /türkçe|turk/i.test(s.label || s.url));
-        const isF = /forced/i.test(s.url || '') || /forced/i.test(s.label || '');
-        return isL && !isF;
-      });
+      const nonForcedMatch = list.find(s => (s.code === req || s.lang === req) && !s.isForced && !/forced|zorunlu/i.test(s.url || ''));
       if (nonForcedMatch?.url) return nonForcedMatch.url;
 
       // 2. Non-forced Turkish
-      const nonForcedTr = list.find(s => {
-        const isL = s.code === 'tr' || s.lang === 'tr' || /türkçe|turk/i.test(s.label || s.url);
-        const isF = /forced/i.test(s.url || '') || /forced/i.test(s.label || '');
-        return isL && !isF;
-      });
+      const nonForcedTr = list.find(s => (s.code === 'tr' || s.lang === 'tr') && !s.isForced && !/forced|zorunlu/i.test(s.url || ''));
       if (nonForcedTr?.url) return nonForcedTr.url;
 
-      // 3. Any requested language
-      const anyMatch = list.find(s => s.code === req || s.lang === req || (req === 'tr' && /türkçe|turk/i.test(s.label || s.url)));
-      if (anyMatch?.url) return anyMatch.url;
+      // 3. Forced requested language
+      const forcedMatch = list.find(s => s.code === req || s.lang === req);
+      if (forcedMatch?.url) return forcedMatch.url;
 
-      // 4. Any non-forced
-      const anyNonForced = list.find(s => !/forced/i.test(s.url || '') && !/forced/i.test(s.label || ''));
-      if (anyNonForced?.url) return anyNonForced.url;
+      // 4. Forced Turkish
+      const forcedTr = list.find(s => s.code === 'tr' || s.lang === 'tr');
+      if (forcedTr?.url) return forcedTr.url;
+
+      // If requested was Turkish, NEVER fall back to Portuguese/French/Spanish
+      if (req === 'tr') return '';
 
       return list[0]?.url || '';
     }

@@ -170,15 +170,14 @@ public sealed class VideoDownloader
             "--windows-filenames",
             "--trim-filenames", "60",
             "--no-mtime",
-            "--concurrent-fragments", "16",
-            "--buffer-size", "16M",
+            "--concurrent-fragments", "4",
+            "--buffer-size", "1024K",
             "--no-check-certificates",
-            "--socket-timeout", "20",
-            "--extractor-retries", "5",
-            "--file-access-retries", "10",
-            "--fragment-retries", "15",
-            "--retry-sleep", "fragment:1",
-            "--skip-unavailable-fragments",
+            "--socket-timeout", "15",
+            "--extractor-retries", "10",
+            "--file-access-retries", "20",
+            "--fragment-retries", "25",
+            "--retry-sleep", "fragment:exp=1:4",
             "--cache-dir", cacheDir,
             "-c",                                  // continue partial downloads (resume)
             "--force-overwrites",
@@ -507,7 +506,7 @@ public sealed class VideoDownloader
         finally
         {
             if (cookieFile != null) SegmentedDownloader.TryDelete(cookieFile);
-            if (!string.IsNullOrEmpty(item.WorkDir) && Directory.Exists(item.WorkDir))
+            if (item.Status == DownloadStatus.Completed && !string.IsNullOrEmpty(item.WorkDir) && Directory.Exists(item.WorkDir))
             {
                 try { Directory.Delete(item.WorkDir, recursive: true); } catch { }
                 item.WorkDir = null;

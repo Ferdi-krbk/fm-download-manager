@@ -170,15 +170,14 @@ public sealed class VideoDownloader
             "--windows-filenames",
             "--trim-filenames", "60",
             "--no-mtime",
-            "--concurrent-fragments", "8",
-            "--buffer-size", "1024K",
-            "--throttled-rate", "100K",
+            "--concurrent-fragments", "16",
+            "--buffer-size", "16M",
             "--no-check-certificates",
-            "--socket-timeout", "10",
+            "--socket-timeout", "20",
             "--extractor-retries", "5",
             "--file-access-retries", "10",
             "--fragment-retries", "15",
-            "--retry-sleep", "fragment:exp=1:3",
+            "--retry-sleep", "fragment:1",
             "--skip-unavailable-fragments",
             "--cache-dir", cacheDir,
             "-c",                                  // continue partial downloads (resume)
@@ -233,7 +232,6 @@ public sealed class VideoDownloader
             {
                 string targetContainer = o.Container is "mkv" or "webm" ? o.Container : "mp4";
                 a.Add("--merge-output-format"); a.Add(targetContainer);
-                a.Add("--remux-video"); a.Add(targetContainer);
             }
 
             if (o.WriteSubtitles)
@@ -499,6 +497,7 @@ public sealed class VideoDownloader
                     string? srtToEmbed = File.Exists(finalSrt) ? finalSrt : Directory.GetFiles(outDir, $"{baseName}*.srt").FirstOrDefault();
                     if (srtToEmbed != null && File.Exists(srtToEmbed) && _ffmpeg() is { } ffmpegPath && File.Exists(ffmpegPath))
                     {
+                        item.Stage = "Altyazı Gömülüyor (FFmpeg)...";
                         EmbedSubtitleWithFfmpeg(ffmpegPath, item.SavePath, srtToEmbed);
                     }
                 }
@@ -574,7 +573,7 @@ public sealed class VideoDownloader
             }
             else if (line.StartsWith("[Merger] Merging formats into \"", StringComparison.Ordinal))
             {
-                item.Stage = "Merging";
+                item.Stage = "Dosyalar Birleştiriliyor (FFmpeg)...";
                 item.Speed = 0;
                 var fp = line.Substring("[Merger] Merging formats into \"".Length).TrimEnd('"').Trim();
                 if (!string.IsNullOrEmpty(fp)) finalPath = fp;
@@ -588,7 +587,7 @@ public sealed class VideoDownloader
             else if (line.StartsWith("[Merger]", StringComparison.Ordinal) || line.StartsWith("[VideoConvertor]", StringComparison.Ordinal)
                      || line.StartsWith("[ExtractAudio]", StringComparison.Ordinal) || line.StartsWith("[FixupM3u8]", StringComparison.Ordinal))
             {
-                item.Stage = "Merging";
+                item.Stage = "Dosyalar Birleştiriliyor (FFmpeg)...";
                 item.Speed = 0;
             }
             else if (line.Contains("Writing video subtitles") || line.Contains("Downloading subtitles"))

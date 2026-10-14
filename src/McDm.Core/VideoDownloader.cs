@@ -170,14 +170,14 @@ public sealed class VideoDownloader
             "--windows-filenames",
             "--trim-filenames", "60",
             "--no-mtime",
-            "--concurrent-fragments", "4",
+            "--concurrent-fragments", "5",
             "--buffer-size", "1024K",
             "--no-check-certificates",
-            "--socket-timeout", "15",
+            "--socket-timeout", "8",
             "--extractor-retries", "10",
             "--file-access-retries", "20",
-            "--fragment-retries", "25",
-            "--retry-sleep", "fragment:exp=1:4",
+            "--fragment-retries", "30",
+            "--retry-sleep", "fragment:0.5",
             "--cache-dir", cacheDir,
             "-c",                                  // continue partial downloads (resume)
             "--force-overwrites",
@@ -486,7 +486,8 @@ public sealed class VideoDownloader
                 try
                 {
                     string baseName = Path.GetFileNameWithoutExtension(item.SavePath);
-                    string subLang = !string.IsNullOrWhiteSpace(opt.SubtitleLangs) ? opt.SubtitleLangs : "tr";
+                    string rawLang = !string.IsNullOrWhiteSpace(opt.SubtitleLangs) ? opt.SubtitleLangs : "tr";
+                    string subLang = rawLang.Split(',')[0].Trim();
                     string finalSrt = Path.Combine(outDir, $"{baseName}.{subLang}.srt");
                     if (manualSrtPath != null && File.Exists(manualSrtPath))
                     {

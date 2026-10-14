@@ -68,7 +68,7 @@ def main():
     draw.text((sx, sy), sub, fill=(160, 165, 185, 255), font=font_sub)
 
     # Minimal Badges Row
-    badges = ["Windows 10 / 11", "Çok Parçalı İndirme", "Açık Kaynak & Ücretsiz", "v3.2.0"]
+    badges = ["Windows 10 / 11", "Çok Parçalı Motor", "BitTorrent & Magnet", "Medya & Altyazı (.srt)", "v3.4.3"]
     badge_y = sy + 38
     total_badge_w = 0
     badge_widths = []
@@ -133,6 +133,10 @@ def main():
     out_jpg = r"dist\fm_clean_poster.jpg"
     final_rgb.save(out_png, quality=95)
     final_rgb.save(out_jpg, quality=95)
+
+    import shutil
+    shutil.copy2(out_jpg, r"docs\ui\clean_poster.jpg")
+    shutil.copy2(out_png, r"docs\ui\clean_poster.png")
 
     print("Clean, elegant poster created successfully!")
     print("PNG:", out_png)

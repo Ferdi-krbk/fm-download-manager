@@ -383,12 +383,12 @@ public partial class VideoQualityDialog : Window
             audioTrackChoice = aTag;
         }
 
-        string aPref = audioTrackChoice switch
+        string[] audioTokens = audioTrackChoice switch
         {
-            "tr" => "ba[format_id*=Turkish]/ba[format_note*=Turkish]/ba[format_id*=Turk]/ba[language^=tr]/ba",
-            "original" => "ba[format_id*=Original]/ba[format_note*=Original]/ba[format_id*=Eng]/ba[format_note*=Eng]/ba[language^=en]/ba[format_id!*=Turkish]/ba[format_note!*=Turkish]/ba",
-            "best" => "ba",
-            _ => $"ba[format_id={audioTrackChoice}]/ba[format_id*={audioTrackChoice}]/ba"
+            "tr" => new[] { "ba[format_id*=Turkish]", "ba[format_note*=Turkish]", "ba[format_id*=Turk]", "ba[language^=tr]", "ba" },
+            "original" => new[] { "ba[format_id*=Original]", "ba[format_note*=Original]", "ba[format_id*=Eng]", "ba[format_note*=Eng]", "ba[language^=en]", "ba[format_id!*=Turkish]", "ba[format_note!*=Turkish]", "ba" },
+            "best" => new[] { "ba" },
+            _ => new[] { $"ba[format_id={audioTrackChoice}]", $"ba[format_id*={audioTrackChoice}]", "ba" }
         };
 
         string qualityChoice = "best";
@@ -403,16 +403,41 @@ public partial class VideoQualityDialog : Window
 
         if (qualityChoice == "audio")
         {
-            SelectedFormat = $"{aPref}/ba/bestaudio/best";
+            SelectedFormat = string.Join("/", audioTokens) + "/ba/bestaudio/best";
             AudioOnly = true;
         }
         else if (int.TryParse(qualityChoice, out int h) && h > 0)
         {
-            SelectedFormat = $"bv*[height<={h}][ext=mp4]+{aPref}[ext=m4a]/bv*[height<={h}]+{aPref}/bv*[height<={h}]+ba/b[height<={h}]/bv*+{aPref}/bv*+ba/b/best";
+            var pairs = new List<string>();
+            foreach (var a in audioTokens)
+            {
+                pairs.Add($"bv*[height<={h}][ext=mp4]+{a}[ext=m4a]");
+                pairs.Add($"bv*[height<={h}]+{a}");
+            }
+            pairs.Add($"bv*[height<={h}]+ba");
+            pairs.Add($"b[height<={h}]");
+            foreach (var a in audioTokens)
+            {
+                pairs.Add($"bv*+{a}");
+            }
+            pairs.Add("bv*+ba");
+            pairs.Add("b");
+            pairs.Add("best");
+            SelectedFormat = string.Join("/", pairs.Distinct());
         }
         else
         {
-            SelectedFormat = $"bv*[ext=mp4]+{aPref}[ext=m4a]/bv*+{aPref}/bv*+ba/b[ext=mp4]/b/best";
+            var pairs = new List<string>();
+            foreach (var a in audioTokens)
+            {
+                pairs.Add($"bv*[ext=mp4]+{a}[ext=m4a]");
+                pairs.Add($"bv*+{a}");
+            }
+            pairs.Add("bv*+ba");
+            pairs.Add("b[ext=mp4]");
+            pairs.Add("b");
+            pairs.Add("best");
+            SelectedFormat = string.Join("/", pairs.Distinct());
         }
 
         DialogResult = true;

@@ -50,7 +50,7 @@
     <td width="50%" valign="top">
       <h3 align="center">🚀 IDM Tarzı Yüzen İndirme Çubuğu</h3>
       <p align="center">
-        <img src="docs/ui/afis_1_hero.jpg" width="100%" alt="Yüzen Çubuk & Sıfır Tık Eşleştirme" />
+        <img src="docs/ui/card_floating_bar.jpg" width="100%" style="border-radius: 8px;" alt="Yüzen Çubuk & Sıfır Tık Eşleştirme" />
       </p>
       <ul>
         <li><b>İzole Shadow DOM:</b> Web sitelerinin CSS ve stillerinden asla etkilenmez.</li>
@@ -61,7 +61,7 @@
     <td width="50%" valign="top">
       <h3 align="center">🎧 Dual-Audio &amp; Altyazı Hattı</h3>
       <p align="center">
-        <img src="docs/ui/afis_2_performance.jpg" width="100%" alt="Çift Ses & Performans Motoru" />
+        <img src="docs/ui/card_dual_audio.jpg" width="100%" style="border-radius: 8px;" alt="Çift Ses & Performans Motoru" />
       </p>
       <ul>
         <li><b>Çift Ses (Dual-Audio) Eşleme:</b> 3. parti web oynatıcılarında videoyu tercih edilen ses parçasıyla (TR Dublaj / Orijinal) birleştirir.</li>
@@ -74,7 +74,7 @@
     <td width="50%" valign="top">
       <h3 align="center">🌐 Sıfır Tık Eklenti Eşleştirmesi</h3>
       <p align="center">
-        <img src="docs/ui/browser_setup.png" width="100%" alt="Tarayıcı Kurulum Merkezi" />
+        <img src="docs/ui/card_browser_setup.jpg" width="100%" style="border-radius: 8px;" alt="Tarayıcı Kurulum Merkezi" />
       </p>
       <ul>
         <li><b>Otomatik Token Tohumlama:</b> Kurulum anında <code>token.json</code> eklenti klasörüne yazılır.</li>
@@ -85,7 +85,7 @@
     <td width="50%" valign="top">
       <h3 align="center">📊 Vektör Hız Grafiği &amp; Hız Limiti</h3>
       <p align="center">
-        <img src="docs/ui/speed_limiter.png" width="100%" alt="Hız Sınırlayıcı Kadranı" />
+        <img src="docs/ui/card_speed_limiter.jpg" width="100%" style="border-radius: 8px;" alt="Hız Sınırlayıcı Kadranı" />
       </p>
       <ul>
         <li><b>EMA Filtreli Telemetri:</b> Üstel Hareketli Ortalama ile ağ dalgalanmalarını pürüzsüzleştirir.</li>

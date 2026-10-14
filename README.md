@@ -50,7 +50,7 @@
     <td width="50%" valign="top">
       <h3 align="center">🚀 IDM-Style Floating Bar</h3>
       <p align="center">
-        <img src="docs/ui/afis_1_hero.jpg" width="100%" alt="Floating Bar & Zero-Click Pairing" />
+        <img src="docs/ui/card_floating_bar_en.jpg" width="100%" style="border-radius: 8px;" alt="Floating Bar & Zero-Click Pairing" />
       </p>
       <ul>
         <li><b>Zero-Interference Shadow DOM:</b> Renders isolated from host website styles.</li>
@@ -61,7 +61,7 @@
     <td width="50%" valign="top">
       <h3 align="center">🎧 Dual-Audio &amp; Subtitle Pipeline</h3>
       <p align="center">
-        <img src="docs/ui/afis_2_performance.jpg" width="100%" alt="Dual Audio & Performance Engine" />
+        <img src="docs/ui/card_dual_audio_en.jpg" width="100%" style="border-radius: 8px;" alt="Dual Audio & Performance Engine" />
       </p>
       <ul>
         <li><b>Dual-Audio Stream Pairing:</b> Auto-muxes video with preferred audio tracks (Dubbed + Original) on 3rd-party players.</li>
@@ -74,7 +74,7 @@
     <td width="50%" valign="top">
       <h3 align="center">🌐 Zero-Click Browser Pairing</h3>
       <p align="center">
-        <img src="docs/ui/browser_setup.png" width="100%" alt="Browser Setup Hub" />
+        <img src="docs/ui/card_browser_setup_en.jpg" width="100%" style="border-radius: 8px;" alt="Browser Setup Hub" />
       </p>
       <ul>
         <li><b>Automated Token Seeding:</b> Unpacks <code>token.json</code> straight to the extension folder.</li>
@@ -85,7 +85,7 @@
     <td width="50%" valign="top">
       <h3 align="center">📊 Vector Speed Graph &amp; Limiter</h3>
       <p align="center">
-        <img src="docs/ui/speed_limiter.png" width="100%" alt="Bandwidth Limiter Dial" />
+        <img src="docs/ui/card_speed_limiter_en.jpg" width="100%" style="border-radius: 8px;" alt="Bandwidth Limiter Dial" />
       </p>
       <ul>
         <li><b>EMA Filtered Telemetry:</b> Exponential Moving Average eliminates erratic spike noise.</li>

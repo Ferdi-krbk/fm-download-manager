@@ -62,7 +62,7 @@ try {
     sessionStorage: { length: 0, getItem: () => null, setItem: () => {}, removeItem: () => {}, key: () => null },
     MutationObserver: class { observe() {} disconnect() {} },
     setTimeout: (fn) => fn, clearTimeout: () => {}, requestAnimationFrame: () => 1, cancelAnimationFrame: () => {},
-    chrome: { runtime: { sendMessage: (msg, cb) => { if (cb) cb({ ok: true }); }, lastError: null } }
+    chrome: { runtime: { sendMessage: (msg, cb) => { if (cb) cb({ ok: true }); }, onMessage: { addListener: () => {} }, lastError: null } }
   };
   domMock.window.document = domMock.document;
   domMock.location = domMock.window.location;

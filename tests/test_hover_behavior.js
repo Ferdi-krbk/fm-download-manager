@@ -167,7 +167,7 @@ const sandbox = {
   window: mockWindow,
   document: mockDoc,
   location: mockWindow.location,
-  chrome: { runtime: { sendMessage: () => {}, lastError: null } },
+  chrome: { runtime: { sendMessage: () => {}, onMessage: { addListener: () => {} }, lastError: null } },
   sessionStorage: { length: 0, removeItem: () => {}, key: () => null },
   setTimeout: setTimeout,
   clearTimeout: clearTimeout,

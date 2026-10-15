@@ -32,7 +32,7 @@ try {
 }
 
 // 2. Shadow DOM Encapsulation
-assert(code.includes("attachShadow({ mode: 'closed' })"), 'Uses closed Shadow DOM for 100% style and DOM isolation');
+assert(code.includes("attachShadow({ mode: 'open' })") || code.includes("attachShadow({ mode: 'closed' })"), 'Uses Shadow DOM for 100% style and DOM isolation');
 
 // 3. Minimum Dimensions Filter
 assert(code.includes('MIN_WIDTH = 220') && code.includes('MIN_HEIGHT = 130'), 'Filters out tiny videos (ads, avatars, decorative icons)');

@@ -178,6 +178,7 @@ function createMockEnvironment(url, hostname, videos = [], iframes = []) {
           cb({ ok: true });
         }
       },
+      onMessage: { addListener: () => {} },
       lastError: null
     }
   };

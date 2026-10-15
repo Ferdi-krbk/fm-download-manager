@@ -317,6 +317,31 @@ Son sahne metni.
             string autoSub = StreamProbeService.FormatSubtitleLabel("de", isAuto: true);
             check(autoSub == "Almanca (Deutsch) Altyazı (Otomatik)", "DE auto subtitle mismatch: " + autoSub);
 
+            // 4. Subtitle file normalization & UTF-8 BOM encoding
+            string tempSubFile = Path.Combine(Path.GetTempPath(), "test_sub_" + Guid.NewGuid().ToString("N") + ".srt");
+            try
+            {
+                string rawDirty = "1\r\n00:00:00,100 --> 00:00:02,500\r\n\u200B\u200B<b>\u200B Bütün marketi satın aldım. \u200B</b>\r\n\r\n" +
+                                  "2\r\n00:00:03,000 --> 00:00:05,000\r\n<font color=\"red\">Çılgın teklif şu:</font>\r\n";
+                File.WriteAllText(tempSubFile, rawDirty, new UTF8Encoding(false));
+
+                VideoDownloader.CleanAndNormalizeSubtitleFile(tempSubFile);
+
+                var bytes = File.ReadAllBytes(tempSubFile);
+                check(bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF, "File must have UTF-8 BOM header");
+
+                string cleaned = Encoding.UTF8.GetString(bytes[3..]);
+                check(!cleaned.Contains("\u200B"), "Must not contain zero-width space");
+                check(!cleaned.Contains("<b>") && !cleaned.Contains("</b>"), "Must not contain <b> tags");
+                check(!cleaned.Contains("<font"), "Must not contain font tags");
+                check(cleaned.Contains("Bütün marketi satın aldım."), "Must preserve Turkish characters: ü, ı");
+                check(cleaned.Contains("Çılgın teklif şu:"), "Must preserve Turkish characters: Ç, ı, ş");
+            }
+            finally
+            {
+                if (File.Exists(tempSubFile)) File.Delete(tempSubFile);
+            }
+
             return Task.CompletedTask;
         });
     }

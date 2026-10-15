@@ -437,7 +437,8 @@ public sealed class VideoDownloader
             string baseName = Path.GetFileNameWithoutExtension(string.IsNullOrWhiteSpace(item.FileName) ? "subtitle" : item.FileName);
             string subLang = !string.IsNullOrWhiteSpace(opt.SubtitleLangs) ? opt.SubtitleLangs : "tr";
             string srtFile = Path.Combine(outDir, $"{baseName}.{subLang}.srt");
-            await File.WriteAllTextAsync(srtFile, srtContent, new UTF8Encoding(false), ct);
+            await File.WriteAllTextAsync(srtFile, srtContent, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), ct);
+            CleanAndNormalizeSubtitleFile(srtFile);
 
             item.SavePath = srtFile;
             item.FileName = Path.GetFileName(srtFile);
@@ -458,7 +459,8 @@ public sealed class VideoDownloader
             try
             {
                 manualSrtPath = Path.Combine(item.WorkDir, "manual_sub.srt");
-                await File.WriteAllTextAsync(manualSrtPath, srtContent, new UTF8Encoding(false), ct);
+                await File.WriteAllTextAsync(manualSrtPath, srtContent, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), ct);
+                CleanAndNormalizeSubtitleFile(manualSrtPath);
             }
             catch { }
         }
@@ -500,6 +502,11 @@ public sealed class VideoDownloader
                     if (manualSrtPath != null && File.Exists(manualSrtPath))
                     {
                         File.Copy(manualSrtPath, finalSrt, overwrite: true);
+                    }
+
+                    foreach (var srt in Directory.GetFiles(outDir, $"{baseName}*.srt"))
+                    {
+                        CleanAndNormalizeSubtitleFile(srt);
                     }
 
                     string? srtToEmbed = File.Exists(finalSrt) ? finalSrt : Directory.GetFiles(outDir, $"{baseName}*.srt").FirstOrDefault();
@@ -738,12 +745,48 @@ public sealed class VideoDownloader
 
             if (inCue)
             {
-                var clean = Regex.Replace(line, @"<[^>]+>", "");
+                var clean = Regex.Replace(line, @"[\u200B\u200C\u200D\u200E\u200F\uFEFF\u00AD]", "");
+                clean = Regex.Replace(clean, @"<\/?(b|font|span|u)[^>]*>", "", RegexOptions.IgnoreCase);
+                clean = Regex.Replace(clean, @"<[^>]+>", "");
+                clean = Regex.Replace(clean, @"[ \t]+", " ").Trim();
                 sb.AppendLine(clean);
             }
         }
 
         return sb.ToString().Trim() + "\r\n";
+    }
+
+    public static void CleanAndNormalizeSubtitleFile(string filePath)
+    {
+        if (!File.Exists(filePath)) return;
+        try
+        {
+            var bytes = File.ReadAllBytes(filePath);
+            if (bytes.Length == 0) return;
+
+            bool hasBom = bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF;
+            string text = Encoding.UTF8.GetString(hasBom ? bytes[3..] : bytes);
+
+            text = Regex.Replace(text, @"[\u200B\u200C\u200D\u200E\u200F\uFEFF\u00AD]", "");
+            text = Regex.Replace(text, @"<\/?(b|font|span|u)[^>]*>", "", RegexOptions.IgnoreCase);
+
+            var lines = text.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+            var cleanLines = new List<string>();
+            foreach (var line in lines)
+            {
+                if (Regex.IsMatch(line, @"^\d+$") || line.Contains("-->"))
+                {
+                    cleanLines.Add(line.Trim());
+                }
+                else
+                {
+                    cleanLines.Add(Regex.Replace(line, @"[ \t]+", " ").Trim());
+                }
+            }
+            string finalText = string.Join("\r\n", cleanLines).Trim() + "\r\n";
+            File.WriteAllText(filePath, finalText, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
+        }
+        catch { }
     }
 
     public static bool EmbedSubtitleWithFfmpeg(string ffmpeg, string videoPath, string srtPath)

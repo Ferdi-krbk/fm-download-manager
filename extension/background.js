@@ -824,20 +824,33 @@ api.tabs.onRemoved.addListener((tabId) => {
 const menus = api.contextMenus || api.menus;
 function createMenus() {
   if (!menus) return;
-  let created = false;
-  const create = () => {
-    if (created) return;
-    created = true;
-    try {
-      menus.create({ id: 'dm-link', title: t('menuDownloadLink'), contexts: ['link', 'video', 'audio', 'image'] });
-      menus.create({ id: 'dm-page-video', title: t('menuPageVideo'), contexts: ['page', 'video', 'frame', 'action'] });
-    } catch {}
+  const build = () => {
+    const safeCreate = (props) => {
+      try {
+        menus.create(props, () => {
+          // Void runtime.lastError so Chrome never flags duplicate IDs or existing items as unhandled errors
+          void api.runtime?.lastError;
+        });
+      } catch {}
+    };
+    safeCreate({ id: 'dm-link', title: t('menuDownloadLink'), contexts: ['link', 'video', 'audio', 'image'] });
+    safeCreate({ id: 'dm-page-video', title: t('menuPageVideo'), contexts: ['page', 'video', 'frame', 'action'] });
   };
-  // Chrome/Safari take a callback; Firefox's browser.menus returns a promise.
+
   try {
-    const r = IS_FIREFOX ? menus.removeAll() : menus.removeAll(create);
-    if (r && typeof r.then === 'function') r.then(create, create);
-  } catch { create(); }
+    if (IS_FIREFOX) {
+      const r = menus.removeAll();
+      if (r && typeof r.then === 'function') r.then(build, build);
+      else build();
+    } else {
+      menus.removeAll(() => {
+        void api.runtime?.lastError;
+        build();
+      });
+    }
+  } catch {
+    build();
+  }
 }
 api.runtime.onInstalled.addListener(() => { createMenus(); ping(); });
 api.runtime.onStartup?.addListener(() => { createMenus(); ping(); });

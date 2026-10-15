@@ -525,7 +525,7 @@ public static class StreamProbeService
 
             var stdoutTask = proc.StandardOutput.ReadToEndAsync();
             var stderrTask = proc.StandardError.ReadToEndAsync();
-            var timeoutTask = Task.Delay(TimeSpan.FromSeconds(15), ct);
+            var timeoutTask = Task.Delay(TimeSpan.FromSeconds(45), ct);
 
             var finishedTask = await Task.WhenAny(Task.WhenAll(stdoutTask, stderrTask), timeoutTask);
             if (finishedTask == timeoutTask)

@@ -350,6 +350,79 @@
     return { code, label: finalLabel, isForced };
   }
 
+  function extractYouTubeMetadata() {
+    if (!/(youtube\.com|youtu\.be)/i.test(location.hostname)) return null;
+    try {
+      const scripts = document.querySelectorAll('script');
+      for (const s of scripts) {
+        const text = s.textContent || '';
+        if (!text.includes('ytInitialPlayerResponse')) continue;
+        const idx = text.indexOf('ytInitialPlayerResponse');
+        const start = text.indexOf('{', idx);
+        if (start === -1) continue;
+
+        let depth = 0, inString = false, escape = false, end = -1;
+        for (let i = start; i < text.length; i++) {
+          const ch = text[i];
+          if (escape) { escape = false; continue; }
+          if (ch === '\\') { escape = true; continue; }
+          if (ch === '"') { inString = !inString; continue; }
+          if (!inString) {
+            if (ch === '{') depth++;
+            else if (ch === '}') {
+              depth--;
+              if (depth === 0) { end = i + 1; break; }
+            }
+          }
+        }
+        if (end === -1) continue;
+
+        const obj = JSON.parse(text.substring(start, end));
+        if (!obj) continue;
+
+        const audioTracks = [];
+        const seenAudios = new Set();
+        const formats = obj.streamingData?.adaptiveFormats || [];
+        formats.forEach(f => {
+          if (f.audioTrack && f.audioTrack.displayName && !seenAudios.has(f.audioTrack.displayName)) {
+            seenAudios.add(f.audioTrack.displayName);
+            const idParts = (f.audioTrack.id || '').split('.');
+            const langCode = idParts[0] || '';
+            audioTracks.push({
+              trackId: f.audioTrack.id || langCode,
+              lang: langCode,
+              label: f.audioTrack.displayName,
+              isDefault: !!f.audioTrack.audioIsDefault
+            });
+          }
+        });
+
+        const subtitles = [];
+        const seenSubs = new Set();
+        const caps = obj.captions?.playerCaptionsTracklistRenderer?.captionTracks || [];
+        caps.forEach(c => {
+          const code = c.languageCode || '';
+          const rawLabel = c.name?.simpleText || (c.name?.runs && c.name.runs[0]?.text) || code;
+          const isAuto = (c.vssId && c.vssId.startsWith('a.')) || /otomatik|auto/i.test(rawLabel);
+          const label = isAuto && !rawLabel.toLowerCase().includes('otomatik') ? `${rawLabel} (Otomatik)` : rawLabel;
+          const u = c.baseUrl;
+          if (u && !seenSubs.has(code + '_' + label)) {
+            seenSubs.add(code + '_' + label);
+            subtitles.push({
+              url: u,
+              code: code,
+              label: label,
+              isForced: false
+            });
+          }
+        });
+
+        return { audioTracks, subtitles };
+      }
+    } catch (e) {}
+    return null;
+  }
+
   async function detectSubtitleTracks() {
     const rawList = [];
 
@@ -364,7 +437,16 @@
       rawList.push({ url, code: meta.code, label: meta.label, isForced: meta.isForced });
     }
 
-    // 1. Sniffed network subtitles from background.js
+    // 1. YouTube in-page full metadata extraction
+    const isYouTube = /(youtube\.com|youtu\.be)/i.test(location.hostname);
+    if (isYouTube) {
+      const ytMeta = extractYouTubeMetadata();
+      if (ytMeta && ytMeta.subtitles && ytMeta.subtitles.length > 0) {
+        ytMeta.subtitles.forEach(s => addTrack(s.url, s.code, s.label));
+      }
+    }
+
+    // 2. Sniffed network subtitles from background.js
     try {
       const bgData = await new Promise((res) => {
         api.runtime.sendMessage({ type: 'getBestMedia' }, (r) => res(api.runtime.lastError ? null : r));
@@ -376,7 +458,7 @@
       }
     } catch {}
 
-    // 2. DOM <track> elements on document and inside video tags
+    // 3. DOM <track> elements on document and inside video tags
     try {
       const videoEls = document.querySelectorAll('video');
       videoEls.forEach(v => {
@@ -400,29 +482,13 @@
       });
     } catch {}
 
-    // 3. Script tags & player configurations
+    // 4. Script tags & player configurations
     try {
       const scripts = document.querySelectorAll('script');
       for (const s of scripts) {
         const rawText = s.textContent || '';
         if (!rawText) continue;
         const text = rawText.replace(/\\\//g, '/');
-
-        // YouTube in-page caption tracks
-        if (text.includes('captionTracks')) {
-          const m = text.match(/"captionTracks":\s*(\[[^\]]+\])/);
-          if (m) {
-            try {
-              const arr = JSON.parse(m[1]);
-              arr.forEach(c => {
-                const code = c.languageCode;
-                const label = c.name?.simpleText || (c.name?.runs && c.name.runs[0]?.text) || code;
-                const u = c.baseUrl;
-                if (u) addTrack(u, code, label);
-              });
-            } catch {}
-          }
-        }
 
         // Generic player subtitle configs
         const subUrlMatches = text.match(/https?:\/\/[^\s"'<>]+\.(?:vtt|srt|ass|sub)(?:\?[^\s"'<>]*)?/gi) ||
@@ -451,11 +517,10 @@
       }
     });
 
-    const isYouTube = /(youtube\.com|youtu\.be)/i.test(location.hostname);
-    if (isYouTube) {
-      if (!list.some(x => x.code === 'tr')) list.unshift({ code: 'tr', label: 'Türkçe', url: null });
-      if (!list.some(x => x.code === 'en')) list.push({ code: 'en', label: 'English', url: null });
-      list.push({ code: 'tr,en', label: 'Türkçe + İngilizce', url: null });
+    if (isYouTube && list.length === 0) {
+      list.push({ code: 'tr', label: 'Türkçe Altyazı', url: null });
+      list.push({ code: 'en', label: 'İngilizce Altyazı', url: null });
+      list.push({ code: 'all', label: 'Tüm Altyazıları İndir', url: null });
     }
 
     if (list && list.length > 0) {
@@ -747,11 +812,14 @@
       const ytTitleEl = document.querySelector('h1.ytd-watch-metadata yt-formatted-string, #title h1 yt-formatted-string, h1.title');
       let cleanTitle = (ytTitleEl ? ytTitleEl.textContent : '') || document.title || 'YouTube Video';
       cleanTitle = cleanTitle.replace(/^\(\d+\)\s*/, '').replace(/\s*-\s*YouTube$/i, '').trim();
+      const ytMeta = extractYouTubeMetadata();
       return {
         url: location.href,
         name: cleanTitle,
         kind: 'video',
-        referer: location.href
+        referer: location.href,
+        audioTracks: ytMeta?.audioTracks || [],
+        subtitles: ytMeta?.subtitles || []
       };
     }
 
@@ -854,8 +922,13 @@
 
     const mergedSubs = [...subsList, ...(media.subtitles || []), ...detectedSubs];
     const finalSubList = [];
+    const seenSubKeys = new Set();
     mergedSubs.forEach(s => {
-      if (s.url && !finalSubList.some(x => x.url === s.url)) finalSubList.push(s);
+      const k = s.url || (s.code + '_' + s.label);
+      if (!seenSubKeys.has(k)) {
+        seenSubKeys.add(k);
+        finalSubList.push(s);
+      }
     });
 
     function selectBestSub(list, targetLang) {
@@ -1200,6 +1273,14 @@
         sendResponse({ subtitles: subs || [], ok: true });
       }).catch(() => {
         sendResponse({ subtitles: [], ok: false });
+      });
+      return true;
+    }
+    if (msg?.type === 'getActiveMedia') {
+      resolveTargetMedia().then((media) => {
+        sendResponse(media || {});
+      }).catch(() => {
+        sendResponse({});
       });
       return true;
     }

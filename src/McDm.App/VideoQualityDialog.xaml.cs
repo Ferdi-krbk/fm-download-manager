@@ -74,6 +74,21 @@ public partial class VideoQualityDialog : Window
             }
         }
 
+        if (_audioTracks.Count > 0)
+        {
+            _audioTracks = _audioTracks.OrderBy(a =>
+            {
+                bool isTr = a.Lang.StartsWith("tr", StringComparison.OrdinalIgnoreCase) || a.Label.Contains("Türkçe", StringComparison.OrdinalIgnoreCase) || a.TrackId == "tr";
+                bool isOrig = a.IsDefault || a.Label.Contains("Orijinal", StringComparison.OrdinalIgnoreCase) || a.TrackId == "original";
+                bool isEn = a.Lang.StartsWith("en", StringComparison.OrdinalIgnoreCase);
+
+                if (isTr) return 0;
+                if (isOrig) return 1;
+                if (isEn) return 2;
+                return 3;
+            }).ThenBy(a => a.Label).ToList();
+        }
+
         PopulateQualities();
         PopulateAudioTracks();
         PopulateSubtitles();
@@ -208,9 +223,27 @@ public partial class VideoQualityDialog : Window
             ComboBoxItem? itemToSelect = null;
             foreach (var a in _audioTracks)
             {
+                string displayLabel = a.Label;
+                if (!displayLabel.Contains("Dublaj", StringComparison.OrdinalIgnoreCase) &&
+                    !displayLabel.Contains("Orijinal", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (a.IsDefault || displayLabel.Contains("original", StringComparison.OrdinalIgnoreCase))
+                    {
+                        displayLabel = $"Orijinal Ses ({displayLabel})";
+                    }
+                    else if (a.Lang.StartsWith("tr", StringComparison.OrdinalIgnoreCase) || displayLabel.Equals("Türkçe", StringComparison.OrdinalIgnoreCase))
+                    {
+                        displayLabel = "Türkçe Dublaj";
+                    }
+                    else
+                    {
+                        displayLabel = $"{displayLabel} Dublaj";
+                    }
+                }
+
                 var cbi = new ComboBoxItem
                 {
-                    Content = a.Label,
+                    Content = displayLabel,
                     Tag = a
                 };
                 CmbAudioTrack.Items.Add(cbi);
@@ -277,8 +310,13 @@ public partial class VideoQualityDialog : Window
             bool isForced = uLower.Contains("forced") || uLower.Contains("zorunlu") || label.Contains("Forced", StringComparison.OrdinalIgnoreCase) || label.Contains("Zorunlu", StringComparison.OrdinalIgnoreCase);
             bool isAuto = label.Contains("Otomatik", StringComparison.OrdinalIgnoreCase) || uLower.Contains("auto");
 
-            // Refine language code from isolated delimiters in URL if unknown or generic
-            if (string.IsNullOrEmpty(lang) || lang == "und" || (lang == "tr" && label.Equals("Altyazı", StringComparison.OrdinalIgnoreCase)))
+            // Check for explicit lang query parameter in YouTube/timedtext URLs (e.g. &lang=tr, &lang=es)
+            var ytLangMatch = System.Text.RegularExpressions.Regex.Match(u, @"[?&]lang=([a-zA-Z0-9_-]+)");
+            if (ytLangMatch.Success)
+            {
+                lang = ytLangMatch.Groups[1].Value.ToLowerInvariant();
+            }
+            else if (string.IsNullOrEmpty(lang) || lang == "und" || (lang == "tr" && label.Equals("Altyazı", StringComparison.OrdinalIgnoreCase)))
             {
                 var match = System.Text.RegularExpressions.Regex.Match(uLower, @"(?:^|[-_./])(tr|tur|turkish|turkce|en|eng|english|pt|por|portuguese|es|spa|spanish|fr|fre|french|de|ger|german|it|ita|italian|ru|rus|russian|ar|ara|arabic)(?:[-_./]|$)");
                 if (match.Success)
@@ -303,7 +341,7 @@ public partial class VideoQualityDialog : Window
             string finalLabel;
             if (!string.IsNullOrEmpty(label) && !label.Equals("Altyazı", StringComparison.OrdinalIgnoreCase) && !label.Equals("Subtitle", StringComparison.OrdinalIgnoreCase))
             {
-                finalLabel = label;
+                finalLabel = label.Contains("Altyazı", StringComparison.OrdinalIgnoreCase) ? label : $"{label} Altyazı";
             }
             else
             {
@@ -542,6 +580,12 @@ public partial class VideoQualityDialog : Window
             {
                 audioTokensList.Add($"ba[language^={cleanLang}]");
                 if (lang != cleanLang) audioTokensList.Add($"ba[language^={lang}]");
+                var langInfo = StreamProbeService.GetLanguageInfo(cleanLang);
+                if (langInfo.Turkish != "Bilinmeyen")
+                {
+                    audioTokensList.Add($"ba[format_note*={langInfo.Turkish}]");
+                    audioTokensList.Add($"ba[format_note*={langInfo.Native}]");
+                }
             }
 
             audioTokensList.Add("ba");

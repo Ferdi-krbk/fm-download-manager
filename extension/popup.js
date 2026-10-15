@@ -283,14 +283,15 @@ $('pageVideo').onclick = async () => {
     filename = tab.title || '';
     kind = 'video';
     referer = tab.url;
+    let activeMedia = null;
     try {
-      const res = await new Promise((resolve) => {
+      activeMedia = await new Promise((resolve) => {
         api.tabs.sendMessage(tab.id, { type: 'getActiveMedia' }, (r) => {
           resolve(api.runtime.lastError ? null : r);
         });
       });
-      if (res && res.url) targetUrl = res.url;
-      if (res && res.name) filename = res.name;
+      if (activeMedia && activeMedia.url) targetUrl = activeMedia.url;
+      if (activeMedia && activeMedia.name) filename = activeMedia.name;
     } catch {}
   } else {
     const mediaList = (await send({ type: 'getMedia', tabId: tab.id })) || [];
@@ -330,8 +331,9 @@ $('pageVideo').onclick = async () => {
 
   $('pageVideo').textContent = t('popupSending');
   const isVid = kind === 'video' || kind === 'hls' || kind === 'dash';
-  const subs = isVid ? await getTabSubtitles(tab?.id) : [];
+  const subs = isVid ? ((activeMedia?.subtitles && activeMedia.subtitles.length) ? activeMedia.subtitles : await getTabSubtitles(tab?.id)) : [];
   const chosenSub = isVid ? chooseBestSubUrl(subs, 'tr') : '';
+  const audios = (activeMedia?.audioTracks && activeMedia.audioTracks.length) ? activeMedia.audioTracks : (best?.audioTracks || []);
 
   const r = await send({
     type: 'download',
@@ -344,7 +346,7 @@ $('pageVideo').onclick = async () => {
     subtitleUrl: chosenSub,
     subtitleLangs: 'tr,en',
     videoQualities: best?.videoQualities || [],
-    audioTracks: best?.audioTracks || []
+    audioTracks: audios
   });
   if (r && r.ok) {
     $('pageVideo').textContent = t('popupStarted');

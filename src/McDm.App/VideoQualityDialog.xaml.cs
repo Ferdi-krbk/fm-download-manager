@@ -78,18 +78,7 @@ public partial class VideoQualityDialog : Window
         PopulateAudioTracks();
         PopulateSubtitles();
 
-        bool isYouTube = _url.Contains("youtube.com", StringComparison.OrdinalIgnoreCase) ||
-                         _url.Contains("youtu.be", StringComparison.OrdinalIgnoreCase);
-
-        if (!isYouTube)
-        {
-            Loaded += (_, _) => _ = ProbeStreamAsync();
-        }
-        else
-        {
-            TxtProbeStatus.Visibility = Visibility.Collapsed;
-        }
-
+        Loaded += (_, _) => _ = ProbeStreamAsync();
         Closed += (_, _) => _cts.Cancel();
     }
 
@@ -211,18 +200,30 @@ public partial class VideoQualityDialog : Window
 
     private void PopulateAudioTracks()
     {
+        object? previouslySelected = (CmbAudioTrack.SelectedItem as ComboBoxItem)?.Tag;
+
         CmbAudioTrack.Items.Clear();
         if (_audioTracks.Count > 0)
         {
+            ComboBoxItem? itemToSelect = null;
             foreach (var a in _audioTracks)
             {
-                CmbAudioTrack.Items.Add(new ComboBoxItem
+                var cbi = new ComboBoxItem
                 {
                     Content = a.Label,
-                    Tag = a.TrackId
-                });
+                    Tag = a
+                };
+                CmbAudioTrack.Items.Add(cbi);
+
+                if (previouslySelected != null)
+                {
+                    if (previouslySelected is AudioTrackInfo prevAti && prevAti.TrackId == a.TrackId)
+                        itemToSelect = cbi;
+                    else if (previouslySelected is string prevStr && (prevStr == a.TrackId || prevStr == a.Lang))
+                        itemToSelect = cbi;
+                }
             }
-            CmbAudioTrack.SelectedIndex = 0;
+            CmbAudioTrack.SelectedItem = itemToSelect ?? CmbAudioTrack.Items[0];
             TxtAudioTrackCount.Text = $"{_audioTracks.Count} Parça Tespit Edildi";
         }
         else
@@ -249,9 +250,12 @@ public partial class VideoQualityDialog : Window
 
     private void PopulateSubtitles()
     {
+        object? previouslySelected = (CmbSubtitleLang.SelectedItem as ComboBoxItem)?.Tag;
+
         CmbSubtitleLang.Items.Clear();
 
         var cleaned = new List<SubtitleTrackInfo>();
+        var seenKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var seenUrls = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var s in _subtitles)
@@ -268,9 +272,10 @@ public partial class VideoQualityDialog : Window
             if (!string.IsNullOrEmpty(u) && !seenUrls.Add(u))
                 continue;
 
-            var lang = (s.Lang ?? "").Trim().ToLowerInvariant();
+            var lang = (s.Lang ?? "").Trim();
             var label = (s.Label ?? "").Trim();
             bool isForced = uLower.Contains("forced") || uLower.Contains("zorunlu") || label.Contains("Forced", StringComparison.OrdinalIgnoreCase) || label.Contains("Zorunlu", StringComparison.OrdinalIgnoreCase);
+            bool isAuto = label.Contains("Otomatik", StringComparison.OrdinalIgnoreCase) || uLower.Contains("auto");
 
             // Refine language code from isolated delimiters in URL if unknown or generic
             if (string.IsNullOrEmpty(lang) || lang == "und" || (lang == "tr" && label.Equals("Altyazı", StringComparison.OrdinalIgnoreCase)))
@@ -295,39 +300,45 @@ public partial class VideoQualityDialog : Window
                 }
             }
 
-            string baseName = lang switch
+            string finalLabel;
+            if (!string.IsNullOrEmpty(label) && !label.Equals("Altyazı", StringComparison.OrdinalIgnoreCase) && !label.Equals("Subtitle", StringComparison.OrdinalIgnoreCase))
             {
-                "tr" => "Türkçe",
-                "en" => "İngilizce",
-                "pt" => "Portekizce",
-                "es" => "İspanyolca",
-                "fr" => "Fransızca",
-                "de" => "Almanca",
-                "it" => "İtalyanca",
-                "ru" => "Rusça",
-                "ar" => "Arapça",
-                _ => !string.IsNullOrEmpty(label) && !label.Equals("Altyazı", StringComparison.OrdinalIgnoreCase) ? label : "Altyazı"
-            };
+                finalLabel = label;
+            }
+            else
+            {
+                finalLabel = StreamProbeService.FormatSubtitleLabel(lang, isAuto, isForced);
+            }
 
-            var finalLabel = isForced ? $"{baseName} (Zorunlu)" : baseName;
+            string dedupKey = $"{lang}_{finalLabel}";
+            if (!seenKeys.Add(dedupKey))
+                continue;
+
             cleaned.Add(new SubtitleTrackInfo { Url = s.Url, Lang = lang, Label = finalLabel });
         }
 
-        // Sort: Non-forced Turkish first, then forced Turkish, then English, then others
+        // Sort: Non-forced Turkish first, then forced Turkish, then auto Turkish, then English, then others
         cleaned.Sort((a, b) =>
         {
-            bool aTr = a.Lang == "tr";
-            bool bTr = b.Lang == "tr";
-            if (aTr != bTr) return aTr ? -1 : 1;
-            if (aTr && bTr)
+            int Score(SubtitleTrackInfo x)
             {
-                bool aF = a.Label?.Contains("Zorunlu") == true;
-                bool bF = b.Label?.Contains("Zorunlu") == true;
-                if (aF != bF) return aF ? 1 : -1;
+                bool isTr = x.Lang.StartsWith("tr", StringComparison.OrdinalIgnoreCase);
+                bool isEn = x.Lang.StartsWith("en", StringComparison.OrdinalIgnoreCase);
+                bool isForced = x.Label?.Contains("Zorunlu") == true;
+                bool isAuto = x.Label?.Contains("Otomatik") == true;
+
+                if (isTr && !isForced && !isAuto) return 0;
+                if (isTr && isForced) return 1;
+                if (isTr && isAuto) return 2;
+                if (isEn && !isForced && !isAuto) return 3;
+                if (isEn && isAuto) return 4;
+                if (!isAuto) return 5;
+                return 6;
             }
-            bool aEn = a.Lang == "en";
-            bool bEn = b.Lang == "en";
-            if (aEn != bEn) return aEn ? -1 : 1;
+
+            int sa = Score(a);
+            int sb = Score(b);
+            if (sa != sb) return sa.CompareTo(sb);
             return string.Compare(a.Label, b.Label, StringComparison.OrdinalIgnoreCase);
         });
 
@@ -335,23 +346,35 @@ public partial class VideoQualityDialog : Window
 
         if (_subtitles.Count > 0)
         {
+            ComboBoxItem? itemToSelect = null;
             foreach (var s in _subtitles)
             {
-                CmbSubtitleLang.Items.Add(new ComboBoxItem
+                var cbi = new ComboBoxItem
                 {
                     Content = s.Label,
                     Tag = s
-                });
+                };
+                CmbSubtitleLang.Items.Add(cbi);
+
+                if (previouslySelected != null)
+                {
+                    if (previouslySelected is SubtitleTrackInfo prevSti && prevSti.Lang.Equals(s.Lang, StringComparison.OrdinalIgnoreCase))
+                        itemToSelect = cbi;
+                    else if (previouslySelected is string prevStr && prevStr.Equals(s.Lang, StringComparison.OrdinalIgnoreCase))
+                        itemToSelect = cbi;
+                }
             }
             if (_subtitles.Count > 1)
             {
-                CmbSubtitleLang.Items.Add(new ComboBoxItem
+                var allItem = new ComboBoxItem
                 {
                     Content = "Tüm Altyazıları İndir",
                     Tag = "all"
-                });
+                };
+                CmbSubtitleLang.Items.Add(allItem);
+                if (previouslySelected is string pStr && pStr == "all") itemToSelect = allItem;
             }
-            CmbSubtitleLang.SelectedIndex = 0;
+            CmbSubtitleLang.SelectedItem = itemToSelect ?? CmbSubtitleLang.Items[0];
             ChkDownloadSubtitles.IsChecked = true;
         }
         else
@@ -373,13 +396,21 @@ public partial class VideoQualityDialog : Window
             TxtProbeStatus.Visibility = Visibility.Visible;
             TxtProbeStatus.Text = "🔍 Akış formatları taranıyor...";
 
+            var launcher = _toolLauncher;
+            if (launcher == null)
+            {
+                var tp = new ToolPaths();
+                if (tp.YtDlpPath is { Length: > 0 } yp)
+                    launcher = new ToolLauncher(yp);
+            }
+
             var result = await Task.Run(() => StreamProbeService.ProbeAsync(
                 _url,
                 _request?.Referer,
                 _request?.UserAgent,
                 _request?.Cookies,
                 _request?.CookieHeader,
-                _toolLauncher,
+                launcher,
                 _cts.Token), _cts.Token);
 
             if (_cts.IsCancellationRequested) return;
@@ -403,10 +434,18 @@ public partial class VideoQualityDialog : Window
 
                 if (result.Subtitles.Count > 0)
                 {
-                    foreach (var s in result.Subtitles)
+                    bool hasOnlyPlaceholders = _subtitles.All(s => string.IsNullOrEmpty(s.Url));
+                    if (hasOnlyPlaceholders)
                     {
-                        if (!_subtitles.Any(x => x.Lang == s.Lang || (x.Url.Length > 0 && x.Url == s.Url)))
-                            _subtitles.Add(s);
+                        _subtitles = new List<SubtitleTrackInfo>(result.Subtitles);
+                    }
+                    else
+                    {
+                        foreach (var s in result.Subtitles)
+                        {
+                            if (!_subtitles.Any(x => x.Lang.Equals(s.Lang, StringComparison.OrdinalIgnoreCase) || (!string.IsNullOrEmpty(x.Url) && x.Url == s.Url)))
+                                _subtitles.Add(s);
+                        }
                     }
                     PopulateSubtitles();
                     updated = true;
@@ -438,11 +477,12 @@ public partial class VideoQualityDialog : Window
             if (cbi.Tag is SubtitleTrackInfo track)
             {
                 SelectedSubtitleUrl = track.Url;
-                SubtitleLangs = track.Lang switch
+                string cleanLang = track.Lang.Split('-')[0].ToLowerInvariant();
+                SubtitleLangs = cleanLang switch
                 {
                     "tr" => "tr,tur,Turkish,turkish,tr-TR,tr-tr",
                     "en" => "en,eng,English,english,en-US,en-us",
-                    _ => track.Lang
+                    _ => $"{track.Lang},{cleanLang}.*,{cleanLang}"
                 };
             }
             else if (cbi.Tag is string tag)
@@ -453,19 +493,78 @@ public partial class VideoQualityDialog : Window
             }
         }
 
+        AudioTrackInfo? selectedAudioTrack = null;
         string audioTrackChoice = "best";
-        if (CmbAudioTrack.SelectedItem is ComboBoxItem abi && abi.Tag is string aTag)
+        if (CmbAudioTrack.SelectedItem is ComboBoxItem abi)
         {
-            audioTrackChoice = aTag;
+            if (abi.Tag is AudioTrackInfo ati)
+            {
+                selectedAudioTrack = ati;
+                audioTrackChoice = ati.TrackId;
+            }
+            else if (abi.Tag is string aTag)
+            {
+                audioTrackChoice = aTag;
+            }
         }
 
-        string[] audioTokens = audioTrackChoice switch
+        var audioTokensList = new List<string>();
+        if (selectedAudioTrack != null)
         {
-            "tr" => new[] { "ba[format_id*=Turkish]", "ba[format_note*=Turkish]", "ba[format_id*=Turk]", "ba[language^=tr]", "ba" },
-            "original" => new[] { "ba[format_id*=Original]", "ba[format_note*=Original]", "ba[format_id*=Eng]", "ba[format_note*=Eng]", "ba[language^=en]", "ba[format_id!*=Turkish]", "ba[format_note!*=Turkish]", "ba" },
-            "best" => new[] { "ba" },
-            _ => new[] { $"ba[format_id={audioTrackChoice}]", $"ba[format_id*={audioTrackChoice}]", "ba" }
-        };
+            if (!string.IsNullOrEmpty(selectedAudioTrack.FormatId))
+            {
+                audioTokensList.Add($"ba[format_id={selectedAudioTrack.FormatId}]");
+                audioTokensList.Add($"ba[format_id*={selectedAudioTrack.FormatId}]");
+            }
+
+            string lang = selectedAudioTrack.Lang?.Trim() ?? "";
+            string cleanLang = lang.Split('-')[0].ToLowerInvariant();
+
+            if (selectedAudioTrack.TrackId == "tr" || cleanLang == "tr")
+            {
+                audioTokensList.Add("ba[language^=tr]");
+                audioTokensList.Add("ba[format_note*=Turkish]");
+                audioTokensList.Add("ba[format_note*=Türkçe]");
+                audioTokensList.Add("ba[format_id*=Turkish]");
+                audioTokensList.Add("ba[format_id*=Turk]");
+            }
+            else if (selectedAudioTrack.TrackId == "original" || selectedAudioTrack.IsDefault)
+            {
+                audioTokensList.Add("ba[format_note*=Original]");
+                audioTokensList.Add("ba[format_note*=original]");
+                audioTokensList.Add("ba[format_id*=Original]");
+                if (!string.IsNullOrEmpty(cleanLang) && cleanLang != "und")
+                {
+                    audioTokensList.Add($"ba[language^={cleanLang}]");
+                }
+            }
+            else if (!string.IsNullOrEmpty(cleanLang) && cleanLang != "und")
+            {
+                audioTokensList.Add($"ba[language^={cleanLang}]");
+                if (lang != cleanLang) audioTokensList.Add($"ba[language^={lang}]");
+            }
+
+            audioTokensList.Add("ba");
+        }
+        else
+        {
+            switch (audioTrackChoice)
+            {
+                case "tr":
+                    audioTokensList.AddRange(new[] { "ba[language^=tr]", "ba[format_note*=Turkish]", "ba[format_note*=Türkçe]", "ba[format_id*=Turkish]", "ba[format_id*=Turk]", "ba" });
+                    break;
+                case "original":
+                    audioTokensList.AddRange(new[] { "ba[format_note*=Original]", "ba[format_id*=Original]", "ba[format_id*=Eng]", "ba[format_note*=Eng]", "ba[language^=en]", "ba" });
+                    break;
+                case "best":
+                    audioTokensList.Add("ba");
+                    break;
+                default:
+                    audioTokensList.AddRange(new[] { $"ba[format_id={audioTrackChoice}]", $"ba[language^={audioTrackChoice}]", "ba" });
+                    break;
+            }
+        }
+        string[] audioTokens = audioTokensList.Distinct().ToArray();
 
         string qualityChoice = "best";
         foreach (var rb in PnlQualityOptions.Children.OfType<RadioButton>())

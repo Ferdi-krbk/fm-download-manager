@@ -275,5 +275,49 @@ Son sahne metni.
 
             return Task.CompletedTask;
         });
+
+        await test("video: multi-language audio dubs and subtitle localization across global languages", () =>
+        {
+            // 1. Language Info detection
+            var esInfo = StreamProbeService.GetLanguageInfo("es");
+            check(esInfo.Turkish == "İspanyolca" && esInfo.Native == "Español", "es language info mismatch");
+
+            var jaInfo = StreamProbeService.GetLanguageInfo("ja");
+            check(jaInfo.Turkish == "Japonca" && jaInfo.Native == "日本語", "ja language info mismatch");
+
+            var deInfo = StreamProbeService.GetLanguageInfo("de");
+            check(deInfo.Turkish == "Almanca" && deInfo.Native == "Deutsch", "de language info mismatch");
+
+            var ruInfo = StreamProbeService.GetLanguageInfo("ru");
+            check(ruInfo.Turkish == "Rusça" && ruInfo.Native == "Русский", "ru language info mismatch");
+
+            var arInfo = StreamProbeService.GetLanguageInfo("ar");
+            check(arInfo.Turkish == "Arapça" && arInfo.Native == "العربية", "ar language info mismatch");
+
+            // 2. Audio Dubbing label formatting
+            string origLabel = StreamProbeService.FormatAudioLabel("en", "Original", isOriginal: true);
+            check(origLabel.Contains("Orijinal Ses") && origLabel.Contains("İngilizce"), "Original audio label mismatch: " + origLabel);
+
+            string trDubLabel = StreamProbeService.FormatAudioLabel("tr", "Türkçe - dubbed", isOriginal: false);
+            check(trDubLabel == "Türkçe Dublaj", "Turkish dub label mismatch: " + trDubLabel);
+
+            string esDubLabel = StreamProbeService.FormatAudioLabel("es", "Español - dubbed", isOriginal: false);
+            check(esDubLabel == "İspanyolca Dublaj (Español)", "Spanish dub label mismatch: " + esDubLabel);
+
+            string jaDubLabel = StreamProbeService.FormatAudioLabel("ja", "日本語 - dubbed", isOriginal: false);
+            check(jaDubLabel == "Japonca Dublaj (日本語)", "Japanese dub label mismatch: " + jaDubLabel);
+
+            // 3. Subtitle label formatting
+            string trSub = StreamProbeService.FormatSubtitleLabel("tr", isAuto: false);
+            check(trSub == "Türkçe Altyazı", "TR subtitle label mismatch: " + trSub);
+
+            string esSub = StreamProbeService.FormatSubtitleLabel("es", isAuto: false);
+            check(esSub == "İspanyolca (Español) Altyazı", "ES subtitle label mismatch: " + esSub);
+
+            string autoSub = StreamProbeService.FormatSubtitleLabel("de", isAuto: true);
+            check(autoSub == "Almanca (Deutsch) Altyazı (Otomatik)", "DE auto subtitle mismatch: " + autoSub);
+
+            return Task.CompletedTask;
+        });
     }
 }

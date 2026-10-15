@@ -86,7 +86,7 @@
                         <CheckBox x:Name="ChkDownloadSubtitles" Content="💬 Altyazıyı videoya göm ve kaydet (.srt)" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" />
                         <StackPanel x:Name="PnlSubtitleLang" Orientation="Horizontal" Margin="24,6,0,0">
                             <TextBlock Text="Altyazı Dili:" FontSize="11" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
-                            <ComboBox x:Name="CmbSubtitleLang" Width="260" Height="26" FontSize="11" SelectedIndex="0">
+                            <ComboBox x:Name="CmbSubtitleLang" MinWidth="320" Height="26" FontSize="11" SelectedIndex="0">
                                 <ComboBoxItem Content="Harici Altyazı Yok (Video İçi Gömülü)" Tag="embedded" />
                             </ComboBox>
                         </StackPanel>

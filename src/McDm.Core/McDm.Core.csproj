@@ -5,9 +5,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>McDm.Core</RootNamespace>
     <AssemblyName>McDm.Core</AssemblyName>
-    <Version>3.4.7</Version>
-    <AssemblyVersion>3.4.7.0</AssemblyVersion>
-    <FileVersion>3.4.7.0</FileVersion>
+    <Version>3.4.8</Version>
+    <AssemblyVersion>3.4.8.0</AssemblyVersion>
+    <FileVersion>3.4.8.0</FileVersion>
     <UseAppHost>false</UseAppHost>
   </PropertyGroup>
   <ItemGroup>

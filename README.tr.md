@@ -12,7 +12,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Ferdi-krbk/fm-download-manager/releases/latest"><img src="https://img.shields.io/badge/S%C3%BCr%C3%BCm-v3.4.7-crimson.svg?style=for-the-badge&logo=windows&logoColor=white" alt="Sürüm v3.4.7"></a>
+  <a href="https://github.com/Ferdi-krbk/fm-download-manager/releases/latest"><img src="https://img.shields.io/badge/S%C3%BCr%C3%BCm-v3.4.8-crimson.svg?style=for-the-badge&logo=windows&logoColor=white" alt="Sürüm v3.4.8"></a>
   <a href="https://dotnet.microsoft.com/download/dotnet/8.0"><img src="https://img.shields.io/badge/.NET-8.0%20LTS-purple.svg?style=for-the-badge&logo=dotnet&logoColor=white" alt=".NET 8 LTS"></a>
   <a href="https://github.com/Ferdi-krbk/fm-download-manager"><img src="https://img.shields.io/badge/Motor-MonoTorrent%203.0-blue.svg?style=for-the-badge&logo=bittorrent&logoColor=white" alt="BitTorrent"></a>
   <a href="https://github.com/Ferdi-krbk/fm-download-manager"><img src="https://img.shields.io/badge/Medya-yt--dlp%20%2B%20FFmpeg-red.svg?style=for-the-badge&logo=youtube&logoColor=white" alt="yt-dlp"></a>
@@ -203,7 +203,7 @@ flowchart TD
 ## 📦 Hızlı Kurulum
 
 ### Yöntem 1: Windows Kurulum Paketi (Önerilen)
-1. Güncel kurulum dosyasını indirin: [FMDownloadManager-Setup-3.4.7.exe](https://github.com/Ferdi-krbk/fm-download-manager/releases/download/v3.4.7/FMDownloadManager-Setup-3.4.7.exe).
+1. Güncel kurulum dosyasını indirin: [FMDownloadManager-Setup-3.4.8.exe](https://github.com/Ferdi-krbk/fm-download-manager/releases/download/v3.4.8/FMDownloadManager-Setup-3.4.8.exe).
 2. Kurulumu çalıştırın (yönetici izni gerektirmeden `%LOCALAPPDATA%\Programs\FM Download Manager` dizinine yüklenir).
 3. Kurulum tamamlandığında tarayıcı eklentisi klasörü ve kurulum rehberi otomatik olarak açılır.
 

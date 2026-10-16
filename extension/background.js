@@ -562,10 +562,21 @@ async function parseHlsManifestQuick(manifestUrl, tabId) {
       if (l.startsWith('#EXT-X-STREAM-INF:')) {
         const m = l.match(/RESOLUTION=(\d+)x(\d+)/i);
         if (m) {
-          const h = parseInt(m[2], 10);
+          const w = parseInt(m[1], 10);
+          const rawH = parseInt(m[2], 10);
+          const longSide = Math.max(w, rawH);
+          const shortSide = w > 0 && rawH > 0 ? Math.min(w, rawH) : rawH;
+          const h = (longSide >= 7600 || shortSide >= 4320) ? 4320
+                  : (longSide >= 3800 || shortSide >= 2160) ? 2160
+                  : (longSide >= 2500 || shortSide >= 1440) ? 1440
+                  : (longSide >= 1900 || shortSide >= 1080) ? 1080
+                  : (longSide >= 1260 || shortSide >= 720) ? 720
+                  : (longSide >= 840 || shortSide >= 480) ? 480
+                  : (longSide >= 630 || shortSide >= 360) ? 360
+                  : (shortSide || rawH);
           if (h && !heights.has(h)) {
             heights.add(h);
-            const label = h >= 2160 ? `${h}p 4K Ultra HD` : h >= 1440 ? `${h}p 2K QHD` : h >= 1080 ? `${h}p Full HD` : h >= 720 ? `${h}p HD` : `${h}p SD`;
+            const label = h >= 4320 ? `${h}p 8K Ultra HD` : h >= 2160 ? `${h}p 4K Ultra HD` : h >= 1440 ? `${h}p 2K QHD` : h >= 1080 ? `${h}p Full HD` : h >= 720 ? `${h}p HD` : `${h}p SD`;
             qualities.push({ height: h, label });
           }
         }
@@ -618,7 +629,9 @@ async function parseHlsManifestQuick(manifestUrl, tabId) {
 
 function getStreamQualityScore(url) {
   const u = (url || '').toLowerCase();
+  if (/-f5|4320p?|8k/i.test(u)) return 5000;
   if (/-f4|2160p?|4k/i.test(u)) return 4000;
+  if (/1440p?|2k/i.test(u)) return 3500;
   if (/-f3|1080p?|1080/i.test(u)) return 3000;
   if (/-f2|720p?|720/i.test(u)) return 2000;
   if (/-f1-v1|480p?|480/i.test(u)) return 1000;

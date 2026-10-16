@@ -60,6 +60,9 @@
   // Only top window scans media (blocks iframes from reporting 'YouTube Frame')
   if (window.top !== window.self) return;
 
+  const EXCLUDED_HOSTS = /(^|\.)(office\.com|office\.live\.com|officeapps\.live\.com|office365\.com|sharepoint\.com|onedrive\.live\.com|live\.com|microsoft365\.com|docs\.google\.com|sheets\.google\.com|slides\.google\.com|drive\.google\.com|mail\.google\.com|outlook\.live\.com|outlook\.office\.com|notion\.so|figma\.com|canva\.com)$/i;
+  if (EXCLUDED_HOSTS.test(location.hostname)) return;
+
   const isYouTube = /(youtube\.com|youtu\.be)/i.test(location.hostname);
   const isTwitter = /(twitter\.com|x\.com)/i.test(location.hostname);
   const isTikTok = /tiktok\.com/i.test(location.hostname);
@@ -97,16 +100,6 @@
         return src;
       }
     }
-    for (const f of iframes) {
-      let src = f.src || f.getAttribute('src') || f.getAttribute('data-src') || '';
-      if (src.startsWith('//')) src = location.protocol + src;
-      try {
-        const rect = f.getBoundingClientRect();
-        if (rect.width > 300 && rect.height > 200 && /^https?:/i.test(src)) {
-          return src;
-        }
-      } catch {}
-    }
     return null;
   }
 
@@ -141,8 +134,15 @@
     // On standard websites (not social platforms), scan direct audio/video elements
     if (!isSocial) {
       document.querySelectorAll('video, audio, source').forEach((el) => {
+        const mediaParent = el.tagName === 'SOURCE' ? el.parentElement : el;
+        if (mediaParent && mediaParent.tagName === 'VIDEO') {
+          if (mediaParent.getAttribute('aria-hidden') === 'true' || mediaParent.getAttribute('role') === 'presentation') return;
+          if (!mediaParent.controls && (mediaParent.muted || mediaParent.defaultMuted) && mediaParent.loop) return;
+          if (!mediaParent.controls && mediaParent.duration > 0 && mediaParent.duration < 6) return;
+        }
         let src = el.currentSrc || el.src || el.getAttribute('src');
         if (src && !src.startsWith('blob:') && /^https?:/i.test(src) && !reported.has(src)) {
+          if (/(splash|loader|loading|spinner|intro[-_]?anim|hero[-_]?bg|bg[-_]?video|background[-_]?video|lottie|onboarding|welcome[-_]?anim)/i.test(src)) return;
           reported.add(src);
           let title = document.title ? document.title.slice(0, 80) : '';
           items.push({ url: src, type: el.getAttribute('type') || 'video/mp4', name: title, kind: 'video' });

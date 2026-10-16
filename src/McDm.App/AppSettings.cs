@@ -19,7 +19,7 @@ public sealed class AppSettings
         "zip,rar,7z,tar,gz,bz2,xz,iso,exe,msi,bin,dmg,pkg,apk,deb,rpm,appx,mp4,mkv,webm,mov,avi,flv,mp3,flac,wav,m4a,aac,ogg,pdf,epub,doc,docx,xls,xlsx,ppt,pptx,txt,csv,torrent";
 
     public string PreferredVideoFormat { get; set; } = "mp4";
-    public int MaxVideoResolution { get; set; } = 1080;
+    public int MaxVideoResolution { get; set; } = 0;
 
     public string Language { get; set; } = "auto"; // "auto", "en", "tr"
     public bool StartWithWindows { get; set; } = false;

@@ -517,5 +517,43 @@ Late timestamp with full 3-part hour specification.";
             check(picked != null && picked.Url == "https://sub.example/tr.vtt", "picked valid Turkish track without NullReferenceException");
             return Task.CompletedTask;
         });
+
+        // ── 16. 4K (2160p) & 2K (1440p) Detection & FormatSort Regression ─
+        await test("regression: 4K (2160p) and 2K (1440p) detection across 16:9, 21:9 cinema, YouTube HTML, and CustomFormat sort", () =>
+        {
+            // 1. Standard 16:9 and Ultrawide 21:9 cinema aspect ratio normalization
+            check(StreamProbeService.NormalizeResolutionTier(3840, 2160) == 2160, "3840x2160 -> 2160p 4K");
+            check(StreamProbeService.NormalizeResolutionTier(3840, 1600) == 2160, "3840x1600 (21:9 cinema 4K) -> 2160p 4K");
+            check(StreamProbeService.NormalizeResolutionTier(2560, 1440) == 1440, "2560x1440 -> 1440p 2K");
+            check(StreamProbeService.NormalizeResolutionTier(2560, 1080) == 1440, "2560x1080 (21:9 cinema 2K) -> 1440p 2K");
+            check(StreamProbeService.NormalizeResolutionTier(1920, 800) == 1080, "1920x800 (21:9 cinema 1080p) -> 1080p");
+            check(StreamProbeService.NormalizeResolutionTier(1080, 1920) == 1080, "1080x1920 (9:16 vertical) -> 1080p");
+
+            // 2. HLS manifest with 4K and 2K cinema variants
+            string hls4k = @"#EXTM3U
+#EXT-X-STREAM-INF:BANDWIDTH=18000000,RESOLUTION=3840x1600
+4k/index.m3u8
+#EXT-X-STREAM-INF:BANDWIDTH=9500000,RESOLUTION=2560x1080
+2k/index.m3u8
+#EXT-X-STREAM-INF:BANDWIDTH=4500000,RESOLUTION=1920x800
+1080p/index.m3u8";
+            var hlsRes = StreamProbeService.ParseHlsManifestText(hls4k, "https://cdn.example/master.m3u8");
+            check(hlsRes.Qualities.Count == 3, "HLS 4K/2K/1080p count == 3");
+            check(hlsRes.Qualities[0].Height == 2160 && hlsRes.Qualities[0].Label.Contains("4K"), "First HLS quality is 2160p 4K");
+            check(hlsRes.Qualities[1].Height == 1440 && hlsRes.Qualities[1].Label.Contains("2K"), "Second HLS quality is 1440p 2K");
+            check(hlsRes.Qualities[2].Height == 1080 && hlsRes.Qualities[2].Label.Contains("Full HD"), "Third HLS quality is 1080p");
+
+            // 3. YouTube fast HTML ytInitialPlayerResponse parser
+            string ytHtml = @"<html><script>var ytInitialPlayerResponse = {""videoDetails"":{""title"":""4K Test""},""streamingData"":{""adaptiveFormats"":[{""mimeType"":""video/webm"",""width"":3840,""height"":1600,""qualityLabel"":""2160p60"",""bitrate"":20000000},{""mimeType"":""video/webm"",""width"":2560,""height"":1080,""qualityLabel"":""1440p"",""bitrate"":10000000},{""mimeType"":""video/mp4"",""width"":1920,""height"":1080,""qualityLabel"":""1080p"",""bitrate"":4500000}]}};</script></html>";
+            var ytRes = StreamProbeService.ParseYouTubePlayerResponseFromHtml(ytHtml);
+            check(ytRes != null && ytRes.Qualities.Count == 3, "Fast YouTube parser extracted 3 qualities");
+            check(ytRes!.Qualities[0].Height == 2160 && ytRes.Qualities[1].Height == 1440 && ytRes.Qualities[2].Height == 1080, "Fast YouTube parser ordered 2160 -> 1440 -> 1080");
+
+            // 4. VideoDownloader.FormatSort does not cap CustomFormat at 1080p
+            var custom4kOpt = new VideoOptions { MaxHeight = 1080, CustomFormat = "bv*[height<=2160]+ba/b" };
+            check(string.IsNullOrEmpty(VideoDownloader.FormatSort(custom4kOpt)), "FormatSort must be empty when CustomFormat is explicitly set");
+
+            return Task.CompletedTask;
+        });
     }
 }

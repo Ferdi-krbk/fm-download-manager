@@ -146,6 +146,7 @@ public sealed class VideoDownloader
 
     public static string FormatSort(VideoOptions o)
     {
+        if (!string.IsNullOrWhiteSpace(o.CustomFormat)) return "";
         var parts = new List<string>();
         if (o.MaxHeight > 0) parts.Add("res:" + o.MaxHeight.ToString(CultureInfo.InvariantCulture));
         if (o.Container is null or "mp4" or "") parts.Add("ext:mp4:m4a");   // prefer streams that can be merged into MP4 without re-encoding

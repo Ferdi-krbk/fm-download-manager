@@ -8,6 +8,10 @@
   if (window.__fmFloatingBarLoaded) return;
   window.__fmFloatingBarLoaded = true;
 
+  // Never show floating video download bar on Office / Word Online / Docs / Productivity web apps
+  const EXCLUDED_HOSTS = /(^|\.)(office\.com|office\.live\.com|officeapps\.live\.com|office365\.com|sharepoint\.com|onedrive\.live\.com|live\.com|microsoft365\.com|docs\.google\.com|sheets\.google\.com|slides\.google\.com|drive\.google\.com|mail\.google\.com|outlook\.live\.com|outlook\.office\.com|notion\.so|figma\.com|canva\.com)$/i;
+  if (EXCLUDED_HOSTS.test(location.hostname)) return;
+
   // Minimum dimensions to be considered a real video (ignores avatars, ads, stickers)
   const MIN_WIDTH = 220;
   const MIN_HEIGHT = 130;
@@ -350,9 +354,48 @@
     return { code, label: finalLabel, isForced };
   }
 
+  function normalizeResolutionTier(width, height, qualityLabel) {
+    if (qualityLabel) {
+      const m = String(qualityLabel).match(/\b(4320|2160|1440|1080|720|480|360|240|144)p/i);
+      if (m) return parseInt(m[1], 10);
+    }
+    const w = width || 0;
+    const h = height || 0;
+    const longSide = Math.max(w, h);
+    const shortSide = w > 0 && h > 0 ? Math.min(w, h) : h;
+    if (longSide >= 7600 || shortSide >= 4320) return 4320;
+    if (longSide >= 3800 || shortSide >= 2160) return 2160;
+    if (longSide >= 2500 || shortSide >= 1440) return 1440;
+    if (longSide >= 1900 || shortSide >= 1080) return 1080;
+    if (longSide >= 1260 || shortSide >= 720) return 720;
+    if (longSide >= 840 || shortSide >= 480) return 480;
+    if (longSide >= 630 || shortSide >= 360) return 360;
+    return shortSide > 0 ? shortSide : h;
+  }
+
+  function formatQualityLabel(h) {
+    if (h >= 4320) return `${h}p 8K Ultra HD`;
+    if (h >= 2160) return `${h}p 4K Ultra HD`;
+    if (h >= 1440) return `${h}p 2K QHD`;
+    if (h >= 1080) return `${h}p Full HD`;
+    if (h >= 720) return `${h}p HD`;
+    if (h >= 480) return `${h}p SD`;
+    if (h >= 360) return `${h}p Düşük`;
+    return `${h}p`;
+  }
+
   function extractYouTubeMetadata() {
     if (!/(youtube\.com|youtu\.be)/i.test(location.hostname)) return null;
     try {
+      let currentVideoId = null;
+      try {
+        const u = new URL(location.href);
+        currentVideoId = u.searchParams.get('v');
+        if (!currentVideoId && u.pathname.startsWith('/shorts/')) {
+          currentVideoId = u.pathname.split('/shorts/')[1]?.split('/')[0] || null;
+        }
+      } catch {}
+
       const scripts = document.querySelectorAll('script');
       for (const s of scripts) {
         const text = s.textContent || '';
@@ -380,10 +423,32 @@
         const obj = JSON.parse(text.substring(start, end));
         if (!obj) continue;
 
+        if (currentVideoId && obj.videoDetails?.videoId && obj.videoDetails.videoId !== currentVideoId) {
+          continue;
+        }
+
+        const videoQualities = [];
+        const seenHeights = new Set();
         const audioTracks = [];
         const seenAudios = new Set();
-        const formats = obj.streamingData?.adaptiveFormats || [];
+        const formats = [
+          ...(obj.streamingData?.adaptiveFormats || []),
+          ...(obj.streamingData?.formats || [])
+        ];
         formats.forEach(f => {
+          const isVideo = (f.mimeType && f.mimeType.startsWith('video/')) || (f.height && f.height > 0);
+          if (isVideo) {
+            const tier = normalizeResolutionTier(f.width || 0, f.height || 0, f.qualityLabel);
+            if (tier > 0 && !seenHeights.has(tier)) {
+              seenHeights.add(tier);
+              videoQualities.push({
+                height: tier,
+                label: formatQualityLabel(tier),
+                bitrate: f.bitrate ? Math.round(f.bitrate / 1000) : undefined
+              });
+            }
+          }
+
           if (f.audioTrack && f.audioTrack.displayName && !seenAudios.has(f.audioTrack.displayName)) {
             seenAudios.add(f.audioTrack.displayName);
             const idParts = (f.audioTrack.id || '').split('.');
@@ -396,6 +461,7 @@
             });
           }
         });
+        videoQualities.sort((a, b) => b.height - a.height);
 
         const subtitles = [];
         const seenSubs = new Set();
@@ -417,7 +483,7 @@
           }
         });
 
-        return { audioTracks, subtitles };
+        return { videoQualities, audioTracks, subtitles };
       }
     } catch (e) {}
     return null;
@@ -818,6 +884,7 @@
         name: cleanTitle,
         kind: 'video',
         referer: location.href,
+        videoQualities: ytMeta?.videoQualities || [],
         audioTracks: ytMeta?.audioTracks || [],
         subtitles: ytMeta?.subtitles || []
       };
@@ -990,6 +1057,60 @@
     }
   }
 
+  const IS_SOCIAL_SITE = /(^|\.)(youtube\.com|youtu\.be|twitter\.com|x\.com|tiktok\.com|instagram\.com|facebook\.com|fb\.watch|twitch\.tv|reddit\.com|vimeo\.com|dailymotion\.com|kick\.com|bilibili\.com)$/i.test(location.hostname);
+
+  function isStreamingEmbedIframe(f) {
+    if (!f || f.tagName !== 'IFRAME') return false;
+    const src = (f.src || f.getAttribute('src') || f.getAttribute('data-src') || '').toLowerCase();
+    if (!src || src === 'about:blank' || src.startsWith('javascript:')) return false;
+    return /(vidmoly|rapidvid|streamtape|dood|filemoon|vidspeed|supervideo|upstream|mixdrop|streamwish|voe\.sx|sibnet|ok\.ru\/videoembed|vk\.com\/video_ext|player\.vimeo\.com|dailymotion\.com\/embed|youtube\.com\/embed|youtube-nocookie\.com\/embed|twitch\.tv\/\?channel|rumble\.com\/embed)/i.test(src);
+  }
+
+  function isRealDownloadableVideo(el) {
+    if (!el || !el.isConnected) return false;
+    if (el.tagName === 'IFRAME') return isStreamingEmbedIframe(el);
+    if (el.tagName !== 'VIDEO') return false;
+
+    // 1. Ignore decorative / hidden / presentation elements
+    if (el.getAttribute('aria-hidden') === 'true' || el.getAttribute('role') === 'presentation') return false;
+
+    // 2. Ignore YouTube homepage thumbnail hover previews (only show on actual watch/shorts player)
+    if (/(youtube\.com|youtu\.be)/i.test(location.hostname)) {
+      if (!location.pathname.startsWith('/watch') && !location.pathname.startsWith('/shorts/') && !location.pathname.startsWith('/embed/')) {
+        return false;
+      }
+      if (el.closest && el.closest('ytd-video-preview, #video-preview, ytd-inline-preview-player, ytd-thumbnail-overlay-loading-preview-renderer')) {
+        return false;
+      }
+    }
+
+    // 3. Check video source URL for UI animation / splash / loader keywords or data: URIs
+    const src = (el.currentSrc || el.src || el.querySelector('source')?.src || '').toLowerCase();
+    if (src.startsWith('data:') || src.startsWith('chrome-extension:') || src.startsWith('moz-extension:')) return false;
+    if (/(splash|loader|loading|spinner|intro[-_]?anim|hero[-_]?bg|bg[-_]?video|background[-_]?video|lottie|onboarding|welcome[-_]?anim|empty[-_]?state)/i.test(src)) {
+      return false;
+    }
+
+    const insideKnownPlayer = !!(el.closest && el.closest('.html5-video-player, #movie_player, ytd-player, .jwplayer, .video-js, .plyr, .flowplayer, .artplayer, .dplayer'));
+
+    // 4. Ignore empty <video> tags that have no media source and aren't in a known player
+    if (!src && !insideKnownPlayer && el.readyState === 0) return false;
+
+    // 5. Ignore short (< 6 sec) control-less splash/UI animations
+    if (!el.controls && !insideKnownPlayer && el.duration > 0 && el.duration < 6) {
+      return false;
+    }
+
+    // 6. On non-social websites, ignore muted looping background/UI animations without controls
+    if (!IS_SOCIAL_SITE && !insideKnownPlayer && !el.controls) {
+      const isMuted = el.muted || el.defaultMuted || el.hasAttribute('muted');
+      const isLoop = el.loop || el.hasAttribute('loop');
+      if (isMuted && isLoop) return false;
+    }
+
+    return true;
+  }
+
   // Find player container for YouTube, VideoJS, JWPlayer, etc.
   function getPlayerContainer(v) {
     if (!v || !v.closest) return v ? (v.parentElement || v) : null;
@@ -1041,6 +1162,7 @@
 
   function showBarFor(video) {
     if (!video || isDismissedForPage || isPageDismissed()) return;
+    if (!isRealDownloadableVideo(video)) return;
 
     const vRect = video.getBoundingClientRect();
     const player = getPlayerContainer(video);
@@ -1143,6 +1265,7 @@
     scanAllVideos();
     detectSubtitleTracks().catch?.(() => {});
     const activeVideo = Array.from(document.querySelectorAll('video')).find(v => {
+      if (!isRealDownloadableVideo(v)) return false;
       const r = v.getBoundingClientRect();
       return r.width >= MIN_WIDTH && r.height >= MIN_HEIGHT;
     });
@@ -1182,6 +1305,7 @@
     let matchedVideo = null;
     for (let i = 0; i < videos.length; i++) {
       const v = videos[i];
+      if (!isRealDownloadableVideo(v)) continue;
       const vRect = v.getBoundingClientRect();
       const player = getPlayerContainer(v);
       const pRect = (player && player !== v && player.isConnected) ? player.getBoundingClientRect() : null;
@@ -1205,12 +1329,11 @@
       return;
     }
 
-    // Check iframes for foreign movie streaming sites
+    // Check iframes ONLY for known foreign movie / video streaming embeds
     const iframes = document.querySelectorAll('iframe');
     for (let i = 0; i < iframes.length; i++) {
       const f = iframes[i];
-      const src = (f.src || '').toLowerCase();
-      if (!src || src === 'about:blank') continue;
+      if (!isStreamingEmbedIframe(f)) continue;
       const fRect = f.getBoundingClientRect();
       if (fRect.width >= MIN_WIDTH && fRect.height >= MIN_HEIGHT) {
         if (e.clientX >= fRect.left && e.clientX <= fRect.right &&

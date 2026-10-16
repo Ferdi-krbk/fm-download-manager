@@ -165,6 +165,19 @@ const desktopPayload = {
 assert(desktopPayload.writeSubtitles === true, 'writeSubtitles flag is true when subtitles exist');
 assert(desktopPayload.subtitles.length === 6, 'Exact 6 subtitle tracks bundled in desktop bridge payload');
 
+// ── 5. UI ANIMATION, WORD SPLASH & NON-VIDEO IFRAME EXCLUSION ─────────────
+console.log('\n--- 5. UI ANIMATION, WORD SPLASH & IFRAME FILTERING ---');
+
+const EXCLUDED_HOSTS = /(^|\.)(office\.com|office\.live\.com|officeapps\.live\.com|office365\.com|sharepoint\.com|onedrive\.live\.com|live\.com|microsoft365\.com|docs\.google\.com|sheets\.google\.com|slides\.google\.com|drive\.google\.com|mail\.google\.com|outlook\.live\.com|outlook\.office\.com|notion\.so|figma\.com|canva\.com)$/i;
+const STREAM_EMBED_IFRAME = /(vidmoly|rapidvid|streamtape|dood|filemoon|vidspeed|supervideo|upstream|mixdrop|streamwish|voe\.sx|sibnet|ok\.ru\/videoembed|vk\.com\/video_ext|player\.vimeo\.com|dailymotion\.com\/embed|youtube\.com\/embed|youtube-nocookie\.com\/embed|twitch\.tv\/\?channel|rumble\.com\/embed)/i;
+
+assert(EXCLUDED_HOSTS.test('word-edit.officeapps.live.com'), 'Blocks Word Online editor frame');
+assert(EXCLUDED_HOSTS.test('onedrive.live.com'), 'Blocks OneDrive web app');
+assert(EXCLUDED_HOSTS.test('docs.google.com'), 'Blocks Google Docs web app');
+assert(!EXCLUDED_HOSTS.test('www.youtube.com'), 'Allows YouTube');
+assert(!STREAM_EMBED_IFRAME.test('https://word-edit.officeapps.live.com/we/wordeditorframe.aspx'), 'Rejects Word Online iframe as video embed');
+assert(STREAM_EMBED_IFRAME.test('https://vidmoly.to/embed-abc123.html'), 'Accepts Vidmoly movie player iframe');
+
 console.log('\n================================================================');
 console.log(`📊 FINAL RESULTS: ${passed} / ${passed + failed} TESTS PASSED (${Math.round((passed / (passed + failed)) * 100)}%)`);
 console.log('================================================================');

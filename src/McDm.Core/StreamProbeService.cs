@@ -184,6 +184,40 @@ public static class StreamProbeService
         Timeout = TimeSpan.FromSeconds(5)
     };
 
+    public static int NormalizeResolutionTier(int width, int height, string? formatNote = null)
+    {
+        if (!string.IsNullOrWhiteSpace(formatNote))
+        {
+            var m = Regex.Match(formatNote, @"\b(4320|2160|1440|1080|720|480|360|240|144)p", RegexOptions.IgnoreCase);
+            if (m.Success && int.TryParse(m.Groups[1].Value, out int parsedTier))
+                return parsedTier;
+        }
+
+        int longSide = Math.Max(width, height);
+        int shortSide = width > 0 && height > 0 ? Math.Min(width, height) : height;
+
+        if (longSide >= 7600 || shortSide >= 4320) return 4320;
+        if (longSide >= 3800 || shortSide >= 2160) return 2160;
+        if (longSide >= 2500 || shortSide >= 1440) return 1440;
+        if (longSide >= 1900 || shortSide >= 1080) return 1080;
+        if (longSide >= 1260 || shortSide >= 720) return 720;
+        if (longSide >= 840 || shortSide >= 480) return 480;
+        if (longSide >= 630 || shortSide >= 360) return 360;
+        return shortSide > 0 ? shortSide : height;
+    }
+
+    public static string FormatQualityLabel(int height) => height switch
+    {
+        >= 4320 => $"{height}p 8K Ultra HD",
+        >= 2160 => $"{height}p 4K Ultra HD",
+        >= 1440 => $"{height}p 2K QHD",
+        >= 1080 => $"{height}p Full HD",
+        >= 720 => $"{height}p HD",
+        >= 480 => $"{height}p SD",
+        >= 360 => $"{height}p Düşük",
+        _ => $"{height}p"
+    };
+
     public static async Task<StreamProbeResult> ProbeAsync(
         string url,
         string? referer = null,
@@ -210,7 +244,21 @@ public static class StreamProbeService
         }
         catch { }
 
-        // 2. Comprehensive yt-dlp probe (YouTube, Vimeo, complex or encrypted streams)
+        // 1b. Ultra-fast direct YouTube page ytInitialPlayerResponse parsing (~300-500ms)
+        try
+        {
+            if (VideoDownloader.IsYouTubeUrl(url))
+            {
+                var ytFast = await TryProbeYouTubeFastAsync(url, userAgent, ct);
+                if (ytFast != null && ytFast.Qualities.Count > 0)
+                {
+                    return ytFast;
+                }
+            }
+        }
+        catch { }
+
+        // 2. Comprehensive yt-dlp probe (YouTube fallback, Vimeo, complex or encrypted streams)
         if (ytDlpLauncher == null)
         {
             var tp = new ToolPaths();
@@ -229,6 +277,154 @@ public static class StreamProbeService
                 }
             }
             catch { }
+        }
+
+        return result;
+    }
+
+    public static async Task<StreamProbeResult?> TryProbeYouTubeFastAsync(string url, string? userAgent, CancellationToken ct)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Get, url);
+        req.Headers.TryAddWithoutValidation("User-Agent", !string.IsNullOrWhiteSpace(userAgent)
+            ? userAgent
+            : "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36");
+        req.Headers.TryAddWithoutValidation("Accept-Language", "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7");
+
+        using var resp = await Http.SendAsync(req, HttpCompletionOption.ResponseContentRead, ct);
+        if (!resp.IsSuccessStatusCode) return null;
+
+        var html = await resp.Content.ReadAsStringAsync(ct);
+        return ParseYouTubePlayerResponseFromHtml(html);
+    }
+
+    public static StreamProbeResult? ParseYouTubePlayerResponseFromHtml(string html)
+    {
+        if (string.IsNullOrEmpty(html)) return null;
+        int idx = html.IndexOf("ytInitialPlayerResponse", StringComparison.Ordinal);
+        if (idx < 0) return null;
+
+        int start = html.IndexOf('{', idx);
+        if (start < 0) return null;
+
+        int depth = 0;
+        bool inString = false;
+        bool escape = false;
+        int end = -1;
+        for (int i = start; i < html.Length; i++)
+        {
+            char ch = html[i];
+            if (escape) { escape = false; continue; }
+            if (ch == '\\') { escape = true; continue; }
+            if (ch == '"') { inString = !inString; continue; }
+            if (!inString)
+            {
+                if (ch == '{') depth++;
+                else if (ch == '}')
+                {
+                    depth--;
+                    if (depth == 0) { end = i + 1; break; }
+                }
+            }
+        }
+        if (end <= start) return null;
+
+        using var doc = JsonDocument.Parse(html.AsMemory(start, end - start));
+        var root = doc.RootElement;
+        var result = new StreamProbeResult();
+
+        if (root.TryGetProperty("videoDetails", out var vd) && vd.ValueKind == JsonValueKind.Object)
+        {
+            if (vd.TryGetProperty("title", out var tEl) && tEl.GetString() is { Length: > 0 } t)
+                result.Title = t;
+        }
+
+        if (root.TryGetProperty("streamingData", out var sd) && sd.ValueKind == JsonValueKind.Object)
+        {
+            var heights = new HashSet<int>();
+            var audioMap = new Dictionary<string, AudioTrackInfo>(StringComparer.OrdinalIgnoreCase);
+
+            void ProcessFormatArray(JsonElement arr)
+            {
+                if (arr.ValueKind != JsonValueKind.Array) return;
+                foreach (var f in arr.EnumerateArray())
+                {
+                    string mime = f.TryGetProperty("mimeType", out var mEl) ? mEl.GetString() ?? "" : "";
+                    int width = f.TryGetProperty("width", out var wEl) && wEl.TryGetInt32(out int wVal) ? wVal : 0;
+                    int rawHeight = f.TryGetProperty("height", out var hEl) && hEl.TryGetInt32(out int hVal) ? hVal : 0;
+                    string qLabel = f.TryGetProperty("qualityLabel", out var qlEl) ? qlEl.GetString() ?? "" : "";
+                    int tier = NormalizeResolutionTier(width, rawHeight, qLabel);
+
+                    if (tier > 0 && (mime.StartsWith("video/", StringComparison.OrdinalIgnoreCase) || rawHeight > 0))
+                    {
+                        if (heights.Add(tier))
+                        {
+                            long? bitrate = f.TryGetProperty("bitrate", out var brEl) && brEl.TryGetInt64(out long brVal) ? brVal / 1000 : null;
+                            result.Qualities.Add(new VideoQualityInfo
+                            {
+                                Height = tier,
+                                Label = FormatQualityLabel(tier),
+                                Bitrate = bitrate
+                            });
+                        }
+                    }
+
+                    if (f.TryGetProperty("audioTrack", out var atEl) && atEl.ValueKind == JsonValueKind.Object)
+                    {
+                        string dispName = atEl.TryGetProperty("displayName", out var dnEl) ? dnEl.GetString() ?? "" : "";
+                        string rawId = atEl.TryGetProperty("id", out var idEl) ? idEl.GetString() ?? "" : "";
+                        bool isDef = atEl.TryGetProperty("audioIsDefault", out var adEl) && adEl.ValueKind == JsonValueKind.True;
+                        string langCode = rawId.Contains('.') ? rawId.Split('.')[0] : rawId;
+                        bool isOrig = isDef || dispName.Contains("original", StringComparison.OrdinalIgnoreCase) || dispName.Contains("orijinal", StringComparison.OrdinalIgnoreCase);
+                        bool isTr = langCode.Equals("tr", StringComparison.OrdinalIgnoreCase) || dispName.Contains("Türkçe", StringComparison.OrdinalIgnoreCase) || dispName.Contains("Turkish", StringComparison.OrdinalIgnoreCase);
+                        string trackId = isOrig ? "original" : (isTr ? "tr" : (!string.IsNullOrEmpty(langCode) ? langCode : dispName));
+                        if (!string.IsNullOrEmpty(trackId) && !audioMap.ContainsKey(trackId))
+                        {
+                            audioMap[trackId] = new AudioTrackInfo
+                            {
+                                TrackId = trackId,
+                                Lang = langCode,
+                                Label = FormatAudioLabel(langCode, dispName, isOrig),
+                                IsDefault = isDef
+                            };
+                        }
+                    }
+                }
+            }
+
+            if (sd.TryGetProperty("adaptiveFormats", out var af)) ProcessFormatArray(af);
+            if (sd.TryGetProperty("formats", out var fmts)) ProcessFormatArray(fmts);
+
+            result.Qualities = result.Qualities.OrderByDescending(q => q.Height).ToList();
+            result.AudioTracks = audioMap.Values.OrderBy(a =>
+            {
+                if (a.TrackId == "original" || a.IsDefault || a.Label.Contains("Orijinal Ses")) return 0;
+                if (a.TrackId == "tr" || a.Lang.StartsWith("tr", StringComparison.OrdinalIgnoreCase)) return 1;
+                if (a.TrackId == "en" || a.Lang.StartsWith("en", StringComparison.OrdinalIgnoreCase)) return 2;
+                return 3;
+            }).ThenBy(a => a.Label).ToList();
+        }
+
+        if (root.TryGetProperty("captions", out var caps) &&
+            caps.TryGetProperty("playerCaptionsTracklistRenderer", out var pctr) &&
+            pctr.TryGetProperty("captionTracks", out var ctArr) &&
+            ctArr.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var c in ctArr.EnumerateArray())
+            {
+                string lang = c.TryGetProperty("languageCode", out var lcEl) ? lcEl.GetString() ?? "" : "";
+                string vssId = c.TryGetProperty("vssId", out var vEl) ? vEl.GetString() ?? "" : "";
+                string baseUrl = c.TryGetProperty("baseUrl", out var uEl) ? uEl.GetString() ?? "" : "";
+                bool isAuto = vssId.StartsWith("a.", StringComparison.OrdinalIgnoreCase);
+                if (!string.IsNullOrEmpty(lang) && !result.Subtitles.Any(s => s.Lang.Equals(lang, StringComparison.OrdinalIgnoreCase)))
+                {
+                    result.Subtitles.Add(new SubtitleTrackInfo
+                    {
+                        Lang = lang,
+                        Label = FormatSubtitleLabel(lang, isAuto: isAuto),
+                        Url = baseUrl
+                    });
+                }
+            }
         }
 
         return result;
@@ -321,28 +517,21 @@ public static class StreamProbeService
             if (trimmed.StartsWith("#EXT-X-STREAM-INF:", StringComparison.OrdinalIgnoreCase))
             {
                 var resMatch = Regex.Match(trimmed, @"RESOLUTION=(\d+)x(\d+)", RegexOptions.IgnoreCase);
-                if (resMatch.Success && int.TryParse(resMatch.Groups[2].Value, out int height) && height > 0)
+                if (resMatch.Success &&
+                    int.TryParse(resMatch.Groups[1].Value, out int width) &&
+                    int.TryParse(resMatch.Groups[2].Value, out int rawHeight) && rawHeight > 0)
                 {
+                    int height = NormalizeResolutionTier(width, rawHeight);
                     if (heights.Add(height))
                     {
                         long? bitrate = null;
                         var bwMatch = Regex.Match(trimmed, @"BANDWIDTH=(\d+)", RegexOptions.IgnoreCase);
                         if (bwMatch.Success && long.TryParse(bwMatch.Groups[1].Value, out long bw)) bitrate = bw;
 
-                        string label = height switch
-                        {
-                            >= 2160 => $"{height}p 4K Ultra HD",
-                            >= 1440 => $"{height}p 2K QHD",
-                            >= 1080 => $"{height}p Full HD",
-                            >= 720 => $"{height}p HD",
-                            >= 480 => $"{height}p SD",
-                            _ => $"{height}p"
-                        };
-
                         result.Qualities.Add(new VideoQualityInfo
                         {
                             Height = height,
-                            Label = label,
+                            Label = FormatQualityLabel(height),
                             Bitrate = bitrate
                         });
                     }
@@ -554,10 +743,12 @@ public static class StreamProbeService
                 {
                     string vcodec = f.TryGetProperty("vcodec", out var vc) ? vc.GetString() ?? "" : "";
                     string acodec = f.TryGetProperty("acodec", out var ac) ? ac.GetString() ?? "" : "";
-                    int height = f.TryGetProperty("height", out var hEl) && hEl.TryGetInt32(out int hVal) ? hVal : 0;
+                    int width = f.TryGetProperty("width", out var wEl) && wEl.TryGetInt32(out int wVal) ? wVal : 0;
+                    int rawHeight = f.TryGetProperty("height", out var hEl) && hEl.TryGetInt32(out int hVal) ? hVal : 0;
                     string formatId = f.TryGetProperty("format_id", out var fid) ? fid.GetString() ?? "" : "";
                     string formatNote = f.TryGetProperty("format_note", out var fn) ? fn.GetString() ?? "" : "";
                     string lang = f.TryGetProperty("language", out var lEl) ? lEl.GetString() ?? "" : "";
+                    int height = NormalizeResolutionTier(width, rawHeight, formatNote);
 
                     // Video quality
                     if (height > 0 && vcodec != "none")
@@ -565,20 +756,11 @@ public static class StreamProbeService
                         if (heights.Add(height))
                         {
                             long? bitrate = f.TryGetProperty("tbr", out var tbrEl) && tbrEl.TryGetInt64(out long tbrVal) ? tbrVal : null;
-                            string label = height switch
-                            {
-                                >= 2160 => $"{height}p 4K Ultra HD",
-                                >= 1440 => $"{height}p 2K QHD",
-                                >= 1080 => $"{height}p Full HD",
-                                >= 720 => $"{height}p HD",
-                                >= 480 => $"{height}p SD",
-                                _ => $"{height}p"
-                            };
 
                             result.Qualities.Add(new VideoQualityInfo
                             {
                                 Height = height,
-                                Label = label,
+                                Label = FormatQualityLabel(height),
                                 FormatId = formatId,
                                 Bitrate = bitrate
                             });

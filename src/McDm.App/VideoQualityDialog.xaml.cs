@@ -48,19 +48,22 @@ public partial class VideoQualityDialog : Window
         if (detectedAudios is { Count: > 0 }) _audioTracks = detectedAudios;
         if (detectedSubs is { Count: > 0 }) _subtitles = detectedSubs;
 
+        if (_qualities.Count == 0)
+        {
+            _qualities = new List<VideoQualityInfo>
+            {
+                new() { Height = 2160, Label = "2160p 4K Ultra HD" },
+                new() { Height = 1440, Label = "1440p 2K QHD" },
+                new() { Height = 1080, Label = "1080p Full HD (MP4)" },
+                new() { Height = 720, Label = "720p HD (Hızlı İndirme)" },
+                new() { Height = 480, Label = "480p SD" },
+                new() { Height = 360, Label = "360p Düşük" }
+            };
+        }
+
         if (_url.Contains("youtube.com", StringComparison.OrdinalIgnoreCase) ||
             _url.Contains("youtu.be", StringComparison.OrdinalIgnoreCase))
         {
-            if (_qualities.Count == 0)
-            {
-                _qualities = new List<VideoQualityInfo>
-                {
-                    new() { Height = 1080, Label = "1080p Full HD (MP4)" },
-                    new() { Height = 720, Label = "720p HD (Hızlı İndirme)" },
-                    new() { Height = 480, Label = "480p SD" },
-                    new() { Height = 360, Label = "360p Düşük" }
-                };
-            }
             if (_subtitles.Count == 0)
             {
                 _subtitles = new List<SubtitleTrackInfo>
@@ -111,7 +114,7 @@ public partial class VideoQualityDialog : Window
         var rbBest = CreateQualityRadioButton(
             "best",
             "En Yüksek Kalite (Otomatik En İyi)",
-            "En iyi video ve ses akışlarını birleştirir (Önerilen)",
+            "4K / 2K / 1080p mevcut en yüksek video ve ses akışını birleştirir (Önerilen)",
             "🎬",
             selectedTag == "best"
         );
@@ -126,8 +129,11 @@ public partial class VideoQualityDialog : Window
                 string tag = q.Height.ToString();
                 string subText = q.Height switch
                 {
-                    >= 1080 => "Standart yüksek çözünürlük (MP4)",
-                    >= 720 => "Daha küçük dosya boyutu, hızlı aktarım",
+                    >= 4320 => "Ultra yüksek çözünürlük (8K UHD)",
+                    >= 2160 => "Ultra yüksek çözünürlük (4K UHD)",
+                    >= 1440 => "Yüksek çözünürlük (2K QHD)",
+                    >= 1080 => "Standart yüksek çözünürlük (Full HD)",
+                    >= 720 => "Daha küçük dosya boyutu, hızlı aktarım (HD)",
                     _ => "Düşük boyutlu hızlı indirme"
                 };
 
@@ -628,13 +634,28 @@ public partial class VideoQualityDialog : Window
         else if (int.TryParse(qualityChoice, out int h) && h > 0)
         {
             var pairs = new List<string>();
-            foreach (var a in audioTokens)
+            if (h > 1080)
             {
-                pairs.Add($"bv*[height<={h}][ext=mp4]+{a}[ext=m4a]");
-                pairs.Add($"bv*[height<={h}]+{a}");
+                // 2K (1440p) / 4K (2160p) / 8K (4320p): do NOT restrict to [ext=mp4] first,
+                // because 2K/4K streams on YouTube and many CDNs are VP9/AV1 in webm/mp4 and
+                // [height<=2160][ext=mp4] would match 1080p H.264 instead of 4K/2K!
+                foreach (var a in audioTokens)
+                {
+                    pairs.Add($"bv*[height<={h}]+{a}");
+                }
+                pairs.Add($"bv*[height<={h}]+ba");
+                pairs.Add($"b[height<={h}]");
             }
-            pairs.Add($"bv*[height<={h}]+ba");
-            pairs.Add($"b[height<={h}]");
+            else
+            {
+                foreach (var a in audioTokens)
+                {
+                    pairs.Add($"bv*[height<={h}][ext=mp4]+{a}[ext=m4a]");
+                    pairs.Add($"bv*[height<={h}]+{a}");
+                }
+                pairs.Add($"bv*[height<={h}]+ba");
+                pairs.Add($"b[height<={h}]");
+            }
             foreach (var a in audioTokens)
             {
                 pairs.Add($"bv*+{a}");
@@ -649,11 +670,9 @@ public partial class VideoQualityDialog : Window
             var pairs = new List<string>();
             foreach (var a in audioTokens)
             {
-                pairs.Add($"bv*[ext=mp4]+{a}[ext=m4a]");
                 pairs.Add($"bv*+{a}");
             }
             pairs.Add("bv*+ba");
-            pairs.Add("b[ext=mp4]");
             pairs.Add("b");
             pairs.Add("best");
             SelectedFormat = string.Join("/", pairs.Distinct());

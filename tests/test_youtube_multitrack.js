@@ -81,23 +81,47 @@ function parseYtData(obj) {
   const seenSubs = new Set();
   const caps = obj.captions?.playerCaptionsTracklistRenderer?.captionTracks || [];
   caps.forEach(c => {
-    const code = c.languageCode || '';
+    const code = (c.languageCode || '').toLowerCase();
     const rawLabel = c.name?.simpleText || (c.name?.runs && c.name.runs[0]?.text) || code;
     const isAuto = (c.vssId && c.vssId.startsWith('a.')) || /otomatik|auto/i.test(rawLabel);
     const label = isAuto && !rawLabel.toLowerCase().includes('otomatik') ? `${rawLabel} (Otomatik)` : rawLabel;
-    const u = c.baseUrl;
+    let u = c.baseUrl;
+    if (u && !/[?&]fmt=/i.test(u)) {
+      u += (u.includes('?') ? '&' : '?') + 'fmt=vtt';
+    }
     if (u && !seenSubs.has(code + '_' + label)) {
       seenSubs.add(code + '_' + label);
       subtitles.push({
         url: u,
         code: code,
+        lang: code,
         label: label,
-        isForced: false
+        isForced: false,
+        isAuto: isAuto
       });
     }
   });
 
-  return { videoQualities, audioTracks, subtitles };
+  // Also verify detectSubtitleTracks URL deduplication does NOT collapse /api/timedtext?lang=tr and ?lang=en
+  const seenUrls = new Set();
+  const dedupedSubtitles = [];
+  subtitles.forEach(item => {
+    let norm = item.url;
+    try {
+      const parsed = new URL(item.url);
+      const qLang = parsed.searchParams.get('tlang') || parsed.searchParams.get('lang') || item.code || '';
+      const qKind = parsed.searchParams.get('kind') || (item.isAuto ? 'asr' : '') || (item.isForced ? 'forced' : '');
+      norm = `${parsed.origin}${parsed.pathname}|${qLang}|${qKind}|${item.label || ''}`;
+    } catch {
+      norm = `${item.url}|${item.code || ''}|${item.label || ''}`;
+    }
+    if (!seenUrls.has(norm)) {
+      seenUrls.add(norm);
+      dedupedSubtitles.push(item);
+    }
+  });
+
+  return { videoQualities, audioTracks, subtitles: dedupedSubtitles };
 }
 
 console.log('--- Testing YouTube Multi-Track & 4K/2K Extraction ---');
@@ -114,8 +138,9 @@ assert.ok(parsed.audioTracks.some(a => a.lang === 'tr' && a.isDefault), 'Turkish
 assert.ok(parsed.audioTracks.some(a => a.lang === 'en-US' && a.label.includes('orijinal')), 'English original track must be detected');
 assert.ok(parsed.audioTracks.some(a => a.lang === 'es' && a.label === 'İspanyolca'), 'Spanish dub must be detected');
 
-assert.strictEqual(parsed.subtitles.length, 4, 'Must extract 4 subtitles');
-assert.ok(parsed.subtitles.some(s => s.code === 'tr' && s.url.includes('lang=tr')), 'Turkish subtitle must have correct url');
-assert.ok(parsed.subtitles.some(s => s.code === 'de' && s.url.includes('lang=de')), 'German subtitle must have correct url');
+assert.strictEqual(parsed.subtitles.length, 4, 'Must keep all 4 timedtext subtitles after URL deduplication');
+assert.ok(parsed.subtitles.some(s => s.code === 'tr' && s.url.includes('lang=tr') && s.url.includes('fmt=vtt')), 'Turkish subtitle must have lang=tr and fmt=vtt');
+assert.ok(parsed.subtitles.some(s => s.code === 'en' && s.url.includes('lang=en') && s.url.includes('fmt=vtt')), 'English subtitle must have lang=en and fmt=vtt');
+assert.ok(parsed.subtitles.some(s => s.code === 'de' && s.url.includes('lang=de') && s.url.includes('fmt=vtt')), 'German subtitle must have lang=de and fmt=vtt');
 
 console.log('✅ ALL YOUTUBE MULTI-TRACK & 4K/2K EXTRACTION TESTS PASSED!');

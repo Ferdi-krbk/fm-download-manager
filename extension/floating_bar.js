@@ -316,6 +316,7 @@
     let code = (rawCode || '').toLowerCase().trim();
     let label = (rawLabel || '').trim();
     const isForced = /forced|zorunlu/i.test(u) || /forced|zorunlu/i.test(label);
+    const isAuto = /[?&]kind=asr\b/i.test(u) || /otomatik|auto/i.test(label);
 
     const langMap = {
       tr: 'Türkçe',
@@ -326,11 +327,32 @@
       de: 'Deutsch',
       it: 'Italiano',
       ru: 'Русский',
-      ar: 'العربية'
+      ar: 'العربية',
+      ja: '日本語',
+      ko: '한국어',
+      zh: '中文',
+      nl: 'Nederlands',
+      pl: 'Polski',
+      uk: 'Українська',
+      az: 'Azərbaycan'
     };
 
+    if (code.includes('-')) code = code.split('-')[0];
+    if (code.includes('_')) code = code.split('_')[0];
+
+    // Check explicit query parameters first (e.g. YouTube /api/timedtext?...&lang=tr or &tlang=tr)
     if (!code || code === 'und' || !langMap[code]) {
-      const m = u.match(/(?:^|[-_./])(tr|tur|turkish|turkce|en|eng|english|pt|por|portuguese|es|spa|spanish|fr|fre|french|de|ger|german|it|ita|italian|ru|rus|russian|ar|ara|arabic)(?:[-_./]|$)/i);
+      const qMatch = (url || '').match(/[?&](?:tlang|lang|hl)=([a-zA-Z0-9_-]+)/i);
+      if (qMatch && qMatch[1]) {
+        const qLang = qMatch[1].toLowerCase().split(/[-_]/)[0];
+        if (langMap[qLang] || qLang.length === 2) {
+          code = qLang;
+        }
+      }
+    }
+
+    if (!code || code === 'und' || !langMap[code]) {
+      const m = u.match(/(?:^|[-_./])(tr|tur|turkish|turkce|en|eng|english|pt|por|portuguese|es|spa|spanish|fr|fre|french|de|ger|german|it|ita|italian|ru|rus|russian|ar|ara|arabic)(?:[-_./?]|$)/i);
       if (m) {
         const k = m[1].toLowerCase();
         if (k.startsWith('tr') || k.startsWith('tur')) code = 'tr';
@@ -342,16 +364,20 @@
         else if (k.startsWith('it')) code = 'it';
         else if (k.startsWith('ru')) code = 'ru';
         else if (k.startsWith('ar')) code = 'ar';
-      } else if (u.includes('altyazi')) {
+      } else if (u.includes('altyazi') || /türkçe|turkish/i.test(label)) {
         code = 'tr';
-      } else {
+      } else if (/english|ingilizce/i.test(label)) {
+        code = 'en';
+      } else if (!code) {
         code = 'und';
       }
     }
 
     const baseName = langMap[code] || (label && !label.toLowerCase().includes('altyazı') ? label : 'Altyazı');
-    const finalLabel = isForced ? `${baseName} (Zorunlu)` : baseName;
-    return { code, label: finalLabel, isForced };
+    let finalLabel = baseName;
+    if (isForced && !finalLabel.toLowerCase().includes('zorunlu')) finalLabel = `${baseName} (Zorunlu)`;
+    else if (isAuto && !finalLabel.toLowerCase().includes('otomatik')) finalLabel = `${baseName} (Otomatik)`;
+    return { code, label: finalLabel, isForced, isAuto };
   }
 
   function normalizeResolutionTier(width, height, qualityLabel) {
@@ -449,16 +475,22 @@
             }
           }
 
-          if (f.audioTrack && f.audioTrack.displayName && !seenAudios.has(f.audioTrack.displayName)) {
-            seenAudios.add(f.audioTrack.displayName);
+          if (f.audioTrack && f.audioTrack.displayName) {
             const idParts = (f.audioTrack.id || '').split('.');
-            const langCode = idParts[0] || '';
-            audioTracks.push({
-              trackId: f.audioTrack.id || langCode,
-              lang: langCode,
-              label: f.audioTrack.displayName,
-              isDefault: !!f.audioTrack.audioIsDefault
-            });
+            const langCode = (idParts[0] || '').toLowerCase();
+            const disp = f.audioTrack.displayName;
+            const isDef = !!f.audioTrack.audioIsDefault || /original|orijinal/i.test(disp);
+            const isTr = langCode === 'tr' || /türkçe|turkish/i.test(disp);
+            const normTrackId = isDef ? 'original' : (isTr ? 'tr' : (langCode || f.audioTrack.id || disp));
+            if (!seenAudios.has(normTrackId)) {
+              seenAudios.add(normTrackId);
+              audioTracks.push({
+                trackId: normTrackId,
+                lang: langCode,
+                label: disp,
+                isDefault: isDef
+              });
+            }
           }
         });
         videoQualities.sort((a, b) => b.height - a.height);
@@ -467,18 +499,23 @@
         const seenSubs = new Set();
         const caps = obj.captions?.playerCaptionsTracklistRenderer?.captionTracks || [];
         caps.forEach(c => {
-          const code = c.languageCode || '';
+          const code = (c.languageCode || '').toLowerCase();
           const rawLabel = c.name?.simpleText || (c.name?.runs && c.name.runs[0]?.text) || code;
           const isAuto = (c.vssId && c.vssId.startsWith('a.')) || /otomatik|auto/i.test(rawLabel);
           const label = isAuto && !rawLabel.toLowerCase().includes('otomatik') ? `${rawLabel} (Otomatik)` : rawLabel;
-          const u = c.baseUrl;
+          let u = c.baseUrl;
+          if (u && !/[?&]fmt=/i.test(u)) {
+            u += (u.includes('?') ? '&' : '?') + 'fmt=vtt';
+          }
           if (u && !seenSubs.has(code + '_' + label)) {
             seenSubs.add(code + '_' + label);
             subtitles.push({
               url: u,
               code: code,
+              lang: code,
               label: label,
-              isForced: false
+              isForced: false,
+              isAuto: isAuto
             });
           }
         });
@@ -489,18 +526,26 @@
     return null;
   }
 
+  function isLikelySubtitleM3u8(urlLower, code, label) {
+    if (!urlLower.includes('.m3u8')) return true;
+    return /(sub|subs|subtitle|subtitles|caption|captions|vtt|webvtt|altyazi|text)/i.test(urlLower) ||
+           !!(code && code !== 'und') ||
+           !!(label && label.length > 0);
+  }
+
   async function detectSubtitleTracks() {
     const rawList = [];
 
     function addTrack(url, code, label) {
       if (!url) return;
       const u = url.toLowerCase();
-      // Exclude HLS playlists, video segments, and non-subtitle files
-      if (/sublist_(aud|vid|\d+)|playlist|manifest|\.m3u8/i.test(u)) return;
-      if (/\/hls\//i.test(u) && !/\.(vtt|srt|sub|ass)(\?|#|$)/i.test(u)) return;
+      // Exclude video/audio HLS playlists and media segments while allowing explicit subtitle playlists
+      if (/sublist_(aud|vid|\d+)|master\.m3u8|index-f\d+/i.test(u)) return;
+      if (u.includes('.m3u8') && !isLikelySubtitleM3u8(u, code, label)) return;
+      if (/\/hls\//i.test(u) && !/\.(vtt|srt|sub|ass|m3u8)(\?|#|$)/i.test(u)) return;
 
       const meta = resolveSubtitleMetadata(url, code, label);
-      rawList.push({ url, code: meta.code, label: meta.label, isForced: meta.isForced });
+      rawList.push({ url, code: meta.code, lang: meta.code, label: meta.label, isForced: meta.isForced, isAuto: meta.isAuto });
     }
 
     // 1. YouTube in-page full metadata extraction
@@ -519,7 +564,7 @@
       });
       if (bgData?.subtitles) {
         bgData.subtitles.forEach(s => {
-          if (s.url) addTrack(s.url, s.lang, s.label);
+          if (s.url) addTrack(s.url, s.lang || s.code, s.label);
         });
       }
     } catch {}
@@ -571,12 +616,19 @@
       }
     } catch {}
 
-    // Deduplicate strictly by normalized URL
+    // Deduplicate by pathname + language/vssId so YouTube /api/timedtext?lang=tr and ?lang=en are NEVER collapsed into one!
     const seenUrls = new Set();
     const list = [];
     rawList.forEach(item => {
       let norm = item.url;
-      try { norm = new URL(item.url).pathname; } catch {}
+      try {
+        const parsed = new URL(item.url);
+        const qLang = parsed.searchParams.get('tlang') || parsed.searchParams.get('lang') || item.code || '';
+        const qKind = parsed.searchParams.get('kind') || (item.isAuto ? 'asr' : '') || (item.isForced ? 'forced' : '');
+        norm = `${parsed.origin}${parsed.pathname}|${qLang}|${qKind}|${item.label || ''}`;
+      } catch {
+        norm = `${item.url}|${item.code || ''}|${item.label || ''}`;
+      }
       if (!seenUrls.has(norm)) {
         seenUrls.add(norm);
         list.push(item);
@@ -584,9 +636,9 @@
     });
 
     if (isYouTube && list.length === 0) {
-      list.push({ code: 'tr', label: 'Türkçe Altyazı', url: null });
-      list.push({ code: 'en', label: 'İngilizce Altyazı', url: null });
-      list.push({ code: 'all', label: 'Tüm Altyazıları İndir', url: null });
+      list.push({ code: 'tr', lang: 'tr', label: 'Türkçe Altyazı', url: null });
+      list.push({ code: 'en', lang: 'en', label: 'İngilizce Altyazı', url: null });
+      list.push({ code: 'all', lang: 'all', label: 'Tüm Altyazıları İndir', url: null });
     }
 
     if (list && list.length > 0) {

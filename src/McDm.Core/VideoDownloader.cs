@@ -354,32 +354,79 @@ public sealed class VideoDownloader
     public static SubtitleTrackInfo? PickBestSubtitle(List<SubtitleTrackInfo>? list, string? preferredLang)
     {
         if (list == null || list.Count == 0) return null;
-        string lang = !string.IsNullOrWhiteSpace(preferredLang) ? preferredLang : "tr";
+        string rawPref = !string.IsNullOrWhiteSpace(preferredLang) ? preferredLang : "tr";
+        string lang = rawPref.Split(',')[0].Split('-')[0].Trim().ToLowerInvariant();
+        if (string.IsNullOrEmpty(lang) || lang == "all") lang = "tr";
 
-        // 1. Exact language, non-forced
+        static bool MatchesLang(SubtitleTrackInfo s, string target)
+        {
+            string sLang = (s.Lang ?? "").Split('-')[0].Trim().ToLowerInvariant();
+            string sCode = (s.Code ?? "").Split('-')[0].Trim().ToLowerInvariant();
+            if (sLang == target || sCode == target) return true;
+            if (target == "tr")
+            {
+                return (s.Label ?? "").Contains("Türkçe", StringComparison.OrdinalIgnoreCase) ||
+                       (s.Url ?? "").Contains("-tr-", StringComparison.OrdinalIgnoreCase) ||
+                       (s.Url ?? "").Contains("_tr", StringComparison.OrdinalIgnoreCase) ||
+                       (s.Url ?? "").Contains("lang=tr", StringComparison.OrdinalIgnoreCase);
+            }
+            if (target == "en")
+            {
+                return (s.Label ?? "").Contains("İngilizce", StringComparison.OrdinalIgnoreCase) ||
+                       (s.Label ?? "").Contains("English", StringComparison.OrdinalIgnoreCase) ||
+                       (s.Url ?? "").Contains("lang=en", StringComparison.OrdinalIgnoreCase);
+            }
+            return false;
+        }
+
+        // 1. Exact language, non-forced, non-auto
+        var nonForcedManual = list.FirstOrDefault(s =>
+            MatchesLang(s, lang) &&
+            !(s.Url ?? "").Contains("forced", StringComparison.OrdinalIgnoreCase) &&
+            !(s.Label ?? "").Contains("forced", StringComparison.OrdinalIgnoreCase) &&
+            !(s.Label ?? "").Contains("Zorunlu", StringComparison.OrdinalIgnoreCase) &&
+            !(s.Label ?? "").Contains("Otomatik", StringComparison.OrdinalIgnoreCase));
+        if (nonForcedManual != null) return nonForcedManual;
+
+        // 2. Exact language, non-forced (including auto)
         var nonForcedLang = list.FirstOrDefault(s =>
-            ((s.Lang ?? "").Equals(lang, StringComparison.OrdinalIgnoreCase) || (s.Code ?? "").Equals(lang, StringComparison.OrdinalIgnoreCase) ||
-             (lang == "tr" && ((s.Label ?? "").Contains("Türkçe", StringComparison.OrdinalIgnoreCase) || (s.Url ?? "").Contains("-tr-", StringComparison.OrdinalIgnoreCase) || (s.Url ?? "").Contains("_tr", StringComparison.OrdinalIgnoreCase)))) &&
-            !(s.Url ?? "").Contains("forced", StringComparison.OrdinalIgnoreCase) && !(s.Label ?? "").Contains("forced", StringComparison.OrdinalIgnoreCase));
+            MatchesLang(s, lang) &&
+            !(s.Url ?? "").Contains("forced", StringComparison.OrdinalIgnoreCase) &&
+            !(s.Label ?? "").Contains("forced", StringComparison.OrdinalIgnoreCase) &&
+            !(s.Label ?? "").Contains("Zorunlu", StringComparison.OrdinalIgnoreCase));
         if (nonForcedLang != null) return nonForcedLang;
 
-        // 2. Language match even if forced
-        var anyLang = list.FirstOrDefault(s =>
-            (s.Lang ?? "").Equals(lang, StringComparison.OrdinalIgnoreCase) || (s.Code ?? "").Equals(lang, StringComparison.OrdinalIgnoreCase) ||
-            (lang == "tr" && ((s.Label ?? "").Contains("Türkçe", StringComparison.OrdinalIgnoreCase) || (s.Url ?? "").Contains("turk", StringComparison.OrdinalIgnoreCase))));
+        // 3. Language match even if forced
+        var anyLang = list.FirstOrDefault(s => MatchesLang(s, lang));
         if (anyLang != null) return anyLang;
 
-        // 3. Turkish non-forced
+        // 4. Turkish non-forced
         var trNonForced = list.FirstOrDefault(s =>
-            ((s.Lang ?? "").Equals("tr", StringComparison.OrdinalIgnoreCase) || (s.Code ?? "").Equals("tr", StringComparison.OrdinalIgnoreCase) || (s.Label ?? "").Contains("Türkçe", StringComparison.OrdinalIgnoreCase)) &&
+            MatchesLang(s, "tr") &&
             !(s.Url ?? "").Contains("forced", StringComparison.OrdinalIgnoreCase));
         if (trNonForced != null) return trNonForced;
 
-        // 4. Any non-forced
+        // 5. Any non-forced
         var anyNonForced = list.FirstOrDefault(s => !(s.Url ?? "").Contains("forced", StringComparison.OrdinalIgnoreCase) && !(s.Label ?? "").Contains("forced", StringComparison.OrdinalIgnoreCase));
         if (anyNonForced != null) return anyNonForced;
 
         return list[0];
+    }
+
+    public static string NormalizeSubtitleFileLangCode(string? rawLangs, SubtitleTrackInfo? bestSub = null)
+    {
+        if (!string.IsNullOrWhiteSpace(rawLangs))
+        {
+            string first = rawLangs.Split(',')[0].Split('.')[0].Split('-')[0].Trim().ToLowerInvariant();
+            if (!string.IsNullOrEmpty(first) && first != "all" && first != "none")
+                return first;
+        }
+        if (bestSub != null)
+        {
+            string b = (!string.IsNullOrWhiteSpace(bestSub.Lang) ? bestSub.Lang : bestSub.Code ?? "").Split('-')[0].Trim().ToLowerInvariant();
+            if (!string.IsNullOrEmpty(b) && b != "all" && b != "und") return b;
+        }
+        return "tr";
     }
 
     public async Task RunAsync(DownloadItem item, CancellationToken ct)
@@ -422,22 +469,26 @@ public sealed class VideoDownloader
         string? srtContent = null;
         if (!string.IsNullOrWhiteSpace(rawSubContent))
         {
-            srtContent = rawSubContent.StartsWith("WEBVTT", StringComparison.OrdinalIgnoreCase) || (targetSubUrl?.Contains(".vtt", StringComparison.OrdinalIgnoreCase) ?? false)
-                ? ConvertVttToSrt(rawSubContent)
-                : rawSubContent;
+            if (rawSubContent.TrimStart().StartsWith("WEBVTT", StringComparison.OrdinalIgnoreCase) || (targetSubUrl?.Contains(".vtt", StringComparison.OrdinalIgnoreCase) ?? false))
+                srtContent = ConvertVttToSrt(rawSubContent);
+            else if (rawSubContent.TrimStart().StartsWith("<"))
+                srtContent = ConvertXmlTimedTextToSrt(rawSubContent);
+            else
+                srtContent = rawSubContent;
         }
         else if (!string.IsNullOrWhiteSpace(targetSubUrl))
         {
             srtContent = await DownloadSubtitleFileAsync(targetSubUrl, item.Request, ct);
         }
 
-        // 1. Direct subtitle-only download (fast HTTP download + VTT->SRT conversion)
-        if (opt.SubtitlesOnly && !string.IsNullOrWhiteSpace(srtContent))
+        string cleanSubLang = NormalizeSubtitleFileLangCode(opt.SubtitleLangs, bestSub);
+
+        // 1. Direct subtitle-only download (fast HTTP download + VTT/XML->SRT conversion)
+        if (opt.SubtitlesOnly && !string.IsNullOrWhiteSpace(srtContent) && opt.SubtitleLangs != "all")
         {
             item.Stage = "Altyazılar Kaydediliyor...";
             string baseName = Path.GetFileNameWithoutExtension(string.IsNullOrWhiteSpace(item.FileName) ? "subtitle" : item.FileName);
-            string subLang = !string.IsNullOrWhiteSpace(opt.SubtitleLangs) ? opt.SubtitleLangs : "tr";
-            string srtFile = Path.Combine(outDir, $"{baseName}.{subLang}.srt");
+            string srtFile = Path.Combine(outDir, $"{baseName}.{cleanSubLang}.srt");
             await File.WriteAllTextAsync(srtFile, srtContent, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), ct);
             CleanAndNormalizeSubtitleFile(srtFile);
 
@@ -492,14 +543,12 @@ public sealed class VideoDownloader
             }
 
             // 3. Post-process video with subtitle (save .srt alongside and embed with ffmpeg)
-            if (!string.IsNullOrEmpty(item.SavePath) && File.Exists(item.SavePath))
+            if (!string.IsNullOrEmpty(item.SavePath) && File.Exists(item.SavePath) && !opt.SubtitlesOnly && !opt.AudioOnly)
             {
                 try
                 {
                     string baseName = Path.GetFileNameWithoutExtension(item.SavePath);
-                    string rawLang = !string.IsNullOrWhiteSpace(opt.SubtitleLangs) ? opt.SubtitleLangs : "tr";
-                    string subLang = rawLang.Split(',')[0].Trim();
-                    string finalSrt = Path.Combine(outDir, $"{baseName}.{subLang}.srt");
+                    string finalSrt = Path.Combine(outDir, $"{baseName}.{cleanSubLang}.srt");
                     if (manualSrtPath != null && File.Exists(manualSrtPath))
                     {
                         File.Copy(manualSrtPath, finalSrt, overwrite: true);
@@ -514,7 +563,7 @@ public sealed class VideoDownloader
                     if (srtToEmbed != null && File.Exists(srtToEmbed) && _ffmpeg() is { } ffmpegPath && File.Exists(ffmpegPath))
                     {
                         item.Stage = "Altyazı Gömülüyor (FFmpeg)...";
-                        EmbedSubtitleWithFfmpeg(ffmpegPath, item.SavePath, srtToEmbed);
+                        EmbedSubtitleWithFfmpeg(ffmpegPath, item.SavePath, srtToEmbed, cleanSubLang);
                     }
                 }
                 catch { }
@@ -757,6 +806,71 @@ public sealed class VideoDownloader
         return sb.ToString().Trim() + "\r\n";
     }
 
+    public static string ConvertXmlTimedTextToSrt(string xml)
+    {
+        if (string.IsNullOrWhiteSpace(xml)) return "";
+        var sb = new StringBuilder();
+        int counter = 1;
+
+        static string FormatSrtTime(double seconds)
+        {
+            if (seconds < 0) seconds = 0;
+            var ts = TimeSpan.FromSeconds(seconds);
+            return $"{(int)ts.TotalHours:D2}:{ts.Minutes:D2}:{ts.Seconds:D2},{ts.Milliseconds:D3}";
+        }
+
+        // Format 1: <text start="1.23" dur="4.56">...</text> (YouTube srv1/transcript XML)
+        var textMatches = Regex.Matches(xml, @"<text\b([^>]*)>([\s\S]*?)<\/text>", RegexOptions.IgnoreCase);
+        if (textMatches.Count > 0)
+        {
+            foreach (Match m in textMatches)
+            {
+                string attrs = m.Groups[1].Value;
+                string body = System.Net.WebUtility.HtmlDecode(m.Groups[2].Value);
+                body = Regex.Replace(body, @"<[^>]+>", "").Trim();
+                if (string.IsNullOrEmpty(body)) continue;
+
+                var startM = Regex.Match(attrs, @"start=""([\d.]+)""");
+                var durM = Regex.Match(attrs, @"dur=""([\d.]+)""");
+                if (!startM.Success || !double.TryParse(startM.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out double startSec))
+                    continue;
+                double durSec = durM.Success && double.TryParse(durM.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out double d) ? d : 3.0;
+
+                sb.AppendLine((counter++).ToString());
+                sb.AppendLine($"{FormatSrtTime(startSec)} --> {FormatSrtTime(startSec + durSec)}");
+                sb.AppendLine(body);
+                sb.AppendLine();
+            }
+            if (counter > 1) return sb.ToString().Trim() + "\r\n";
+        }
+
+        // Format 2: <p t="1230" d="4560">...</p> (YouTube srv3 XML in milliseconds)
+        var pMatches = Regex.Matches(xml, @"<p\b([^>]*)>([\s\S]*?)<\/p>", RegexOptions.IgnoreCase);
+        if (pMatches.Count > 0)
+        {
+            foreach (Match m in pMatches)
+            {
+                string attrs = m.Groups[1].Value;
+                string body = System.Net.WebUtility.HtmlDecode(Regex.Replace(m.Groups[2].Value, @"<[^>]+>", "")).Trim();
+                if (string.IsNullOrEmpty(body)) continue;
+
+                var tM = Regex.Match(attrs, @"\bt=""(\d+)""");
+                var dM = Regex.Match(attrs, @"\bd=""(\d+)""");
+                if (!tM.Success || !long.TryParse(tM.Groups[1].Value, out long startMs))
+                    continue;
+                long durMs = dM.Success && long.TryParse(dM.Groups[1].Value, out long dm) ? dm : 3000;
+
+                sb.AppendLine((counter++).ToString());
+                sb.AppendLine($"{FormatSrtTime(startMs / 1000.0)} --> {FormatSrtTime((startMs + durMs) / 1000.0)}");
+                sb.AppendLine(body);
+                sb.AppendLine();
+            }
+            if (counter > 1) return sb.ToString().Trim() + "\r\n";
+        }
+
+        return "";
+    }
+
     public static void CleanAndNormalizeSubtitleFile(string filePath)
     {
         if (!File.Exists(filePath)) return;
@@ -790,7 +904,7 @@ public sealed class VideoDownloader
         catch { }
     }
 
-    public static bool EmbedSubtitleWithFfmpeg(string ffmpeg, string videoPath, string srtPath)
+    public static bool EmbedSubtitleWithFfmpeg(string ffmpeg, string videoPath, string srtPath, string? langCode = "tr")
     {
         string? tempOut = null;
         try
@@ -798,7 +912,22 @@ public sealed class VideoDownloader
             string ext = Path.GetExtension(videoPath).ToLowerInvariant();
             if (ext != ".mp4" && ext != ".mkv" && ext != ".webm") return false;
             tempOut = Path.Combine(Path.GetDirectoryName(videoPath)!, "temp_embed_" + Guid.NewGuid().ToString("N")[..8] + ext);
-            string subCodec = ext == ".mkv" ? "srt" : "mov_text";
+            string subCodec = ext == ".mkv" ? "srt" : (ext == ".webm" ? "webvtt" : "mov_text");
+
+            var (trTitle, _) = StreamProbeService.GetLanguageInfo(langCode);
+            string iso3 = (langCode ?? "tr").ToLowerInvariant() switch
+            {
+                "tr" or "tur" => "tur",
+                "en" or "eng" => "eng",
+                "de" or "ger" or "deu" => "deu",
+                "fr" or "fre" or "fra" => "fra",
+                "es" or "spa" => "spa",
+                "it" or "ita" => "ita",
+                "ru" or "rus" => "rus",
+                "ar" or "ara" => "ara",
+                "pt" or "por" => "por",
+                _ => "und"
+            };
 
             var psi = new ProcessStartInfo(ffmpeg)
             {
@@ -810,12 +939,27 @@ public sealed class VideoDownloader
             psi.ArgumentList.Add(videoPath);
             psi.ArgumentList.Add("-i");
             psi.ArgumentList.Add(srtPath);
+            psi.ArgumentList.Add("-map");
+            psi.ArgumentList.Add("0:v:0");
+            psi.ArgumentList.Add("-map");
+            psi.ArgumentList.Add("0:a?");
+            psi.ArgumentList.Add("-map");
+            psi.ArgumentList.Add("1:0");
             psi.ArgumentList.Add("-c:v");
             psi.ArgumentList.Add("copy");
             psi.ArgumentList.Add("-c:a");
             psi.ArgumentList.Add("copy");
             psi.ArgumentList.Add("-c:s");
             psi.ArgumentList.Add(subCodec);
+            psi.ArgumentList.Add("-metadata:s:s:0");
+            psi.ArgumentList.Add($"language={iso3}");
+            if (!string.IsNullOrEmpty(trTitle) && trTitle != "Bilinmeyen")
+            {
+                psi.ArgumentList.Add("-metadata:s:s:0");
+                psi.ArgumentList.Add($"title={trTitle}");
+            }
+            psi.ArgumentList.Add("-disposition:s:0");
+            psi.ArgumentList.Add("default");
             psi.ArgumentList.Add(tempOut);
 
             using var proc = Process.Start(psi);
@@ -846,21 +990,78 @@ public sealed class VideoDownloader
     {
         try
         {
-            using var http = new HttpClient();
+            string fetchUrl = subUrl;
+            // Ensure YouTube timedtext URLs always return WebVTT instead of raw XML
+            if ((fetchUrl.Contains("youtube.com/api/timedtext", StringComparison.OrdinalIgnoreCase) ||
+                 fetchUrl.Contains("googlevideo.com/timedtext", StringComparison.OrdinalIgnoreCase)) &&
+                !Regex.IsMatch(fetchUrl, @"[?&]fmt=", RegexOptions.IgnoreCase))
+            {
+                fetchUrl += (fetchUrl.Contains('?') ? "&" : "?") + "fmt=vtt";
+            }
+
+            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
             if (!string.IsNullOrEmpty(req.UserAgent))
                 http.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", req.UserAgent);
+            else
+                http.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36");
             if (!string.IsNullOrEmpty(req.Referer))
                 http.DefaultRequestHeaders.TryAddWithoutValidation("Referer", req.Referer);
             if (!string.IsNullOrEmpty(req.CookieHeader))
                 http.DefaultRequestHeaders.TryAddWithoutValidation("Cookie", req.CookieHeader);
 
-            var resp = await http.GetAsync(subUrl, ct);
+            var resp = await http.GetAsync(fetchUrl, ct);
             if (!resp.IsSuccessStatusCode) return null;
             var content = await resp.Content.ReadAsStringAsync(ct);
             if (string.IsNullOrWhiteSpace(content)) return null;
 
-            if (content.StartsWith("WEBVTT", StringComparison.OrdinalIgnoreCase) || subUrl.Contains(".vtt", StringComparison.OrdinalIgnoreCase))
+            var trimmed = content.TrimStart();
+
+            // Handle HLS segmented WebVTT playlist (.m3u8 containing .vtt segment URLs)
+            if (trimmed.StartsWith("#EXTM3U", StringComparison.OrdinalIgnoreCase))
+            {
+                var segUrls = new List<string>();
+                foreach (var rawLine in content.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.RemoveEmptyEntries))
+                {
+                    var line = rawLine.Trim();
+                    if (line.StartsWith('#')) continue;
+                    try
+                    {
+                        var absUri = new Uri(new Uri(fetchUrl), line).AbsoluteUri;
+                        if (!segUrls.Contains(absUri)) segUrls.Add(absUri);
+                    }
+                    catch { }
+                }
+
+                if (segUrls.Count > 0 && segUrls.Count <= 200)
+                {
+                    var combinedVtt = new StringBuilder("WEBVTT\n\n");
+                    foreach (var segUrl in segUrls)
+                    {
+                        var segResp = await http.GetAsync(segUrl, ct);
+                        if (segResp.IsSuccessStatusCode)
+                        {
+                            var segText = await segResp.Content.ReadAsStringAsync(ct);
+                            if (!string.IsNullOrWhiteSpace(segText))
+                            {
+                                combinedVtt.AppendLine(segText);
+                                combinedVtt.AppendLine();
+                            }
+                        }
+                    }
+                    return ConvertVttToSrt(combinedVtt.ToString());
+                }
+                return null;
+            }
+
+            if (trimmed.StartsWith("WEBVTT", StringComparison.OrdinalIgnoreCase) || fetchUrl.Contains(".vtt", StringComparison.OrdinalIgnoreCase) || fetchUrl.Contains("fmt=vtt", StringComparison.OrdinalIgnoreCase))
                 return ConvertVttToSrt(content);
+
+            if (trimmed.StartsWith("<"))
+            {
+                var xmlSrt = ConvertXmlTimedTextToSrt(content);
+                if (!string.IsNullOrWhiteSpace(xmlSrt)) return xmlSrt;
+            }
+
             return content;
         }
         catch

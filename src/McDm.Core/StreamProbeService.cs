@@ -377,15 +377,27 @@ public static class StreamProbeService
                         bool isOrig = isDef || dispName.Contains("original", StringComparison.OrdinalIgnoreCase) || dispName.Contains("orijinal", StringComparison.OrdinalIgnoreCase);
                         bool isTr = langCode.Equals("tr", StringComparison.OrdinalIgnoreCase) || dispName.Contains("Türkçe", StringComparison.OrdinalIgnoreCase) || dispName.Contains("Turkish", StringComparison.OrdinalIgnoreCase);
                         string trackId = isOrig ? "original" : (isTr ? "tr" : (!string.IsNullOrEmpty(langCode) ? langCode : dispName));
-                        if (!string.IsNullOrEmpty(trackId) && !audioMap.ContainsKey(trackId))
+                        int itag = f.TryGetProperty("itag", out var itEl) && itEl.TryGetInt32(out int itVal) ? itVal : 0;
+                        string fmtId = itag > 0 ? itag.ToString() : "";
+                        bool isOpus = mime.Contains("opus", StringComparison.OrdinalIgnoreCase) || itag == 251;
+
+                        if (!string.IsNullOrEmpty(trackId))
                         {
-                            audioMap[trackId] = new AudioTrackInfo
+                            if (!audioMap.TryGetValue(trackId, out var existing))
                             {
-                                TrackId = trackId,
-                                Lang = langCode,
-                                Label = FormatAudioLabel(langCode, dispName, isOrig),
-                                IsDefault = isDef
-                            };
+                                audioMap[trackId] = new AudioTrackInfo
+                                {
+                                    TrackId = trackId,
+                                    Lang = langCode,
+                                    Label = FormatAudioLabel(langCode, dispName, isOrig),
+                                    FormatId = fmtId,
+                                    IsDefault = isDef || isOrig
+                                };
+                            }
+                            else if (isOpus && existing.FormatId != "251" && !string.IsNullOrEmpty(fmtId))
+                            {
+                                existing.FormatId = fmtId;
+                            }
                         }
                     }
                 }
@@ -395,13 +407,7 @@ public static class StreamProbeService
             if (sd.TryGetProperty("formats", out var fmts)) ProcessFormatArray(fmts);
 
             result.Qualities = result.Qualities.OrderByDescending(q => q.Height).ToList();
-            result.AudioTracks = audioMap.Values.OrderBy(a =>
-            {
-                if (a.TrackId == "original" || a.IsDefault || a.Label.Contains("Orijinal Ses")) return 0;
-                if (a.TrackId == "tr" || a.Lang.StartsWith("tr", StringComparison.OrdinalIgnoreCase)) return 1;
-                if (a.TrackId == "en" || a.Lang.StartsWith("en", StringComparison.OrdinalIgnoreCase)) return 2;
-                return 3;
-            }).ThenBy(a => a.Label).ToList();
+            result.AudioTracks = SortAudioTracks(audioMap.Values);
         }
 
         if (root.TryGetProperty("captions", out var caps) &&
@@ -414,13 +420,19 @@ public static class StreamProbeService
                 string lang = c.TryGetProperty("languageCode", out var lcEl) ? lcEl.GetString() ?? "" : "";
                 string vssId = c.TryGetProperty("vssId", out var vEl) ? vEl.GetString() ?? "" : "";
                 string baseUrl = c.TryGetProperty("baseUrl", out var uEl) ? uEl.GetString() ?? "" : "";
+                if (!string.IsNullOrEmpty(baseUrl) && !Regex.IsMatch(baseUrl, @"[?&]fmt=", RegexOptions.IgnoreCase))
+                {
+                    baseUrl += (baseUrl.Contains('?') ? "&" : "?") + "fmt=vtt";
+                }
                 bool isAuto = vssId.StartsWith("a.", StringComparison.OrdinalIgnoreCase);
-                if (!string.IsNullOrEmpty(lang) && !result.Subtitles.Any(s => s.Lang.Equals(lang, StringComparison.OrdinalIgnoreCase)))
+                string label = FormatSubtitleLabel(lang, isAuto: isAuto);
+                if (!string.IsNullOrEmpty(lang) && !result.Subtitles.Any(s => s.Lang.Equals(lang, StringComparison.OrdinalIgnoreCase) && s.Label == label))
                 {
                     result.Subtitles.Add(new SubtitleTrackInfo
                     {
                         Lang = lang,
-                        Label = FormatSubtitleLabel(lang, isAuto: isAuto),
+                        Code = lang,
+                        Label = label,
                         Url = baseUrl
                     });
                 }
@@ -428,6 +440,21 @@ public static class StreamProbeService
         }
 
         return result;
+    }
+
+    public static List<AudioTrackInfo> SortAudioTracks(IEnumerable<AudioTrackInfo> tracks)
+    {
+        return tracks.OrderBy(a =>
+        {
+            bool isOrig = a.TrackId == "original" || a.IsDefault || a.Label.Contains("Orijinal", StringComparison.OrdinalIgnoreCase);
+            bool isTr = a.TrackId == "tr" || a.Lang.StartsWith("tr", StringComparison.OrdinalIgnoreCase) || a.Label.Contains("Türkçe", StringComparison.OrdinalIgnoreCase);
+            bool isEn = a.TrackId == "en" || a.Lang.StartsWith("en", StringComparison.OrdinalIgnoreCase);
+
+            if (isOrig) return 0;
+            if (isTr) return 1;
+            if (isEn) return 2;
+            return 3;
+        }).ThenBy(a => a.Label).ToList();
     }
 
     private static bool IsHlsCandidate(string url)
@@ -641,14 +668,8 @@ public static class StreamProbeService
         // Sort qualities descending (1080 -> 720 -> 480 ...)
         result.Qualities = result.Qualities.OrderByDescending(q => q.Height).ToList();
 
-        // Sort audio tracks: Original first, Turkish second, others after
-        result.AudioTracks = result.AudioTracks.OrderBy(a =>
-        {
-            if (a.TrackId == "original" || a.IsDefault || a.Label.Contains("Orijinal Ses")) return 0;
-            if (a.TrackId == "tr" || a.Lang.StartsWith("tr", StringComparison.OrdinalIgnoreCase)) return 1;
-            if (a.TrackId == "en" || a.Lang.StartsWith("en", StringComparison.OrdinalIgnoreCase)) return 2;
-            return 3;
-        }).ThenBy(a => a.Label).ToList();
+        // Sort audio tracks consistently (Turkish first, Original second, English third)
+        result.AudioTracks = SortAudioTracks(result.AudioTracks);
 
         return result;
     }
@@ -773,6 +794,8 @@ public static class StreamProbeService
                     if (isAudio)
                     {
                         bool isOriginal = formatNote.Contains("Original", StringComparison.OrdinalIgnoreCase) ||
+                                          formatNote.Contains("Orijinal", StringComparison.OrdinalIgnoreCase) ||
+                                          formatNote.Contains("default", StringComparison.OrdinalIgnoreCase) ||
                                           (f.TryGetProperty("language_preference", out var lpEl) && lpEl.TryGetInt32(out int lp) && lp > 0);
 
                         string cleanLang = (lang ?? "").Trim().ToLowerInvariant();
@@ -817,13 +840,7 @@ public static class StreamProbeService
                 }
 
                 result.Qualities = result.Qualities.OrderByDescending(q => q.Height).ToList();
-                result.AudioTracks = audioMap.Values.OrderBy(a =>
-                {
-                    if (a.TrackId == "original" || a.IsDefault || a.Label.Contains("Orijinal Ses")) return 0;
-                    if (a.TrackId == "tr" || a.Lang.StartsWith("tr", StringComparison.OrdinalIgnoreCase)) return 1;
-                    if (a.TrackId == "en" || a.Lang.StartsWith("en", StringComparison.OrdinalIgnoreCase)) return 2;
-                    return 3;
-                }).ThenBy(a => a.Label).ToList();
+                result.AudioTracks = SortAudioTracks(audioMap.Values);
             }
 
             // Subtitles

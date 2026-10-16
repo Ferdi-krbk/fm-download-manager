@@ -79,17 +79,7 @@ public partial class VideoQualityDialog : Window
 
         if (_audioTracks.Count > 0)
         {
-            _audioTracks = _audioTracks.OrderBy(a =>
-            {
-                bool isTr = a.Lang.StartsWith("tr", StringComparison.OrdinalIgnoreCase) || a.Label.Contains("Türkçe", StringComparison.OrdinalIgnoreCase) || a.TrackId == "tr";
-                bool isOrig = a.IsDefault || a.Label.Contains("Orijinal", StringComparison.OrdinalIgnoreCase) || a.TrackId == "original";
-                bool isEn = a.Lang.StartsWith("en", StringComparison.OrdinalIgnoreCase);
-
-                if (isTr) return 0;
-                if (isOrig) return 1;
-                if (isEn) return 2;
-                return 3;
-            }).ThenBy(a => a.Label).ToList();
+            _audioTracks = StreamProbeService.SortAudioTracks(_audioTracks);
         }
 
         PopulateQualities();
@@ -256,9 +246,14 @@ public partial class VideoQualityDialog : Window
 
                 if (previouslySelected != null)
                 {
-                    if (previouslySelected is AudioTrackInfo prevAti && prevAti.TrackId == a.TrackId)
+                    if (previouslySelected is AudioTrackInfo prevAti &&
+                        (string.Equals(prevAti.TrackId, a.TrackId, StringComparison.OrdinalIgnoreCase) ||
+                         (!string.IsNullOrEmpty(prevAti.Lang) && string.Equals(prevAti.Lang, a.Lang, StringComparison.OrdinalIgnoreCase))))
                         itemToSelect = cbi;
-                    else if (previouslySelected is string prevStr && (prevStr == a.TrackId || prevStr == a.Lang))
+                    else if (previouslySelected is string prevStr &&
+                             (string.Equals(prevStr, a.TrackId, StringComparison.OrdinalIgnoreCase) ||
+                              string.Equals(prevStr, a.Lang, StringComparison.OrdinalIgnoreCase) ||
+                              (prevStr == "best" && a.TrackId == "tr")))
                         itemToSelect = cbi;
                 }
             }
@@ -287,6 +282,25 @@ public partial class VideoQualityDialog : Window
         }
     }
 
+    private static bool IsVideoOrAudioHlsPlaylist(string uLower, SubtitleTrackInfo s)
+    {
+        if (uLower.Contains("sublist_aud") || uLower.Contains("sublist_vid") || uLower.Contains("master.m3u8") || uLower.Contains("index-f"))
+            return true;
+
+        bool hasSubtitleHint = uLower.Contains("sub") || uLower.Contains("caption") || uLower.Contains("vtt") ||
+                               uLower.Contains("srt") || uLower.Contains("altyazi") || uLower.Contains("text") ||
+                               !string.IsNullOrEmpty(s.Lang) || !string.IsNullOrEmpty(s.Code) ||
+                               (!string.IsNullOrEmpty(s.Label) && !s.Label.Equals("Subtitle", StringComparison.OrdinalIgnoreCase));
+
+        if ((uLower.Contains(".m3u8") || uLower.Contains("playlist") || uLower.Contains("manifest")) && !hasSubtitleHint)
+            return true;
+
+        if (uLower.Contains("/hls/") && !uLower.EndsWith(".vtt") && !uLower.EndsWith(".srt") && !hasSubtitleHint)
+            return true;
+
+        return false;
+    }
+
     private void PopulateSubtitles()
     {
         object? previouslySelected = (CmbSubtitleLang.SelectedItem as ComboBoxItem)?.Tag;
@@ -302,29 +316,24 @@ public partial class VideoQualityDialog : Window
             var u = s.Url?.Trim() ?? "";
             var uLower = u.ToLowerInvariant();
 
-            // Exclude HLS playlists, segments, and audio/video files
-            if (uLower.Contains("sublist_") || uLower.Contains(".m3u8") || uLower.Contains("playlist") || uLower.Contains("manifest"))
-                continue;
-            if (uLower.Contains("/hls/") && !uLower.EndsWith(".vtt") && !uLower.EndsWith(".srt"))
+            // Exclude video/audio HLS playlists while keeping legitimate HLS subtitle playlists (#EXT-X-MEDIA:TYPE=SUBTITLES)
+            if (!string.IsNullOrEmpty(uLower) && IsVideoOrAudioHlsPlaylist(uLower, s))
                 continue;
 
-            if (!string.IsNullOrEmpty(u) && !seenUrls.Add(u))
-                continue;
-
-            var lang = (s.Lang ?? "").Trim();
+            var lang = (!string.IsNullOrWhiteSpace(s.Lang) ? s.Lang : s.Code ?? "").Trim();
             var label = (s.Label ?? "").Trim();
             bool isForced = uLower.Contains("forced") || uLower.Contains("zorunlu") || label.Contains("Forced", StringComparison.OrdinalIgnoreCase) || label.Contains("Zorunlu", StringComparison.OrdinalIgnoreCase);
-            bool isAuto = label.Contains("Otomatik", StringComparison.OrdinalIgnoreCase) || uLower.Contains("auto");
+            bool isAuto = label.Contains("Otomatik", StringComparison.OrdinalIgnoreCase) || uLower.Contains("kind=asr") || uLower.Contains("auto");
 
-            // Check for explicit lang query parameter in YouTube/timedtext URLs (e.g. &lang=tr, &lang=es)
-            var ytLangMatch = System.Text.RegularExpressions.Regex.Match(u, @"[?&]lang=([a-zA-Z0-9_-]+)");
+            // Check for explicit lang query parameter in YouTube/timedtext URLs (e.g. &lang=tr, &tlang=tr)
+            var ytLangMatch = System.Text.RegularExpressions.Regex.Match(u, @"[?&](?:tlang|lang)=([a-zA-Z0-9_-]+)");
             if (ytLangMatch.Success)
             {
                 lang = ytLangMatch.Groups[1].Value.ToLowerInvariant();
             }
             else if (string.IsNullOrEmpty(lang) || lang == "und" || (lang == "tr" && label.Equals("Altyazı", StringComparison.OrdinalIgnoreCase)))
             {
-                var match = System.Text.RegularExpressions.Regex.Match(uLower, @"(?:^|[-_./])(tr|tur|turkish|turkce|en|eng|english|pt|por|portuguese|es|spa|spanish|fr|fre|french|de|ger|german|it|ita|italian|ru|rus|russian|ar|ara|arabic)(?:[-_./]|$)");
+                var match = System.Text.RegularExpressions.Regex.Match(uLower, @"(?:^|[-_./])(tr|tur|turkish|turkce|en|eng|english|pt|por|portuguese|es|spa|spanish|fr|fre|french|de|ger|german|it|ita|italian|ru|rus|russian|ar|ara|arabic)(?:[-_./?]|$)");
                 if (match.Success)
                 {
                     var val = match.Groups[1].Value;
@@ -344,6 +353,9 @@ public partial class VideoQualityDialog : Window
                 }
             }
 
+            if (!string.IsNullOrEmpty(u) && !seenUrls.Add($"{u}|{lang}"))
+                continue;
+
             string finalLabel;
             if (!string.IsNullOrEmpty(label) && !label.Equals("Altyazı", StringComparison.OrdinalIgnoreCase) && !label.Equals("Subtitle", StringComparison.OrdinalIgnoreCase))
             {
@@ -358,7 +370,7 @@ public partial class VideoQualityDialog : Window
             if (!seenKeys.Add(dedupKey))
                 continue;
 
-            cleaned.Add(new SubtitleTrackInfo { Url = s.Url ?? "", Lang = lang, Label = finalLabel });
+            cleaned.Add(new SubtitleTrackInfo { Url = s.Url ?? "", Lang = lang, Code = lang, Label = finalLabel });
         }
 
         // Sort: Non-forced Turkish first, then forced Turkish, then auto Turkish, then English, then others
@@ -471,7 +483,19 @@ public partial class VideoQualityDialog : Window
 
                 if (result.AudioTracks.Count > 0)
                 {
-                    _audioTracks = result.AudioTracks;
+                    // Merge probed audio tracks with browser-detected ones so we never lose browser-detected dubbing tracks
+                    var mergedAudios = new Dictionary<string, AudioTrackInfo>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var a in _audioTracks)
+                    {
+                        string key = !string.IsNullOrEmpty(a.TrackId) ? a.TrackId : a.Lang;
+                        if (!string.IsNullOrEmpty(key)) mergedAudios[key] = a;
+                    }
+                    foreach (var a in result.AudioTracks)
+                    {
+                        string key = !string.IsNullOrEmpty(a.TrackId) ? a.TrackId : a.Lang;
+                        if (!string.IsNullOrEmpty(key)) mergedAudios[key] = a;
+                    }
+                    _audioTracks = StreamProbeService.SortAudioTracks(mergedAudios.Values);
                     PopulateAudioTracks();
                     updated = true;
                 }
@@ -521,12 +545,13 @@ public partial class VideoQualityDialog : Window
             if (cbi.Tag is SubtitleTrackInfo track)
             {
                 SelectedSubtitleUrl = track.Url;
-                string cleanLang = track.Lang.Split('-')[0].ToLowerInvariant();
+                string rawLang = !string.IsNullOrWhiteSpace(track.Lang) ? track.Lang : (track.Code ?? "tr");
+                string cleanLang = rawLang.Split('-')[0].ToLowerInvariant();
                 SubtitleLangs = cleanLang switch
                 {
                     "tr" => "tr,tur,Turkish,turkish,tr-TR,tr-tr",
                     "en" => "en,eng,English,english,en-US,en-us",
-                    _ => $"{track.Lang},{cleanLang}.*,{cleanLang}"
+                    _ => $"{rawLang},{cleanLang}.*,{cleanLang}"
                 };
             }
             else if (cbi.Tag is string tag)
@@ -555,27 +580,42 @@ public partial class VideoQualityDialog : Window
         var audioTokensList = new List<string>();
         if (selectedAudioTrack != null)
         {
-            if (!string.IsNullOrEmpty(selectedAudioTrack.FormatId))
+            string lang = selectedAudioTrack.Lang?.Trim() ?? "";
+            string cleanLang = lang.Split('-')[0].ToLowerInvariant();
+
+            // Put language-specific selectors BEFORE raw FormatId if FormatId is a generic YouTube itag (e.g. "251" or "140")
+            // because on multi-audio YouTube videos, yt-dlp names tracks "251-0", "251-1", etc. with [language=tr]
+            bool hasSpecificFormatId = !string.IsNullOrEmpty(selectedAudioTrack.FormatId) &&
+                                       selectedAudioTrack.FormatId != "251" &&
+                                       selectedAudioTrack.FormatId != "140" &&
+                                       selectedAudioTrack.FormatId != "139";
+
+            if (hasSpecificFormatId)
             {
                 audioTokensList.Add($"ba[format_id={selectedAudioTrack.FormatId}]");
                 audioTokensList.Add($"ba[format_id*={selectedAudioTrack.FormatId}]");
             }
 
-            string lang = selectedAudioTrack.Lang?.Trim() ?? "";
-            string cleanLang = lang.Split('-')[0].ToLowerInvariant();
-
             if (selectedAudioTrack.TrackId == "tr" || cleanLang == "tr")
             {
                 audioTokensList.Add("ba[language^=tr]");
+                audioTokensList.Add("ba[language=tur]");
                 audioTokensList.Add("ba[format_note*=Turkish]");
                 audioTokensList.Add("ba[format_note*=Türkçe]");
                 audioTokensList.Add("ba[format_id*=Turkish]");
                 audioTokensList.Add("ba[format_id*=Turk]");
+                audioTokensList.Add("ba[format_id*=tr]");
             }
             else if (selectedAudioTrack.TrackId == "original" || selectedAudioTrack.IsDefault)
             {
+                if (!string.IsNullOrEmpty(cleanLang) && cleanLang != "und")
+                {
+                    audioTokensList.Add($"ba[language^={cleanLang}][format_note*=original]");
+                    audioTokensList.Add($"ba[language^={cleanLang}][format_note*=Original]");
+                }
                 audioTokensList.Add("ba[format_note*=Original]");
                 audioTokensList.Add("ba[format_note*=original]");
+                audioTokensList.Add("ba[format_note*=default]");
                 audioTokensList.Add("ba[format_id*=Original]");
                 if (!string.IsNullOrEmpty(cleanLang) && cleanLang != "und")
                 {
@@ -594,6 +634,12 @@ public partial class VideoQualityDialog : Window
                 }
             }
 
+            if (!hasSpecificFormatId && !string.IsNullOrEmpty(selectedAudioTrack.FormatId))
+            {
+                audioTokensList.Add($"ba[format_id={selectedAudioTrack.FormatId}]");
+                audioTokensList.Add($"ba[format_id^={selectedAudioTrack.FormatId}]");
+            }
+
             audioTokensList.Add("ba");
         }
         else
@@ -601,10 +647,10 @@ public partial class VideoQualityDialog : Window
             switch (audioTrackChoice)
             {
                 case "tr":
-                    audioTokensList.AddRange(new[] { "ba[language^=tr]", "ba[format_note*=Turkish]", "ba[format_note*=Türkçe]", "ba[format_id*=Turkish]", "ba[format_id*=Turk]", "ba" });
+                    audioTokensList.AddRange(new[] { "ba[language^=tr]", "ba[language=tur]", "ba[format_note*=Turkish]", "ba[format_note*=Türkçe]", "ba[format_id*=Turkish]", "ba[format_id*=Turk]", "ba" });
                     break;
                 case "original":
-                    audioTokensList.AddRange(new[] { "ba[format_note*=Original]", "ba[format_id*=Original]", "ba[format_id*=Eng]", "ba[format_note*=Eng]", "ba[language^=en]", "ba" });
+                    audioTokensList.AddRange(new[] { "ba[format_note*=Original]", "ba[format_note*=original]", "ba[format_note*=default]", "ba[format_id*=Original]", "ba[format_id*=Eng]", "ba[format_note*=Eng]", "ba[language^=en]", "ba" });
                     break;
                 case "best":
                     audioTokensList.Add("ba");

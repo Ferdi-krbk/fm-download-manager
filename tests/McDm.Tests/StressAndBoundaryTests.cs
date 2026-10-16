@@ -555,5 +555,40 @@ Late timestamp with full 3-part hour specification.";
 
             return Task.CompletedTask;
         });
+
+        // ── 17. Subtitle XML/VTT Conversion, Lang Code Normalization & Dubbing Sort ─
+        await test("regression: YouTube XML timedtext to SRT conversion, NormalizeSubtitleFileLangCode, and SortAudioTracks", () =>
+        {
+            // 1. YouTube srv1 XML (<text start="..." dur="...">) -> SRT
+            string srv1Xml = @"<?xml version=""1.0"" encoding=""utf-8"" ?><transcript><text start=""1.5"" dur=""2.25"">Merhaba &amp; Hoşgeldiniz</text><text start=""4.0"" dur=""3.5"">İkinci satır</text></transcript>";
+            string srt1 = VideoDownloader.ConvertXmlTimedTextToSrt(srv1Xml);
+            check(srt1.Contains("00:00:01,500 --> 00:00:03,750"), "srv1 XML timestamps converted to SRT: " + srt1);
+            check(srt1.Contains("Merhaba & Hoşgeldiniz"), "srv1 HTML entities decoded");
+
+            // 2. YouTube srv3 XML (<p t="1500" d="2250">) -> SRT
+            string srv3Xml = @"<?xml version=""1.0"" encoding=""utf-8"" ?><timedtext><body><p t=""1500"" d=""2250""><s>Test</s> <s>Altyazı</s></p></body></timedtext>";
+            string srt3 = VideoDownloader.ConvertXmlTimedTextToSrt(srv3Xml);
+            check(srt3.Contains("00:00:01,500 --> 00:00:03,750"), "srv3 XML ms timestamps converted to SRT");
+            check(srt3.Contains("Test Altyazı"), "srv3 inner tags stripped cleanly");
+
+            // 3. NormalizeSubtitleFileLangCode avoids .tr,tur,Turkish.srt or .all.srt
+            check(VideoDownloader.NormalizeSubtitleFileLangCode("tr,tur,Turkish,turkish,tr-TR,tr-tr") == "tr", "comma-separated lang list normalized to 'tr'");
+            check(VideoDownloader.NormalizeSubtitleFileLangCode("en-US,en.*,en") == "en", "hyphenated lang list normalized to 'en'");
+            check(VideoDownloader.NormalizeSubtitleFileLangCode("all", new SubtitleTrackInfo { Lang = "de" }) == "de", "'all' falls back to bestSub lang");
+
+            // 4. SortAudioTracks keeps Original first and Turkish Dub second consistently
+            var unsortedAudios = new List<AudioTrackInfo>
+            {
+                new() { TrackId = "es", Lang = "es", Label = "İspanyolca Dublaj" },
+                new() { TrackId = "tr", Lang = "tr", Label = "Türkçe Dublaj" },
+                new() { TrackId = "original", Lang = "en", Label = "Orijinal Ses - İngilizce", IsDefault = true }
+            };
+            var sorted = StreamProbeService.SortAudioTracks(unsortedAudios);
+            check(sorted[0].TrackId == "original", "Original audio sorted first");
+            check(sorted[1].TrackId == "tr", "Turkish dubbing sorted second");
+            check(sorted[2].TrackId == "es", "Other languages sorted after");
+
+            return Task.CompletedTask;
+        });
     }
 }

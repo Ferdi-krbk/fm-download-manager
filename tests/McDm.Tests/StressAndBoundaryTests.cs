@@ -588,6 +588,17 @@ Late timestamp with full 3-part hour specification.";
             check(sorted[1].TrackId == "tr", "Turkish dubbing sorted second");
             check(sorted[2].TrackId == "es", "Other languages sorted after");
 
+            // 5. Turkish movie site HLS manifest where "Türkçe Dublaj" has DEFAULT=YES and URL has "trdual"
+            string trDualManifest = @"#EXTM3U
+#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID=""audio"",NAME=""Türkçe Dublaj"",DEFAULT=YES,AUTOSELECT=YES,LANGUAGE=""tr"",URI=""a1.m3u8""
+#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID=""audio"",NAME=""Altyazılı"",DEFAULT=NO,AUTOSELECT=NO,LANGUAGE=""en"",URI=""a2.m3u8""
+#EXT-X-STREAM-INF:BANDWIDTH=4500000,RESOLUTION=1920x1080,AUDIO=""audio""
+v1.m3u8";
+            var trDualRes = StreamProbeService.ParseHlsManifestText(trDualManifest, "https://srv12.cdnimages3330.cyou/hls/godfather-1-1972-bluray-trdualmp4/master.m3u8");
+            check(trDualRes.AudioTracks.Count == 2, "Must detect both audio tracks on trdual manifest, got " + trDualRes.AudioTracks.Count);
+            check(trDualRes.AudioTracks.Any(a => a.TrackId == "tr" && a.Label == "Türkçe Dublaj"), "Turkish track with DEFAULT=YES must be labeled 'Türkçe Dublaj', NOT 'Orijinal Ses - Türkçe'");
+            check(trDualRes.AudioTracks.Any(a => a.TrackId == "original" && a.Label.Contains("Orijinal Ses")), "Second track must be labeled 'Orijinal Ses'");
+
             return Task.CompletedTask;
         });
     }

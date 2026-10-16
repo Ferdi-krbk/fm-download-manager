@@ -374,9 +374,11 @@ public static class StreamProbeService
                         string rawId = atEl.TryGetProperty("id", out var idEl) ? idEl.GetString() ?? "" : "";
                         bool isDef = atEl.TryGetProperty("audioIsDefault", out var adEl) && adEl.ValueKind == JsonValueKind.True;
                         string langCode = rawId.Contains('.') ? rawId.Split('.')[0] : rawId;
-                        bool isOrig = isDef || dispName.Contains("original", StringComparison.OrdinalIgnoreCase) || dispName.Contains("orijinal", StringComparison.OrdinalIgnoreCase);
+                        bool isExplicitOrig = dispName.Contains("original", StringComparison.OrdinalIgnoreCase) || dispName.Contains("orijinal", StringComparison.OrdinalIgnoreCase);
                         bool isTr = langCode.Equals("tr", StringComparison.OrdinalIgnoreCase) || dispName.Contains("Türkçe", StringComparison.OrdinalIgnoreCase) || dispName.Contains("Turkish", StringComparison.OrdinalIgnoreCase);
-                        string trackId = isOrig ? "original" : (isTr ? "tr" : (!string.IsNullOrEmpty(langCode) ? langCode : dispName));
+                        bool isOrig = isExplicitOrig || (!isTr && isDef);
+                        if (isTr && !isExplicitOrig) isOrig = false;
+                        string trackId = isTr && !isExplicitOrig ? "tr" : (isOrig ? "original" : (!string.IsNullOrEmpty(langCode) ? langCode : dispName));
                         int itag = f.TryGetProperty("itag", out var itEl) && itEl.TryGetInt32(out int itVal) ? itVal : 0;
                         string fmtId = itag > 0 ? itag.ToString() : "";
                         bool isOpus = mime.Contains("opus", StringComparison.OrdinalIgnoreCase) || itag == 251;
@@ -573,29 +575,51 @@ public static class StreamProbeService
                 var langMatch = Regex.Match(trimmed, @"LANGUAGE=""([^""]+)""", RegexOptions.IgnoreCase);
                 var groupMatch = Regex.Match(trimmed, @"GROUP-ID=""([^""]+)""", RegexOptions.IgnoreCase);
                 var defMatch = Regex.Match(trimmed, @"DEFAULT=(YES|NO)", RegexOptions.IgnoreCase);
+                var uriMatch = Regex.Match(trimmed, @"URI=""([^""]+)""", RegexOptions.IgnoreCase);
 
                 string name = nameMatch.Success ? nameMatch.Groups[1].Value : "Audio";
                 string lang = langMatch.Success ? langMatch.Groups[1].Value : "";
                 string groupId = groupMatch.Success ? groupMatch.Groups[1].Value : "";
+                string uri = uriMatch.Success ? uriMatch.Groups[1].Value : "";
                 bool isDef = defMatch.Success && defMatch.Groups[1].Value.Equals("YES", StringComparison.OrdinalIgnoreCase);
 
-                string trackKey = $"{name}_{lang}".ToLowerInvariant();
+                string trackKey = $"{name}_{lang}_{uri}".ToLowerInvariant();
                 if (audioKeys.Add(trackKey))
                 {
-                    bool isOrig = isDef || name.Contains("original", StringComparison.OrdinalIgnoreCase) ||
-                                  name.Contains("ingilizce", StringComparison.OrdinalIgnoreCase) ||
-                                  name.Contains("english", StringComparison.OrdinalIgnoreCase) ||
-                                  lang.Equals("en", StringComparison.OrdinalIgnoreCase);
-
                     bool isTr = name.Contains("turkish", StringComparison.OrdinalIgnoreCase) ||
                                 name.Contains("türkçe", StringComparison.OrdinalIgnoreCase) ||
+                                name.Contains("turkce", StringComparison.OrdinalIgnoreCase) ||
                                 name.Contains("dublaj", StringComparison.OrdinalIgnoreCase) ||
-                                lang.Equals("tr", StringComparison.OrdinalIgnoreCase);
+                                lang.StartsWith("tr", StringComparison.OrdinalIgnoreCase) ||
+                                lang.StartsWith("tur", StringComparison.OrdinalIgnoreCase) ||
+                                Regex.IsMatch(uri, @"(?:^|[-_./])(tr|tur|turkish|dublaj)(?:[-_./]|$)", RegexOptions.IgnoreCase);
 
-                    string trackId = "best";
-                    if (isOrig) trackId = "original";
-                    else if (isTr) trackId = "tr";
+                    bool isExplicitOrig = name.Contains("original", StringComparison.OrdinalIgnoreCase) ||
+                                          name.Contains("orijinal", StringComparison.OrdinalIgnoreCase) ||
+                                          name.Contains("altyazı", StringComparison.OrdinalIgnoreCase) ||
+                                          name.Contains("altyazi", StringComparison.OrdinalIgnoreCase) ||
+                                          name.Contains("ingilizce", StringComparison.OrdinalIgnoreCase) ||
+                                          name.Contains("english", StringComparison.OrdinalIgnoreCase) ||
+                                          lang.StartsWith("en", StringComparison.OrdinalIgnoreCase) ||
+                                          Regex.IsMatch(uri, @"(?:^|[-_./])(en|eng|english|orig|original)(?:[-_./]|$)", RegexOptions.IgnoreCase);
+
+                    // IMPORTANT: Turkish movie sites set DEFAULT=YES on "Türkçe Dublaj".
+                    // Never classify a Turkish track as "Original" just because DEFAULT=YES unless it explicitly says "Original/Orijinal"!
+                    bool isOrig = !isTr && (isExplicitOrig || isDef);
+
+                    if (isTr && string.IsNullOrEmpty(lang)) lang = "tr";
+                    else if (isOrig && string.IsNullOrEmpty(lang)) lang = "en";
+
+                    string trackId;
+                    if (isTr) trackId = "tr";
+                    else if (isOrig) trackId = "original";
                     else trackId = !string.IsNullOrEmpty(lang) ? lang : name.ToLowerInvariant();
+
+                    // Ensure we never collide two distinct audio tracks onto the same TrackId
+                    if (result.AudioTracks.Any(a => a.TrackId.Equals(trackId, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        trackId = $"{trackId}_{result.AudioTracks.Count + 1}";
+                    }
 
                     string label = FormatAudioLabel(lang, name, isOrig);
 
@@ -665,10 +689,44 @@ public static class StreamProbeService
             }
         }
 
+        // If the HLS URL indicates a Turkish Dual-Audio encode (e.g. "trdual", "dual") and only 1 track was listed in the manifest
+        // (or one track had generic/missing metadata), ensure both "Orijinal Ses" and "Türkçe Dublaj" are selectable!
+        if (Regex.IsMatch(baseManifestUrl ?? "", @"(trdual|dual[-_]?audio|[-_]dual)", RegexOptions.IgnoreCase))
+        {
+            bool hasTr = result.AudioTracks.Any(a => a.TrackId == "tr" || a.Lang.StartsWith("tr", StringComparison.OrdinalIgnoreCase) || a.Label.Contains("Türkçe", StringComparison.OrdinalIgnoreCase));
+            bool hasOrig = result.AudioTracks.Any(a => a.TrackId == "original" || a.Label.Contains("Orijinal", StringComparison.OrdinalIgnoreCase));
+
+            if (hasTr && !hasOrig)
+            {
+                result.AudioTracks.Add(new AudioTrackInfo
+                {
+                    TrackId = "original",
+                    Lang = "en",
+                    Label = "Orijinal Ses - İngilizce (English)",
+                    IsDefault = false
+                });
+            }
+            else if (hasOrig && !hasTr)
+            {
+                result.AudioTracks.Add(new AudioTrackInfo
+                {
+                    TrackId = "tr",
+                    Lang = "tr",
+                    Label = "Türkçe Dublaj",
+                    IsDefault = false
+                });
+            }
+            else if (result.AudioTracks.Count == 0)
+            {
+                result.AudioTracks.Add(new AudioTrackInfo { TrackId = "original", Lang = "en", Label = "Orijinal Ses - İngilizce (English)", IsDefault = true });
+                result.AudioTracks.Add(new AudioTrackInfo { TrackId = "tr", Lang = "tr", Label = "Türkçe Dublaj", IsDefault = false });
+            }
+        }
+
         // Sort qualities descending (1080 -> 720 -> 480 ...)
         result.Qualities = result.Qualities.OrderByDescending(q => q.Height).ToList();
 
-        // Sort audio tracks consistently (Turkish first, Original second, English third)
+        // Sort audio tracks consistently (Original first, Turkish second, English third)
         result.AudioTracks = SortAudioTracks(result.AudioTracks);
 
         return result;
@@ -793,11 +851,6 @@ public static class StreamProbeService
                                    (acodec != "none" || formatId.Contains("audio") || formatNote.Contains("audio"));
                     if (isAudio)
                     {
-                        bool isOriginal = formatNote.Contains("Original", StringComparison.OrdinalIgnoreCase) ||
-                                          formatNote.Contains("Orijinal", StringComparison.OrdinalIgnoreCase) ||
-                                          formatNote.Contains("default", StringComparison.OrdinalIgnoreCase) ||
-                                          (f.TryGetProperty("language_preference", out var lpEl) && lpEl.TryGetInt32(out int lp) && lp > 0);
-
                         string cleanLang = (lang ?? "").Trim().ToLowerInvariant();
                         if (cleanLang.Contains('-')) cleanLang = cleanLang.Split('-')[0];
                         if (cleanLang.Contains('_')) cleanLang = cleanLang.Split('_')[0];
@@ -811,9 +864,25 @@ public static class StreamProbeService
                             }
                         }
 
-                        bool isTr = cleanLang == "tr" || formatNote.Contains("Turkish", StringComparison.OrdinalIgnoreCase) || formatNote.Contains("Türkçe", StringComparison.OrdinalIgnoreCase);
+                        bool isTr = cleanLang == "tr" || cleanLang == "tur" ||
+                                    formatNote.Contains("Turkish", StringComparison.OrdinalIgnoreCase) ||
+                                    formatNote.Contains("Türkçe", StringComparison.OrdinalIgnoreCase) ||
+                                    formatNote.Contains("Turkce", StringComparison.OrdinalIgnoreCase) ||
+                                    formatNote.Contains("Dublaj", StringComparison.OrdinalIgnoreCase) ||
+                                    formatId.Contains("Turkish", StringComparison.OrdinalIgnoreCase) ||
+                                    formatId.Contains("Dublaj", StringComparison.OrdinalIgnoreCase);
 
-                        string trackId = isOriginal ? "original" : (isTr ? "tr" : (!string.IsNullOrEmpty(cleanLang) ? cleanLang : formatId));
+                        bool isExplicitOrig = formatNote.Contains("Original", StringComparison.OrdinalIgnoreCase) ||
+                                              formatNote.Contains("Orijinal", StringComparison.OrdinalIgnoreCase) ||
+                                              formatId.Contains("Original", StringComparison.OrdinalIgnoreCase);
+
+                        bool isDefaultPref = formatNote.Contains("default", StringComparison.OrdinalIgnoreCase) ||
+                                             (f.TryGetProperty("language_preference", out var lpEl) && lpEl.TryGetInt32(out int lp) && lp > 0);
+
+                        bool isOriginal = isExplicitOrig || (!isTr && isDefaultPref);
+                        if (isTr && !isExplicitOrig) isOriginal = false;
+
+                        string trackId = isTr && !isExplicitOrig ? "tr" : (isOriginal ? "original" : (!string.IsNullOrEmpty(cleanLang) ? cleanLang : formatId));
                         string label = FormatAudioLabel(!string.IsNullOrEmpty(cleanLang) ? cleanLang : lang, formatNote, isOriginal);
 
                         if (!audioMap.TryGetValue(trackId, out var existingTrack))

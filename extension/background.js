@@ -583,24 +583,35 @@ async function parseHlsManifestQuick(manifestUrl, tabId) {
       } else if (l.startsWith('#EXT-X-MEDIA:') && /TYPE=AUDIO/i.test(l)) {
         const nameM = l.match(/NAME="([^"]+)"/i);
         const langM = l.match(/LANGUAGE="([^"]+)"/i);
+        const uriM = l.match(/URI="([^"]+)"/i);
+        const defM = l.match(/DEFAULT=(YES|NO)/i);
         const name = nameM ? nameM[1] : 'Audio';
         const lang = langM ? langM[1] : '';
-        const key = `${name}_${lang}`.toLowerCase();
+        const uri = uriM ? uriM[1] : '';
+        const isDef = defM && defM[1].toUpperCase() === 'YES';
+        const key = `${name}_${lang}_${uri}`.toLowerCase();
         if (!audioKeys.has(key)) {
           audioKeys.add(key);
+          const isTr = /turk|türk|dublaj/i.test(name) || /^tr/i.test(lang) || /(?:^|[-_./])(tr|tur|turkish|dublaj)(?:[-_./]|$)/i.test(uri);
+          const isExplicitOrig = /original|orijinal|altyaz|ingilizce|english/i.test(name) || /^en/i.test(lang) || /(?:^|[-_./])(en|eng|english|orig|original)(?:[-_./]|$)/i.test(uri);
+          const isOrig = !isTr && (isExplicitOrig || isDef);
+
           let trackId = 'best';
           let label = name;
-          if (/original|eng/i.test(name) || lang === 'en') {
-            trackId = 'original';
-            label = 'Orijinal Ses (Original Audio)';
-          } else if (/turk|dublaj/i.test(name) || lang === 'tr') {
+          if (isTr) {
             trackId = 'tr';
-            label = 'Türkçe Dublaj (Turkish)';
+            label = 'Türkçe Dublaj';
+          } else if (isOrig) {
+            trackId = 'original';
+            label = 'Orijinal Ses - İngilizce (English)';
           } else {
             trackId = lang || name;
             label = lang ? `${name} (${lang})` : name;
           }
-          audioTracks.push({ trackId, label, lang });
+          if (audioTracks.some(a => a.trackId === trackId)) {
+            trackId = `${trackId}_${audioTracks.length + 1}`;
+          }
+          audioTracks.push({ trackId, label, lang: isTr ? (lang || 'tr') : (isOrig ? (lang || 'en') : lang), isDefault: isDef });
         }
       } else if (l.startsWith('#EXT-X-MEDIA:') && /TYPE=SUBTITLES/i.test(l)) {
         const nameM = l.match(/NAME="([^"]+)"/i);
@@ -618,6 +629,15 @@ async function parseHlsManifestQuick(manifestUrl, tabId) {
         const subObj = { label, lang, url: subUrl, time: Date.now() };
         subtitles.push(subObj);
         if (tabId) addSubtitle(tabId, subObj).catch?.(() => {});
+      }
+    }
+    if (/(trdual|dual[-_]?audio|[-_]dual)/i.test(manifestUrl || '')) {
+      const hasTr = audioTracks.some(a => a.trackId === 'tr' || /^tr/i.test(a.lang) || /türkçe/i.test(a.label));
+      const hasOrig = audioTracks.some(a => a.trackId === 'original' || /orijinal/i.test(a.label));
+      if (hasTr && !hasOrig) {
+        audioTracks.push({ trackId: 'original', label: 'Orijinal Ses - İngilizce (English)', lang: 'en', isDefault: false });
+      } else if (hasOrig && !hasTr) {
+        audioTracks.push({ trackId: 'tr', label: 'Türkçe Dublaj', lang: 'tr', isDefault: false });
       }
     }
     qualities.sort((a, b) => b.height - a.height);

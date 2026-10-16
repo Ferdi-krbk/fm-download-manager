@@ -32,15 +32,32 @@ async function currentTab() {
   return tabs && tabs[0];
 }
 
+async function sendTabMessageWithTimeout(tabId, msg, timeoutMs = 1200) {
+  if (!tabId) return null;
+  return new Promise((resolve) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (!settled) { settled = true; resolve(null); }
+    }, timeoutMs);
+    try {
+      api.tabs.sendMessage(tabId, msg, (r) => {
+        if (!settled) {
+          settled = true;
+          clearTimeout(timer);
+          resolve(api.runtime.lastError ? null : r);
+        }
+      });
+    } catch {
+      if (!settled) { settled = true; clearTimeout(timer); resolve(null); }
+    }
+  });
+}
+
 async function getTabSubtitles(tabId) {
   let subs = [];
   if (tabId) {
     try {
-      const resp = await new Promise((resolve) => {
-        api.tabs.sendMessage(tabId, { type: 'detectSubtitles' }, (r) => {
-          resolve(api.runtime.lastError ? null : r);
-        });
-      });
+      const resp = await sendTabMessageWithTimeout(tabId, { type: 'detectSubtitles' }, 1200);
       if (resp && Array.isArray(resp.subtitles) && resp.subtitles.length > 0) {
         subs = resp.subtitles;
       }
@@ -54,6 +71,7 @@ async function getTabSubtitles(tabId) {
         if (s && s.url && !subs.some(x => x.url === s.url)) {
           subs.push({
             code: s.lang || s.code || 'und',
+            lang: s.lang || s.code || 'und',
             label: s.label || 'Altyazı',
             url: s.url
           });
@@ -276,6 +294,7 @@ $('pageVideo').onclick = async () => {
   let filename = tab.title || '';
   let referer = tab.url;
   let best = null;
+  let activeMedia = null;
 
   if (isKnownVideoHost) {
     // Known video platform (YouTube, TikTok, Twitter): ALWAYS use the active page URL & title!
@@ -283,13 +302,8 @@ $('pageVideo').onclick = async () => {
     filename = tab.title || '';
     kind = 'video';
     referer = tab.url;
-    let activeMedia = null;
     try {
-      activeMedia = await new Promise((resolve) => {
-        api.tabs.sendMessage(tab.id, { type: 'getActiveMedia' }, (r) => {
-          resolve(api.runtime.lastError ? null : r);
-        });
-      });
+      activeMedia = await sendTabMessageWithTimeout(tab.id, { type: 'getActiveMedia' }, 1200);
       if (activeMedia && activeMedia.url) targetUrl = activeMedia.url;
       if (activeMedia && activeMedia.name) filename = activeMedia.name;
     } catch {}
@@ -305,55 +319,53 @@ $('pageVideo').onclick = async () => {
         referer = best.initiator.endsWith('/') ? best.initiator : best.initiator + '/';
       }
     } else {
-    // Generic website with no captured media yet: check for playing video/audio element
-    let direct = null;
-    try {
-      direct = await new Promise((resolve) => {
-        api.tabs.sendMessage(tab.id, { type: 'getDirectMediaUrl' }, (r) => {
-          resolve(api.runtime.lastError ? null : r);
-        });
-      });
-    } catch {}
+      // Generic website with no captured media yet: check for playing video/audio element
+      const direct = await sendTabMessageWithTimeout(tab.id, { type: 'getDirectMediaUrl' }, 1200);
 
-    if (direct && direct.url && !direct.url.startsWith('blob:')) {
-      targetUrl = direct.url;
-      filename = direct.name || '';
-      kind = 'file';
-    } else {
-      // No media detected on generic page (e.g. NotebookLM before clicking play):
-      // Alert user instead of sending unsupported webpage URL to yt-dlp
-      $('pageVideo').textContent = t('popupPlayFirst') || 'Önce medyayı oynatın';
-      setTimeout(() => ($('pageVideo').textContent = t('popupPageVideo')), 2500);
-      return;
+      if (direct && direct.url && !direct.url.startsWith('blob:')) {
+        targetUrl = direct.url;
+        filename = direct.name || '';
+        kind = /\.m3u8(\?|$)/i.test(direct.url) ? 'video' : 'file';
+      } else {
+        // No media detected on generic page (e.g. NotebookLM before clicking play):
+        // Alert user instead of sending unsupported webpage URL to yt-dlp
+        $('pageVideo').textContent = t('popupPlayFirst') || 'Önce medyayı oynatın';
+        setTimeout(() => ($('pageVideo').textContent = t('popupPageVideo')), 2500);
+        return;
+      }
     }
   }
-}
 
   $('pageVideo').textContent = t('popupSending');
-  const isVid = kind === 'video' || kind === 'hls' || kind === 'dash';
-  const subs = isVid ? ((activeMedia?.subtitles && activeMedia.subtitles.length) ? activeMedia.subtitles : await getTabSubtitles(tab?.id)) : [];
-  const chosenSub = isVid ? chooseBestSubUrl(subs, 'tr') : '';
-  const audios = (activeMedia?.audioTracks && activeMedia.audioTracks.length) ? activeMedia.audioTracks : (best?.audioTracks || []);
+  try {
+    const isVid = kind === 'video' || kind === 'hls' || kind === 'dash';
+    const subs = isVid ? ((activeMedia?.subtitles && activeMedia.subtitles.length) ? activeMedia.subtitles : await getTabSubtitles(tab?.id)) : [];
+    const chosenSub = isVid ? chooseBestSubUrl(subs, 'tr') : '';
+    const audios = (activeMedia?.audioTracks && activeMedia.audioTracks.length) ? activeMedia.audioTracks : (best?.audioTracks || []);
+    const qualities = (activeMedia?.videoQualities && activeMedia.videoQualities.length) ? activeMedia.videoQualities : (best?.videoQualities || []);
 
-  const r = await send({
-    type: 'download',
-    url: targetUrl,
-    filename,
-    referer,
-    kind,
-    writeSubtitles: isVid,
-    subtitles: subs,
-    subtitleUrl: chosenSub,
-    subtitleLangs: 'tr,en',
-    videoQualities: best?.videoQualities || [],
-    audioTracks: audios
-  });
-  if (r && r.ok) {
-    $('pageVideo').textContent = t('popupStarted');
-  } else {
-    const isUnauth = r && r.error && r.error.toLowerCase().includes('unauthorized');
-    $('pageVideo').textContent = isUnauth ? t('popupNotPaired') : t('popupFailed');
-    if (isUnauth) refresh();
+    const r = await send({
+      type: 'download',
+      url: targetUrl,
+      filename,
+      referer,
+      kind,
+      writeSubtitles: isVid,
+      subtitles: subs,
+      subtitleUrl: chosenSub,
+      subtitleLangs: 'tr,en',
+      videoQualities: qualities,
+      audioTracks: audios
+    });
+    if (r && r.ok) {
+      $('pageVideo').textContent = t('popupStarted');
+    } else {
+      const isUnauth = r && r.error && r.error.toLowerCase().includes('unauthorized');
+      $('pageVideo').textContent = isUnauth ? t('popupNotPaired') : t('popupFailed');
+      if (isUnauth) refresh();
+    }
+  } catch (err) {
+    $('pageVideo').textContent = t('popupFailed');
   }
   loadDownloads();
   setTimeout(() => ($('pageVideo').textContent = t('popupPageVideo')), 2500);

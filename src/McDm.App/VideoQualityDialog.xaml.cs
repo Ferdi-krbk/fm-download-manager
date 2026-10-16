@@ -217,25 +217,48 @@ public partial class VideoQualityDialog : Window
         if (_audioTracks.Count > 0)
         {
             ComboBoxItem? itemToSelect = null;
+            bool hasTrItem = false;
+            bool hasOrigItem = false;
+
             foreach (var a in _audioTracks)
             {
-                string displayLabel = a.Label;
-                if (!displayLabel.Contains("Dublaj", StringComparison.OrdinalIgnoreCase) &&
-                    !displayLabel.Contains("Orijinal", StringComparison.OrdinalIgnoreCase))
+                string displayLabel = a.Label ?? "";
+                bool isTrTrack = a.TrackId == "tr" ||
+                                 a.Lang.StartsWith("tr", StringComparison.OrdinalIgnoreCase) ||
+                                 displayLabel.Contains("Türkçe", StringComparison.OrdinalIgnoreCase) ||
+                                 displayLabel.Contains("Turkish", StringComparison.OrdinalIgnoreCase) ||
+                                 displayLabel.Contains("Dublaj", StringComparison.OrdinalIgnoreCase);
+
+                bool isExplicitOrig = a.TrackId == "original" ||
+                                      displayLabel.Contains("Orijinal", StringComparison.OrdinalIgnoreCase) ||
+                                      displayLabel.Contains("Original", StringComparison.OrdinalIgnoreCase);
+
+                // Fix previous mislabeling where a Turkish Dub track with DEFAULT=YES was labeled "Orijinal Ses - Türkçe"
+                if (isTrTrack && displayLabel.Contains("Orijinal Ses - Türkçe", StringComparison.OrdinalIgnoreCase))
                 {
-                    if (a.IsDefault || displayLabel.Contains("original", StringComparison.OrdinalIgnoreCase))
-                    {
-                        displayLabel = $"Orijinal Ses ({displayLabel})";
-                    }
-                    else if (a.Lang.StartsWith("tr", StringComparison.OrdinalIgnoreCase) || displayLabel.Equals("Türkçe", StringComparison.OrdinalIgnoreCase))
+                    displayLabel = "Türkçe Dublaj";
+                    a.TrackId = "tr";
+                    isExplicitOrig = false;
+                }
+                else if (!displayLabel.Contains("Dublaj", StringComparison.OrdinalIgnoreCase) &&
+                         !displayLabel.Contains("Orijinal", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (isTrTrack && !isExplicitOrig)
                     {
                         displayLabel = "Türkçe Dublaj";
+                    }
+                    else if (isExplicitOrig || (!isTrTrack && a.IsDefault))
+                    {
+                        displayLabel = $"Orijinal Ses ({displayLabel})";
                     }
                     else
                     {
                         displayLabel = $"{displayLabel} Dublaj";
                     }
                 }
+
+                if (isTrTrack && !isExplicitOrig) hasTrItem = true;
+                if (isExplicitOrig || (!isTrTrack && a.IsDefault)) hasOrigItem = true;
 
                 var cbi = new ComboBoxItem
                 {
@@ -257,6 +280,30 @@ public partial class VideoQualityDialog : Window
                         itemToSelect = cbi;
                 }
             }
+
+            // If only 1 track was detected (e.g. player switched stream or only exposed 1 track in sub-manifest),
+            // always provide the complementary option so the user can still choose "Orijinal Ses (Altyazılı)" or "Türkçe Dublaj"!
+            if (!hasOrigItem)
+            {
+                var origFallback = new ComboBoxItem
+                {
+                    Content = "Orijinal Ses (Altyazılı / Varsayılan)",
+                    Tag = "original"
+                };
+                CmbAudioTrack.Items.Add(origFallback);
+                if (previouslySelected is string ps && ps == "original") itemToSelect = origFallback;
+            }
+            if (!hasTrItem)
+            {
+                var trFallback = new ComboBoxItem
+                {
+                    Content = "Türkçe Dublaj (Varsa)",
+                    Tag = "tr"
+                };
+                CmbAudioTrack.Items.Add(trFallback);
+                if (previouslySelected is string ps && ps == "tr") itemToSelect = trFallback;
+            }
+
             CmbAudioTrack.SelectedItem = itemToSelect ?? CmbAudioTrack.Items[0];
             TxtAudioTrackCount.Text = $"{_audioTracks.Count} Parça Tespit Edildi";
         }

@@ -766,21 +766,22 @@ public static class StreamProbeService
             psi.ArgumentList.Add("--no-playlist");
             psi.ArgumentList.Add("--socket-timeout"); psi.ArgumentList.Add("8");
             psi.ArgumentList.Add("--no-warnings");
-            if (!url.Contains("youtube.com", StringComparison.OrdinalIgnoreCase) &&
-                !url.Contains("youtu.be", StringComparison.OrdinalIgnoreCase))
+            bool isYt = url.Contains("youtube.com", StringComparison.OrdinalIgnoreCase) ||
+                        url.Contains("youtu.be", StringComparison.OrdinalIgnoreCase);
+            if (!isYt)
             {
                 psi.ArgumentList.Add("--extractor-args"); psi.ArgumentList.Add("generic:impersonate");
             }
 
-            if (!string.IsNullOrWhiteSpace(userAgent))
+            if (!string.IsNullOrWhiteSpace(userAgent) && !isYt)
             {
                 psi.ArgumentList.Add("--user-agent"); psi.ArgumentList.Add(userAgent);
             }
-            if (!string.IsNullOrWhiteSpace(referer))
+            if (!string.IsNullOrWhiteSpace(referer) && !isYt)
             {
                 psi.ArgumentList.Add("--referer"); psi.ArgumentList.Add(referer);
             }
-            if (cookieFile != null)
+            if (cookieFile != null && !isYt)
             {
                 psi.ArgumentList.Add("--cookies"); psi.ArgumentList.Add(cookieFile);
             }

@@ -190,20 +190,20 @@ public sealed class VideoDownloader
         {
             a.Add("--extractor-args");
             a.Add("generic:impersonate");
-        }
-        if (!string.IsNullOrWhiteSpace(userAgent))
-        {
-            a.Add("--user-agent");
-            a.Add(userAgent);
-        }
-        if (!string.IsNullOrWhiteSpace(referer))
-        {
-            a.Add("--referer");
-            a.Add(referer);
-            if (Uri.TryCreate(referer, UriKind.Absolute, out var refUri))
+            if (!string.IsNullOrWhiteSpace(userAgent))
             {
-                a.Add("--add-header");
-                a.Add($"Origin:{refUri.Scheme}://{refUri.Authority}");
+                a.Add("--user-agent");
+                a.Add(userAgent);
+            }
+            if (!string.IsNullOrWhiteSpace(referer))
+            {
+                a.Add("--referer");
+                a.Add(referer);
+                if (Uri.TryCreate(referer, UriKind.Absolute, out var refUri))
+                {
+                    a.Add("--add-header");
+                    a.Add($"Origin:{refUri.Scheme}://{refUri.Authority}");
+                }
             }
         }
 
@@ -527,19 +527,26 @@ public sealed class VideoDownloader
                 await File.WriteAllTextAsync(cookieFile, cookieText, new UTF8Encoding(false), ct);
             }
 
+            bool isYt = IsYouTubeUrl(item.Request.Url);
+            string? firstAttemptCookies = isYt ? null : cookieFile;
+            string? fallbackCookies = isYt ? cookieFile : null;
+
             try
             {
-                await ExecuteYtDlpOnceAsync(item, opt, outDir, cookieFile, tool, ct);
+                await ExecuteYtDlpOnceAsync(item, opt, outDir, firstAttemptCookies, tool, ct);
             }
-            catch (FatalDownloadException ex) when (cookieFile != null && !ct.IsCancellationRequested &&
+            catch (FatalDownloadException ex) when (fallbackCookies != firstAttemptCookies && !ct.IsCancellationRequested &&
                    (ex.Message.Contains("reload", StringComparison.OrdinalIgnoreCase) ||
                     ex.Message.Contains("cookie", StringComparison.OrdinalIgnoreCase) ||
                     ex.Message.Contains("sign in", StringComparison.OrdinalIgnoreCase) ||
+                    ex.Message.Contains("age", StringComparison.OrdinalIgnoreCase) ||
+                    ex.Message.Contains("private", StringComparison.OrdinalIgnoreCase) ||
+                    ex.Message.Contains("unavailable", StringComparison.OrdinalIgnoreCase) ||
                     ex.Message.Contains("bot", StringComparison.OrdinalIgnoreCase) ||
                     ex.Message.Contains("403", StringComparison.OrdinalIgnoreCase)))
             {
-                // Browser cookies triggered YouTube's reload/bot check. Retry cleanly without cookies.
-                await ExecuteYtDlpOnceAsync(item, opt, outDir, null, tool, ct);
+                // Retry with alternate cookie mode (with cookies for age-restricted YouTube, or without cookies if cookies caused Video unavailable/reload)
+                await ExecuteYtDlpOnceAsync(item, opt, outDir, fallbackCookies, tool, ct);
             }
 
             // 3. Post-process video with subtitle (save .srt alongside and embed with ffmpeg)

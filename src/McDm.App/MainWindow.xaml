@@ -51,7 +51,7 @@
                         </Border>
                         <TextBlock Text="FM Download Manager" FontFamily="{DynamicResource UiFont}" FontWeight="Bold" FontSize="12.5" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" />
                         <Border Background="{DynamicResource Bg3Brush}" CornerRadius="4" Padding="5,1" Margin="8,0,0,0" VerticalAlignment="Center">
-                            <TextBlock Text="v3.5" FontFamily="{DynamicResource UiFont}" FontSize="9.5" FontWeight="SemiBold" Foreground="{DynamicResource AccentHoverBrush}" />
+                            <TextBlock Text="v3.6" FontFamily="{DynamicResource UiFont}" FontSize="9.5" FontWeight="SemiBold" Foreground="{DynamicResource AccentHoverBrush}" />
                         </Border>
                     </StackPanel>
                 </DockPanel>
@@ -692,7 +692,7 @@
                 <DockPanel LastChildFill="True" VerticalAlignment="Center">
                     <!-- Right: Info -->
                     <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
-                        <TextBlock Text="Cyber-Fluent v3.5" FontFamily="{DynamicResource UiFont}" FontSize="10.5" Foreground="{DynamicResource TextMuteBrush}" VerticalAlignment="Center" />
+                        <TextBlock Text="Cyber-Fluent v3.6" FontFamily="{DynamicResource UiFont}" FontSize="10.5" Foreground="{DynamicResource TextMuteBrush}" VerticalAlignment="Center" />
                     </StackPanel>
 
                     <!-- Left: Status Summary -->

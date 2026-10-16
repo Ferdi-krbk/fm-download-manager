@@ -460,16 +460,20 @@ public partial class MainWindow : Window
     {
         var tools = new ToolPaths();
         var ytDlpPath = tools.YtDlpPath;
-        if (string.IsNullOrEmpty(ytDlpPath))
-        {
-            DarkMessageBox.Show(this, "yt-dlp is not installed. Run scripts/fetch-tools.ps1 first.", Strings.AppTitle, MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
 
         StatusText.Text = Strings.UpdatingYtDlp;
         BtnUpdateYtDlp.IsEnabled = false;
         try
         {
+            if (string.IsNullOrEmpty(ytDlpPath))
+            {
+                StatusText.Text = "yt-dlp indiriliyor...";
+                ytDlpPath = await tools.DownloadYtDlpAsync();
+                StatusText.Text = Strings.YtDlpUpdated;
+                DarkMessageBox.Show(this, "yt-dlp başarıyla indirildi ve kuruldu.", Strings.AppTitle, MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
             var psi = new ProcessStartInfo
             {
                 FileName = ytDlpPath,

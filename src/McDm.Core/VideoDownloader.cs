@@ -31,6 +31,24 @@ public sealed class ToolPaths
     /// <summary>Where "Update yt-dlp" writes the new binary (always writable, per user).</summary>
     public string UserYtDlpTarget => Path.Combine(UserToolsDirectory, "yt-dlp" + Exe);
 
+    public async Task<string> DownloadYtDlpAsync(CancellationToken ct = default)
+    {
+        Directory.CreateDirectory(UserToolsDirectory);
+        string target = UserYtDlpTarget;
+        string tmp = target + ".tmp";
+        using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("FMDownloadManager/3.6 (Windows; x64)");
+        using (var resp = await client.GetAsync("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe", HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false))
+        {
+            resp.EnsureSuccessStatusCode();
+            using var fs = File.Create(tmp);
+            await resp.Content.CopyToAsync(fs, ct).ConfigureAwait(false);
+        }
+        if (File.Exists(target)) File.Delete(target);
+        File.Move(tmp, target);
+        return target;
+    }
+
     private string? Find(string name, string envVar)
     {
         if (Environment.GetEnvironmentVariable(envVar) is { Length: > 0 } fromEnv && File.Exists(fromEnv)) return fromEnv;
@@ -431,7 +449,21 @@ public sealed class VideoDownloader
 
     public async Task RunAsync(DownloadItem item, CancellationToken ct)
     {
-        var tool = _ytDlp() ?? throw new FatalDownloadException("yt-dlp is not installed");
+        var tool = _ytDlp();
+        if (tool == null)
+        {
+            item.Stage = "yt-dlp hazırlanıyor...";
+            try
+            {
+                var tp = new ToolPaths();
+                string path = await tp.DownloadYtDlpAsync(ct).ConfigureAwait(false);
+                tool = new ToolLauncher(path);
+            }
+            catch (Exception ex)
+            {
+                throw new FatalDownloadException("yt-dlp aracı bulunamadı ve otomatik indirilemedi: " + ex.Message);
+            }
+        }
         var baseOpt = _options();
         var opt = new VideoOptions
         {

@@ -67,7 +67,7 @@ public sealed class ToolPaths
         Directory.CreateDirectory(UserToolsDirectory);
         string target = UserYtDlpTarget;
         string tmp = target + ".tmp";
-        using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
+        using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
         client.DefaultRequestHeaders.UserAgent.ParseAdd("FMDownloadManager/3.6 (Windows; x64)");
         using (var resp = await client.GetAsync("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe", HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false))
         {
@@ -85,7 +85,7 @@ public sealed class ToolPaths
         Directory.CreateDirectory(UserToolsDirectory);
         string target = UserQuickJsTarget;
         string tmp = target + ".tmp";
-        using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
+        using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
         client.DefaultRequestHeaders.UserAgent.ParseAdd("FMDownloadManager/3.6 (Windows; x64)");
         using (var resp = await client.GetAsync("https://github.com/quickjs-ng/quickjs/releases/download/v0.17.0/qjs-windows-x86_64.exe", HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false))
         {
@@ -111,6 +111,8 @@ public sealed class ToolPaths
             Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Tools", name + Exe),
             Path.Combine(AppDomain.CurrentDomain.BaseDirectory, name + Exe),
             Path.Combine(Environment.CurrentDirectory, "Tools", name + Exe),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "FM Download Manager", "Tools", name + Exe),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "FM Download Manager", "Tools", name + Exe),
         };
 
         if (Environment.ProcessPath is { Length: > 0 } procPath && Path.GetDirectoryName(procPath) is { } procDir)
@@ -652,16 +654,6 @@ public sealed class VideoDownloader
             bool isYt = IsYouTubeUrl(item.Request.Url);
             var tp = new ToolPaths();
             var jsRuntime = tp.GetPreferredJsRuntime();
-            if (jsRuntime == null && isYt)
-            {
-                item.Stage = IsTurkish ? "QuickJS motoru hazırlanıyor..." : "Preparing QuickJS engine...";
-                try
-                {
-                    string qjs = await tp.DownloadQuickJsAsync(ct).ConfigureAwait(false);
-                    jsRuntime = ("quickjs", qjs);
-                }
-                catch { /* non-fatal fallback */ }
-            }
 
             string? firstAttemptCookies = isYt ? null : cookieFile;
             string? fallbackCookies = isYt ? cookieFile : null;

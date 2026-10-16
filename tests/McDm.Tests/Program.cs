@@ -115,7 +115,7 @@ DownloadManager NewManager(string root, string? dl = null) =>
 await Test("multi-connection download is byte-exact", async () =>
 {
     var root = Tmp(); using var m = NewManager(root);
-    var it = m.Add(new DownloadRequest { Url = Base + "/file", FileName = "big.bin" });
+    var it = m.Add(new DownloadRequest { Url = Base + "/file", FileName = "big.bin", Segments = 4 });
     await WaitFor(() => it.Status is DownloadStatus.Completed or DownloadStatus.Failed, 30, "completion");
     Check(it.Status == DownloadStatus.Completed, "status " + it.Status + " " + it.Error);
     Check(HashFile(it.SavePath) == Hash(Big), "hash mismatch");

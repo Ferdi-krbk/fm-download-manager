@@ -189,7 +189,8 @@ async function sendToApp({ url, filename, referer, kind, format, audioOnly, subt
           'Referer': referer || '',
           'Accept': 'text/vtt,text/plain,*/*'
         },
-        credentials: 'include'
+        credentials: 'include',
+        signal: AbortSignal.timeout ? AbortSignal.timeout(3000) : undefined
       });
       if (subRes.ok) {
         subtitleContent = await subRes.text();

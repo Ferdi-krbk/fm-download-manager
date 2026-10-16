@@ -80,6 +80,7 @@ public partial class App : System.Windows.Application
             var dataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MC Download Manager");
             var mockTokens = new TokenStore(Path.Combine(dataDir, "bridge.token"));
             var mockSettings = AppSettings.Load();
+            ThemeManager.ApplyAccentColor(mockSettings.AccentColor);
             mockSettings.SpeedLimitKbps = 25600;
             var mockManager = new DownloadManager(dataDir, mockSettings.DownloadDirectory, uiContext: new DispatcherSynchronizationContext(Dispatcher));
             mockManager.Items.Clear();
@@ -202,8 +203,8 @@ public partial class App : System.Windows.Application
         try
         {
             _settings = AppSettings.Load();
-        if (_settings.Language == "tr") Strings.Culture = new System.Globalization.CultureInfo("tr");
-        else if (_settings.Language == "en") Strings.Culture = new System.Globalization.CultureInfo("en");
+            ThemeManager.ApplyAccentColor(_settings.AccentColor);
+            Strings.SetLanguage(_settings.Language);
 
         _showEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ShowEventName);
         _quitEvent = new EventWaitHandle(false, EventResetMode.AutoReset, QuitEventName);
@@ -264,7 +265,7 @@ public partial class App : System.Windows.Application
                     }
                     catch { }
                 };
-                _tray.ShowBalloonTip(3000, "DOWNLOAD COMPLETE", item.FileName, Forms.ToolTipIcon.Info);
+                _tray.ShowBalloonTip(3000, Strings.DownloadComplete, item.FileName, Forms.ToolTipIcon.Info);
             }
         };
 
@@ -388,8 +389,12 @@ public partial class App : System.Windows.Application
                             {
                                 try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(info.ReleaseUrl) { UseShellExecute = true }); } catch { }
                             };
-                            _tray.ShowBalloonTip(7000, "Yeni Güncelleme Mevcut!",
-                                $"FM Download Manager v{info.LatestVersion} yayınlandı. Tıklayarak indirebilirsiniz.", Forms.ToolTipIcon.Info);
+                            _tray.ShowBalloonTip(7000, 
+                                Strings.IsTurkish ? "Yeni Güncelleme Mevcut!" : "New Update Available!",
+                                Strings.IsTurkish 
+                                    ? $"FM Download Manager v{info.LatestVersion} yayınlandı. Tıklayarak indirebilirsiniz." 
+                                    : $"FM Download Manager v{info.LatestVersion} is available. Click to download.", 
+                                Forms.ToolTipIcon.Info);
                         }
 
                         _window?.NotifyUpdateAvailable(info);
@@ -408,7 +413,7 @@ public partial class App : System.Windows.Application
                 File.AppendAllText(Path.Combine(dir, "crash.log"), $"[{DateTime.UtcNow}] Startup fatal: {ex}\n");
             }
             catch { }
-            DarkMessageBox.Show(null, "Hata oluştu:\n" + ex.Message, Strings.AppTitle, MessageBoxButton.OK, MessageBoxImage.Error);
+            DarkMessageBox.Show(null, Strings.ErrorOccurred + ex.Message, Strings.AppTitle, MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -423,13 +428,13 @@ public partial class App : System.Windows.Application
         var startup = new Forms.ToolStripMenuItem(Strings.TrayStartWithWindows) { Checked = IsStartupEnabled(), CheckOnClick = true };
         startup.CheckedChanged += (_, _) => SetStartup(startup.Checked);
         menu.Items.Add(startup);
-        menu.Items.Add("Güncellemeleri Denetle...", null, async (_, _) =>
+        menu.Items.Add(Strings.TrayCheckUpdates, null, async (_, _) =>
         {
             var info = await UpdateChecker.CheckAsync();
             if (info != null && info.HasUpdate)
             {
                 var res = DarkMessageBox.Show(_window,
-                    $"Yeni bir sürüm yayınlandı!\n\nFM Download Manager v{info.LatestVersion}\n\nGüncellemeyi hemen indirip kurmak istiyor musunuz?",
+                    Strings.TrayNewVersionPrompt(info.LatestVersion),
                     Strings.AppTitle, MessageBoxButton.YesNo, MessageBoxImage.Information);
                 if (res == MessageBoxResult.Yes)
                 {
@@ -456,12 +461,12 @@ public partial class App : System.Windows.Application
             }
             else if (info != null)
             {
-                DarkMessageBox.Show(_window, $"Uygulamanız güncel!\n\nKurulu Sürüm: v{UpdateChecker.CurrentVersion}\nSon Sürüm: v{info.LatestVersion}",
+                DarkMessageBox.Show(_window, Strings.TrayUpToDate(UpdateChecker.CurrentVersion, info.LatestVersion),
                     Strings.AppTitle, MessageBoxButton.OK, MessageBoxImage.Information);
             }
             else
             {
-                DarkMessageBox.Show(_window, "Güncellemeler denetlenirken GitHub bağlantısı kurulamadı.",
+                DarkMessageBox.Show(_window, Strings.TrayCheckFailed,
                     Strings.AppTitle, MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         });
@@ -542,10 +547,8 @@ public partial class App : System.Windows.Application
 
                     if (isMagnet || isTorrentExt)
                     {
-                        var msg = isMagnet
-                            ? "Panoda Magnet indirme bağlantısı algılandı. İndirmek istiyor musunuz?"
-                            : "Panoda Torrent dosyası algılandı. İndirmek istiyor musunuz?";
-                        var res = DarkMessageBox.Show(MainWindow, msg, "Torrent İndir", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                        var msg = isMagnet ? Strings.ClipboardMagnetPrompt : Strings.ClipboardTorrentPrompt;
+                        var res = DarkMessageBox.Show(MainWindow, msg, Strings.DownloadTorrentTitle, MessageBoxButton.YesNo, MessageBoxImage.Question);
                         if (res == MessageBoxResult.Yes)
                         {
                             _manager?.Add(new DownloadRequest { Url = text, Kind = DownloadKind.Torrent });
@@ -637,7 +640,7 @@ public partial class App : System.Windows.Application
             {
                 _manager.ResumeAll();
                 if (_settings.NotificationsEnabled)
-                    _tray?.ShowBalloonTip(3000, "Zamanlayıcı", "Planlanan indirme saatine girildi. İndirmeler başlatıldı.", Forms.ToolTipIcon.Info);
+                    _tray?.ShowBalloonTip(3000, Strings.SchedulerTitle, Strings.SchedulerStarted, Forms.ToolTipIcon.Info);
             }
         }
         else if (!inWindow && _schedulerWasInWindow)
@@ -647,7 +650,7 @@ public partial class App : System.Windows.Application
             {
                 _manager.PauseAll();
                 if (_settings.NotificationsEnabled)
-                    _tray?.ShowBalloonTip(3000, "Zamanlayıcı", "Planlanan indirme saati sona erdi. İndirmeler duraklatıldı.", Forms.ToolTipIcon.Info);
+                    _tray?.ShowBalloonTip(3000, Strings.SchedulerTitle, Strings.SchedulerStopped, Forms.ToolTipIcon.Info);
             }
         }
     }

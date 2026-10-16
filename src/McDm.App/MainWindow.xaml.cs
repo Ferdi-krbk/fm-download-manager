@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 using McDm.App.Resources;
 using McDm.Core;
@@ -146,8 +147,8 @@ public partial class MainWindow : Window
         ColHeaderSpeed.Header = Strings.ColSpeed;
         ColHeaderConn.Header = Strings.ColConnections;
         ColHeaderStatus.Header = Strings.ColStatus;
-        ColHeaderError.Header = Strings.ColError;
-        if (ColHeaderEta != null) ColHeaderEta.Header = (Strings.Culture ?? System.Globalization.CultureInfo.CurrentUICulture).TwoLetterISOLanguageName.StartsWith("en", StringComparison.OrdinalIgnoreCase) ? "Time Left" : "Kalan Süre";
+        ColHeaderError.Header = Strings.IsTurkish ? "Ayrıntılar" : "Details";
+        if (ColHeaderEta != null) ColHeaderEta.Header = Strings.TimeLeft;
 
         TxtBtnAdd.Text = Strings.AddFromClipboard;
         TxtBtnAddMulti.Text = Strings.AddUrls;
@@ -161,14 +162,67 @@ public partial class MainWindow : Window
         CatAppsText.Text = Strings.CategoryApps;
         CatDocsText.Text = Strings.CategoryDocuments;
         CatArchivesText.Text = Strings.CategoryArchives;
+        CatTorrentsText.Text = Strings.CategoryTorrents;
         CatOtherText.Text = Strings.CategoryOther;
 
-        bool isTr = Strings.Culture?.TwoLetterISOLanguageName == "tr";
+        CatAll.ToolTip = Strings.CategoryAll;
+        CatImages.ToolTip = Strings.CategoryImages;
+        CatMusic.ToolTip = Strings.CategoryMusic;
+        CatVideo.ToolTip = Strings.CategoryVideo;
+        CatApps.ToolTip = Strings.CategoryApps;
+        CatDocuments.ToolTip = Strings.CategoryDocuments;
+        CatArchives.ToolTip = Strings.CategoryArchives;
+        CatTorrents.ToolTip = Strings.CategoryTorrents;
+        CatOther.ToolTip = Strings.CategoryOther;
+
+        bool isTr = Strings.IsTurkish;
         LblCategories.Text = isTr ? "Kategoriler" : "Categories";
         LblTotalSpeed.Text = isTr ? "Toplam Hız" : "Total Speed";
         LblBridgeConnected.Text = isTr ? "Eklenti Bağlı" : "Bridge Connected";
-        TxtEmptyTitle.Text = isTr ? "Henüz indirme yok" : "No downloads yet";
-        TxtEmptySubtitle.Text = isTr ? "İndirme başlatmak için bir bağlantı yapıştırın veya tarayıcı eklentisini kullanın." : "Paste a link to start downloading or use the browser extension.";
+        if (LblTransferStatus != null) LblTransferStatus.Text = isTr ? "TRANSFER DURUMU" : "TRANSFER STATUS";
+        if (LblMultiThreadOptimize != null) LblMultiThreadOptimize.Text = isTr ? "Paralel parçalama optimize" : "Parallel segment optimized";
+        if (LblStorageBridge != null) LblStorageBridge.Text = isTr ? "DEPOLAMA & EKLENTİ" : "STORAGE & EXTENSION";
+        if (LblNativeBridgeActive != null) LblNativeBridgeActive.Text = isTr ? "● Native Bridge Aktif" : "● Native Bridge Active";
+        if (BtnEmptyAddUrl != null) BtnEmptyAddUrl.Content = isTr ? "URL Ekle" : "Add URL";
+        TxtEmptyTitle.Text = Strings.NoDownloadsTitle;
+        TxtEmptySubtitle.Text = Strings.NoDownloadsSub;
+
+        if (DiskSpaceText != null)
+        {
+            try
+            {
+                var drive = new DriveInfo(Path.GetPathRoot(_settings.DownloadDirectory) ?? "C:\\");
+                if (drive.IsReady)
+                {
+                    string free = BytesConverter.Format(drive.AvailableFreeSpace);
+                    DiskSpaceText.Text = isTr ? $"DİSK: {free} BOŞ" : $"DISK: {free} FREE";
+                }
+                else
+                {
+                    DiskSpaceText.Text = isTr ? "DİSK: HAZIR" : "DISK: READY";
+                }
+            }
+            catch
+            {
+                DiskSpaceText.Text = isTr ? "DİSK: HAZIR" : "DISK: READY";
+            }
+        }
+
+        if (LblPaletteHeader != null) LblPaletteHeader.Text = Strings.PaletteHeader;
+        if (BtnPaletteOpenSettings != null) BtnPaletteOpenSettings.Content = Strings.PaletteOpenAllSettings;
+
+        BtnAddFromClipboard.ToolTip = isTr ? "Panodaki URL'yi İndir" : "Download URL from Clipboard";
+        BtnAddUrls.ToolTip = isTr ? "Toplu Bağlantı Ekle" : "Add Multiple URLs";
+        BtnPause.ToolTip = isTr ? "Seçileni Duraklat" : "Pause Selected";
+        BtnResume.ToolTip = isTr ? "Seçileni Devam Ettir" : "Resume Selected";
+        BtnCancel.ToolTip = isTr ? "Seçileni İptal Et" : "Cancel Selected";
+        BtnRemove.ToolTip = isTr ? "Listeden Kaldır" : "Remove from List";
+        BtnOpenFolder.ToolTip = isTr ? "İndirme Klasörünü Aç" : "Open Download Folder";
+        BtnBrowserSetup.ToolTip = isTr ? "Tarayıcı Eklentisi Kurulumu" : "Browser Extension Setup";
+        BtnPalette.ToolTip = Strings.PaletteTooltip;
+        BtnSettings.ToolTip = Strings.Settings;
+        BtnUpdateYtDlp.ToolTip = Strings.UpdateYtDlp;
+        if (BtnUpdateAvailable != null) BtnUpdateAvailable.ToolTip = isTr ? "Yeni bir sürüm yayınlandı! Tıklayarak inceleyin." : "A new version is available! Click to check.";
 
         if (_settings.SpeedLimitKbps > 0)
         {
@@ -176,8 +230,14 @@ public partial class MainWindow : Window
             _manager.SpeedLimiter.BytesPerSecond = (long)_settings.SpeedLimitKbps * 1024;
             TxtSpeedLimitVal.Text = $"{_settings.SpeedLimitKbps / 1024} MB/s";
         }
+        else
+        {
+            TxtSpeedLimitVal.Text = Strings.Unlimited;
+        }
 
+        if (BtnSpeedAuto != null) BtnSpeedAuto.Content = isTr ? "Oto" : "Auto";
         StatusText.Text = Strings.StatusReady;
+        UpdateTotalSpeed();
     }
 
     private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
@@ -193,8 +253,8 @@ public partial class MainWindow : Window
 
         TotalSpeedText.Text = active > 0 ? $"{BytesConverter.Format(totalSpeed)}/s" : "0 B/s";
         SidebarSpeedGraph.PushSample(totalSpeed);
-        bool isTr = Strings.Culture?.TwoLetterISOLanguageName == "tr";
-        ActiveCountText.Text = isTr ? $"{active} aktif indirme" : $"{active} active";
+        bool isTr = Strings.IsTurkish;
+        ActiveCountText.Text = isTr ? $"{active} aktif indirme" : $"{active} active download{(active == 1 ? "" : "s")}";
         StatusCountsText.Text = isTr
             ? $"{active} aktif / {queued} sırada / {done} tamamlandı"
             : $"{active} active / {queued} queued / {done} completed";
@@ -262,23 +322,24 @@ public partial class MainWindow : Window
 
     private void PasteUrl_Click(object sender, RoutedEventArgs e)
     {
+        bool isTr = Strings.IsTurkish;
         var text = Clipboard.ContainsText() ? Clipboard.GetText().Trim() : "";
         if (string.IsNullOrWhiteSpace(text))
         {
-            StatusText.Text = "Panoda bağlantı bulunamadı.";
+            StatusText.Text = isTr ? "Panoda bağlantı bulunamadı." : "No download URL found in clipboard.";
             return;
         }
 
         if (text.StartsWith("magnet:?", StringComparison.OrdinalIgnoreCase) || text.EndsWith(".torrent", StringComparison.OrdinalIgnoreCase))
         {
             _manager.Add(new DownloadRequest { Url = text, Kind = DownloadKind.Torrent });
-            StatusText.Text = "Torrent indirmesi eklendi.";
+            StatusText.Text = isTr ? "Torrent indirmesi eklendi." : "Torrent download added.";
             return;
         }
 
         if (!Uri.TryCreate(text, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https"))
         {
-            StatusText.Text = "Geçersiz indirme bağlantısı.";
+            StatusText.Text = isTr ? "Geçersiz indirme bağlantısı." : "Invalid download URL.";
             return;
         }
 
@@ -299,14 +360,16 @@ public partial class MainWindow : Window
                     SubtitleUrl = qDlg.SelectedSubtitleUrl
                 };
                 _manager.Add(req);
-                StatusText.Text = qDlg.AudioOnly ? "Ses indirmesi eklendi." : "Video indirmesi eklendi.";
+                StatusText.Text = isTr
+                    ? (qDlg.AudioOnly ? "Ses indirmesi eklendi." : "Video indirmesi eklendi.")
+                    : (qDlg.AudioOnly ? "Audio download added." : "Video download added.");
             }
             return;
         }
 
         var kind = DownloadKind.File;
         _manager.Add(new DownloadRequest { Url = text, Kind = kind });
-        StatusText.Text = "Added " + uri.Host;
+        StatusText.Text = (isTr ? "Eklendi: " : "Added: ") + uri.Host;
     }
 
     private void SldSpeedLimit_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -315,7 +378,7 @@ public partial class MainWindow : Window
         int mb = (int)Math.Round(SldSpeedLimit.Value);
         if (mb <= 0)
         {
-            TxtSpeedLimitVal.Text = "Sınırsız";
+            TxtSpeedLimitVal.Text = Strings.Unlimited;
             _manager.SpeedLimiter.BytesPerSecond = 0;
             _settings.SpeedLimitKbps = 0;
         }
@@ -336,17 +399,76 @@ public partial class MainWindow : Window
         }
     }
 
-    private void ToggleTheme_Click(object sender, RoutedEventArgs e)
+    private void Palette_Click(object sender, RoutedEventArgs e)
     {
-        ThemeManager.ToggleTheme();
-        StatusText.Text = ThemeManager.IsAmoled ? "Tema: Derin Siyah AMOLED aktif." : "Tema: Modern Koyu Bordo aktif.";
+        PopulateQuickSwatches();
+        PalettePopup.IsOpen = !PalettePopup.IsOpen;
+    }
+
+    private void PopulateQuickSwatches()
+    {
+        PnlQuickSwatches.Children.Clear();
+        string current = ThemeManager.CurrentAccentHex;
+        bool isTr = Strings.IsTurkish;
+
+        foreach (var preset in ThemeManager.Presets)
+        {
+            if (!ThemeManager.TryParseHex(preset.Hex, out var col)) continue;
+
+            bool isSelected = string.Equals(current, preset.Hex, StringComparison.OrdinalIgnoreCase);
+
+            var border = new Border
+            {
+                Width = 28,
+                Height = 28,
+                CornerRadius = new CornerRadius(4),
+                Margin = new Thickness(0, 0, 6, 6),
+                Background = new SolidColorBrush(col),
+                BorderBrush = isSelected ? System.Windows.Media.Brushes.White : new SolidColorBrush(Color.FromArgb(0x40, 0xFF, 0xFF, 0xFF)),
+                BorderThickness = new Thickness(isSelected ? 2 : 1),
+                Cursor = System.Windows.Input.Cursors.Hand,
+                ToolTip = ThemeManager.GetPresetDisplayName(preset, isTr)
+            };
+
+            if (isSelected)
+            {
+                border.Child = new System.Windows.Shapes.Ellipse
+                {
+                    Width = 6,
+                    Height = 6,
+                    Fill = System.Windows.Media.Brushes.White,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+            }
+
+            string hex = preset.Hex;
+            string name = ThemeManager.GetPresetDisplayName(preset, isTr);
+            border.MouseLeftButtonUp += (_, _) =>
+            {
+                ThemeManager.ApplyAccentColor(hex);
+                _settings.AccentColor = hex;
+                _settings.Save();
+                PalettePopup.IsOpen = false;
+                StatusText.Text = isTr ? $"Vurgu rengi: {name}" : $"Accent color: {name}";
+            };
+
+            PnlQuickSwatches.Children.Add(border);
+        }
+    }
+
+    private void OpenSettingsFromPalette_Click(object sender, RoutedEventArgs e)
+    {
+        PalettePopup.IsOpen = false;
+        Settings_Click(sender, e);
     }
 
     private void AddUrls_Click(object sender, RoutedEventArgs e)
     {
-        var dlg = new AddUrlsDialog { Owner = this };
+        var dlg = new AddUrlsDialog(_manager.DefaultDownloadDirectory) { Owner = this };
         if (dlg.ShowDialog() == true && dlg.ResultUrls.Count > 0)
         {
+            string? targetDir = !string.IsNullOrWhiteSpace(dlg.SelectedDirectory) ? dlg.SelectedDirectory : null;
             foreach (var u in dlg.ResultUrls)
             {
                 bool isVid = VideoDownloader.IsVideoUrl(u);
@@ -354,12 +476,13 @@ public partial class MainWindow : Window
                 _manager.Add(new DownloadRequest
                 {
                     Url = u,
+                    Directory = targetDir,
                     Kind = kind,
                     WriteSubtitles = isVid,
                     SubtitleLangs = isVid ? "tr,en" : null
                 });
             }
-            StatusText.Text = $"Added {dlg.ResultUrls.Count} URL(s)";
+            StatusText.Text = Strings.IsTurkish ? $"{dlg.ResultUrls.Count} bağlantı eklendi." : $"{dlg.ResultUrls.Count} link(s) added.";
         }
     }
 
@@ -443,13 +566,10 @@ public partial class MainWindow : Window
             _manager.AutoCategorizeSubfolders = updated.AutoCategorizeSubfolders;
             _manager.SpeedLimiter.BytesPerSecond = (long)updated.SpeedLimitKbps * 1024;
             SldSpeedLimit.Value = Math.Round((double)updated.SpeedLimitKbps / 1024);
-            TxtSpeedLimitVal.Text = updated.SpeedLimitKbps > 0 ? $"{updated.SpeedLimitKbps / 1024} MB/s" : "Sınırsız";
+            TxtSpeedLimitVal.Text = updated.SpeedLimitKbps > 0 ? $"{updated.SpeedLimitKbps / 1024} MB/s" : Strings.Unlimited;
 
             // Apply culture change if user switched language
-            if (updated.Language == "tr") Strings.Culture = new System.Globalization.CultureInfo("tr");
-            else if (updated.Language == "en") Strings.Culture = new System.Globalization.CultureInfo("en");
-            else Strings.Culture = null;
-
+            Strings.SetLanguage(updated.Language);
             ApplyLocalization();
         })
         { Owner = this };
@@ -467,10 +587,10 @@ public partial class MainWindow : Window
         {
             if (string.IsNullOrEmpty(ytDlpPath))
             {
-                StatusText.Text = "yt-dlp indiriliyor...";
+                StatusText.Text = Strings.IsTurkish ? "yt-dlp indiriliyor..." : "Downloading yt-dlp...";
                 ytDlpPath = await tools.DownloadYtDlpAsync();
                 StatusText.Text = Strings.YtDlpUpdated;
-                DarkMessageBox.Show(this, "yt-dlp başarıyla indirildi ve kuruldu.", Strings.AppTitle, MessageBoxButton.OK, MessageBoxImage.Information);
+                DarkMessageBox.Show(this, Strings.IsTurkish ? "yt-dlp başarıyla indirildi ve kuruldu." : "yt-dlp was successfully downloaded and installed.", Strings.AppTitle, MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
@@ -531,7 +651,7 @@ public partial class MainWindow : Window
         _latestUpdate = info;
         Dispatcher.Invoke(() =>
         {
-            TxtUpdateVersion.Text = $"v{info.LatestVersion} Yayında!";
+            TxtUpdateVersion.Text = $"v{info.LatestVersion} " + (Strings.IsTurkish ? "Yayında!" : "Available!");
             BtnUpdateAvailable.Visibility = Visibility.Visible;
         });
     }
@@ -539,13 +659,20 @@ public partial class MainWindow : Window
     private async void UpdateAvailable_Click(object sender, RoutedEventArgs e)
     {
         if (_latestUpdate == null) return;
+        bool isTr = Strings.IsTurkish;
         var notes = string.IsNullOrWhiteSpace(_latestUpdate.ReleaseNotes) ? "" :
             (_latestUpdate.ReleaseNotes.Length > 250 ? _latestUpdate.ReleaseNotes[..250] + "..." : _latestUpdate.ReleaseNotes);
-        var msg = $"FM Download Manager için yeni bir güncelleme mevcut!\n\n" +
-                  $"Kurulu Sürüm: v{UpdateChecker.CurrentVersion}\n" +
-                  $"Yeni Sürüm: v{_latestUpdate.LatestVersion}\n\n" +
-                  (notes.Length > 0 ? $"Yenilikler:\n{notes}\n\n" : "") +
-                  "Güncellemeyi hemen indirip kurmak istiyor musunuz?";
+        var msg = isTr
+            ? $"FM Download Manager için yeni bir güncelleme mevcut!\n\n" +
+              $"Kurulu Sürüm: v{UpdateChecker.CurrentVersion}\n" +
+              $"Yeni Sürüm: v{_latestUpdate.LatestVersion}\n\n" +
+              (notes.Length > 0 ? $"Yenilikler:\n{notes}\n\n" : "") +
+              "Güncellemeyi hemen indirip kurmak istiyor musunuz?"
+            : $"A new update is available for FM Download Manager!\n\n" +
+              $"Installed Version: v{UpdateChecker.CurrentVersion}\n" +
+              $"Latest Version: v{_latestUpdate.LatestVersion}\n\n" +
+              (notes.Length > 0 ? $"What's new:\n{notes}\n\n" : "") +
+              "Would you like to download and install the update now?";
         var res = DarkMessageBox.Show(this, msg, Strings.AppTitle, MessageBoxButton.YesNo, MessageBoxImage.Information);
         if (res == MessageBoxResult.Yes)
         {
@@ -553,7 +680,7 @@ public partial class MainWindow : Window
             {
                 try
                 {
-                    TxtUpdateVersion.Text = "İndiriliyor...";
+                    TxtUpdateVersion.Text = isTr ? "İndiriliyor..." : "Downloading...";
                     BtnUpdateAvailable.IsEnabled = false;
                     var tempFile = Path.Combine(Path.GetTempPath(), $"FMDownloadManager-Setup-{_latestUpdate.LatestVersion}.exe");
                     using (var http = new System.Net.Http.HttpClient())
@@ -570,7 +697,7 @@ public partial class MainWindow : Window
                 catch
                 {
                     BtnUpdateAvailable.IsEnabled = true;
-                    TxtUpdateVersion.Text = $"v{_latestUpdate.LatestVersion} Yayında!";
+                    TxtUpdateVersion.Text = $"v{_latestUpdate.LatestVersion} " + (isTr ? "Yayında!" : "Available!");
                 }
             }
             try { Process.Start(new ProcessStartInfo(_latestUpdate.ReleaseUrl) { UseShellExecute = true }); } catch { }

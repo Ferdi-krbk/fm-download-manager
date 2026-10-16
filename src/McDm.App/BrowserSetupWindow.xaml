@@ -44,15 +44,15 @@
                     <!-- Big 1-Click Install Section -->
                     <Border Background="{DynamicResource Bg1Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="12" Padding="18" Margin="0,0,0,16">
                         <StackPanel>
-                            <TextBlock Text="OTOMATİK KURULUM SEÇENEKLERİ" FontFamily="{DynamicResource UiFont}" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,12" />
+                            <TextBlock x:Name="LblAutoSection" Text="OTOMATİK KURULUM SEÇENEKLERİ" FontFamily="{DynamicResource UiFont}" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,12" />
                             
                             <!-- Chrome Button -->
                             <Button x:Name="BtnAutoChrome" Style="{DynamicResource PrimaryButton}" Height="46" Margin="0,0,0,8" Click="OpenChrome_Click">
                                 <DockPanel LastChildFill="True" HorizontalAlignment="Stretch">
                                     <TextBlock Text="🌐" FontSize="16" VerticalAlignment="Center" Margin="0,0,10,0" />
                                     <StackPanel VerticalAlignment="Center">
-                                        <TextBlock Text="Google Chrome Eklenti Sayfasını Aç" FontWeight="Bold" FontSize="13" />
-                                        <TextBlock Text="Yolu panoya kopyalar, klasörü açar ve Chrome'u başlatır" FontSize="10.5" Foreground="{DynamicResource OnAccentBrush}" Opacity="0.85" />
+                                        <TextBlock x:Name="TxtChromeTitle" Text="Google Chrome Eklenti Sayfasını Aç" FontWeight="Bold" FontSize="13" />
+                                        <TextBlock x:Name="TxtChromeSub" Text="Yolu panoya kopyalar, klasörü açar ve Chrome'u başlatır" FontSize="10.5" Foreground="{DynamicResource OnAccentBrush}" Opacity="0.85" />
                                     </StackPanel>
                                 </DockPanel>
                             </Button>
@@ -62,8 +62,8 @@
                                 <DockPanel LastChildFill="True" HorizontalAlignment="Stretch">
                                     <TextBlock Text="🌐" FontSize="16" VerticalAlignment="Center" Margin="0,0,10,0" />
                                     <StackPanel VerticalAlignment="Center">
-                                        <TextBlock Text="Microsoft Edge Eklenti Sayfasını Aç" FontWeight="Bold" FontSize="13" />
-                                        <TextBlock Text="Yolu panoya kopyalar, klasörü açar ve Edge'i başlatır" FontSize="10.5" Foreground="{DynamicResource TextDimBrush}" />
+                                        <TextBlock x:Name="TxtEdgeTitle" Text="Microsoft Edge Eklenti Sayfasını Aç" FontWeight="Bold" FontSize="13" />
+                                        <TextBlock x:Name="TxtEdgeSub" Text="Yolu panoya kopyalar, klasörü açar ve Edge'i başlatır" FontSize="10.5" Foreground="{DynamicResource TextDimBrush}" />
                                     </StackPanel>
                                 </DockPanel>
                             </Button>
@@ -73,8 +73,8 @@
                                 <DockPanel LastChildFill="True" HorizontalAlignment="Stretch">
                                     <TextBlock Text="🦁" FontSize="16" VerticalAlignment="Center" Margin="0,0,10,0" />
                                     <StackPanel VerticalAlignment="Center">
-                                        <TextBlock Text="Brave Eklenti Sayfasını Aç" FontWeight="Bold" FontSize="13" />
-                                        <TextBlock Text="Yolu panoya kopyalar, klasörü açar ve Brave'i başlatır" FontSize="10.5" Foreground="{DynamicResource TextDimBrush}" />
+                                        <TextBlock x:Name="TxtBraveTitle" Text="Brave Eklenti Sayfasını Aç" FontWeight="Bold" FontSize="13" />
+                                        <TextBlock x:Name="TxtBraveSub" Text="Yolu panoya kopyalar, klasörü açar ve Brave'i başlatır" FontSize="10.5" Foreground="{DynamicResource TextDimBrush}" />
                                     </StackPanel>
                                 </DockPanel>
                             </Button>
@@ -82,9 +82,9 @@
                             <!-- Quick Tip -->
                             <Border Background="{DynamicResource Bg2Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,12,0,0">
                                 <StackPanel>
-                                    <TextBlock Text="💡 2 Adımda Kolay Kurulum:" FontWeight="Bold" FontSize="11.5" Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,3" />
-                                    <TextBlock Text="1. Butona tıklayın: Eklenti klasörü açılır ve yolu panonuza kopyalanır.&#x0a;2. Tarayıcıda sağ üstten 'Geliştirici modu'nu açın ve 'Paketlenmemiş öge yükle' diyerek bu klasörü seçin." FontSize="11" Foreground="{DynamicResource TextDimBrush}" TextWrapping="Wrap" />
-                                    <TextBlock Text="✓ Eşleştirme kodu gerekmez — Eklenti yüklendiği saniye otomatik bağlanır!" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" Margin="0,4,0,0" />
+                                    <TextBlock x:Name="LblQuickTipTitle" Text="💡 2 Adımda Kolay Kurulum:" FontWeight="Bold" FontSize="11.5" Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,3" />
+                                    <TextBlock x:Name="TxtQuickTipSteps" Text="1. Butona tıklayın: Eklenti klasörü açılır ve yolu panonuza kopyalanır.&#x0a;2. Tarayıcıda sağ üstten 'Geliştirici modu'nu açın ve 'Paketlenmemiş öge yükle' diyerek bu klasörü seçin." FontSize="11" Foreground="{DynamicResource TextDimBrush}" TextWrapping="Wrap" />
+                                    <TextBlock x:Name="TxtQuickTipAuto" Text="✓ Eşleştirme kodu gerekmez — Eklenti yüklendiği saniye otomatik bağlanır!" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" Margin="0,4,0,0" />
                                 </StackPanel>
                             </Border>
                         </StackPanel>
@@ -102,10 +102,10 @@
                     </Border>
 
                     <!-- Advanced / Manual Installation Expander -->
-                    <Expander Header="Gelişmiş / Manuel Kurulum Bilgileri" FontFamily="{DynamicResource UiFont}" FontSize="12" Foreground="{DynamicResource TextDimBrush}" Background="Transparent" BorderBrush="{DynamicResource LineBrush}">
+                    <Expander x:Name="ExpManual" Header="Gelişmiş / Manuel Kurulum Bilgileri" FontFamily="{DynamicResource UiFont}" FontSize="12" Foreground="{DynamicResource TextDimBrush}" Background="Transparent" BorderBrush="{DynamicResource LineBrush}">
                         <Border Background="{DynamicResource Bg2Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="10" Padding="14" Margin="0,8,0,0">
                             <StackPanel>
-                                <TextBlock Text="Eklenti Klasörü Konumu:" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,4" />
+                                <TextBlock x:Name="LblExtPath" Text="Eklenti Klasörü Konumu:" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,4" />
                                 <Grid Margin="0,0,0,10">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -115,7 +115,7 @@
                                     <Button x:Name="BtnOpenFolder" Grid.Column="1" Style="{DynamicResource SecondaryButton}" Content="Klasörü Aç" Margin="8,0,0,0" Click="OpenFolder_Click" />
                                 </Grid>
 
-                                <TextBlock Text="Eşleştirme Güvenlik Kodu:" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,4" />
+                                <TextBlock x:Name="LblToken" Text="Eşleştirme Güvenlik Kodu:" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,4" />
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />

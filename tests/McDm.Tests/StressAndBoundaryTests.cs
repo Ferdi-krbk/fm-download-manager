@@ -288,7 +288,7 @@ Late timestamp with full 3-part hour specification.";
 
             // Essential flags
             check(args.Contains("--limit-rate") && args[args.IndexOf("--limit-rate") + 1] == (5 * 1024 * 1024).ToString(), "--limit-rate flag present with exact value");
-            check(args.Contains("--socket-timeout") && args[args.IndexOf("--socket-timeout") + 1] == "8", "--socket-timeout 8 flag present");
+            check(args.Contains("--socket-timeout") && args[args.IndexOf("--socket-timeout") + 1] == "20", "--socket-timeout 20 flag present");
             check(args.Contains("--extractor-retries") && args[args.IndexOf("--extractor-retries") + 1] == "10", "--extractor-retries 10 flag present");
             check(args.Contains("--fragment-retries") && args[args.IndexOf("--fragment-retries") + 1] == "30", "--fragment-retries 30 flag present");
             check(args.Contains("--retry-sleep") && args[args.IndexOf("--retry-sleep") + 1] == "fragment:0.5", "--retry-sleep fragment:0.5 flag present");

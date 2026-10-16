@@ -115,10 +115,28 @@
                     <!-- Language Selection -->
                     <TextBlock x:Name="LblLanguage" Text="INTERFACE LANGUAGE" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,6" />
                     <ComboBox x:Name="CmbLanguage" Margin="0,0,0,18" SelectedIndex="0">
-                        <ComboBoxItem Content="Follow Windows (Otomatik)" Tag="auto" />
+                        <ComboBoxItem x:Name="CmbItemFollowSys" Content="Follow Windows (Otomatik)" Tag="auto" />
                         <ComboBoxItem Content="English" Tag="en" />
                         <ComboBoxItem Content="Türkçe" Tag="tr" />
                     </ComboBox>
+
+                    <!-- Accent Color / Palette -->
+                    <TextBlock x:Name="LblAccentColor" Text="VURGU RENGİ / PALET (ACCENT COLOR)" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,8" />
+                    <Border Background="{DynamicResource Bg2Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="12,10" Margin="0,0,0,18">
+                        <StackPanel>
+                            <WrapPanel x:Name="PnlPaletteSwatches" Orientation="Horizontal" Margin="0,0,0,10" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock x:Name="LblCustomHex" Text="Özel HEX:" FontFamily="{DynamicResource UiFont}" FontSize="11" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                <TextBox x:Name="TxtCustomHex" Grid.Column="1" FontFamily="{DynamicResource MonoFont}" FontSize="12" Height="28" MaxLength="9" ToolTip="Örn: #E50914 veya #00E5FF" />
+                                <Button x:Name="BtnApplyCustomHex" Grid.Column="2" Style="{DynamicResource SecondaryButton}" Content="ÖNİZLE" Height="28" Padding="12,0" Margin="8,0,0,0" Click="ApplyCustomHex_Click" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
 
                     <Separator Margin="0,0,0,18" />
 

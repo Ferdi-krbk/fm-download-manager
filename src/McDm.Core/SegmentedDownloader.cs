@@ -92,7 +92,7 @@ public sealed class SegmentedDownloader
 
         ResumeState? state = string.IsNullOrEmpty(item.SavePath) ? null : ReadState(item.SavePath);
         bool canResume = state != null && probe.Ranges && state.Ranges && state.Total == probe.Total
-                         && state.Validator == probe.Validator && File.Exists(PartPath(item.SavePath));
+                         && ValidatorsMatch(state.Validator, probe.Validator) && File.Exists(PartPath(item.SavePath));
         List<Chunk> chunks;
         if (canResume)
         {
@@ -101,7 +101,7 @@ public sealed class SegmentedDownloader
         else
         {
             if (string.IsNullOrEmpty(item.SavePath)) AssignSavePath(item, probe.FileName);
-            else { TryDelete(PartPath(item.SavePath)); TryDelete(StatePath(item.SavePath)); }
+            else if (state != null && (probe.Total != state.Total || !probe.Ranges)) { TryDelete(PartPath(item.SavePath)); TryDelete(StatePath(item.SavePath)); }
             chunks = PlanChunks(probe.Total, probe.Ranges, maxConnections);
         }
         item.FileName = Path.GetFileName(item.SavePath);
@@ -263,6 +263,13 @@ public sealed class SegmentedDownloader
             string validator = resp.Headers.ETag?.Tag ?? resp.Content.Headers.LastModified?.ToString("R") ?? "";
             return new Probe(url, total, ranges, validator.Length == 0 ? null : validator, FileNames.Sanitize(name));
         }
+    }
+
+    public static bool ValidatorsMatch(string? v1, string? v2)
+    {
+        if (string.IsNullOrEmpty(v1) || string.IsNullOrEmpty(v2)) return true;
+        static string Clean(string s) => s.Trim().TrimStart('W', '/').Trim('"');
+        return string.Equals(Clean(v1), Clean(v2), StringComparison.OrdinalIgnoreCase);
     }
 
     // ───────────────────────── chunk planning ─────────────────────────

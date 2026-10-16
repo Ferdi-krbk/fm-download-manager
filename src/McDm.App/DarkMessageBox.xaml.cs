@@ -42,6 +42,11 @@ public partial class DarkMessageBox : Window
         }
 
         // Setup Buttons
+        BtnYes.Content = McDm.App.Resources.Strings.Yes;
+        BtnNo.Content = McDm.App.Resources.Strings.No;
+        BtnOk.Content = McDm.App.Resources.Strings.Ok;
+        BtnCancel.Content = McDm.App.Resources.Strings.SettingsCancel;
+
         BtnYes.Visibility = Visibility.Collapsed;
         BtnNo.Visibility = Visibility.Collapsed;
         BtnOk.Visibility = Visibility.Collapsed;

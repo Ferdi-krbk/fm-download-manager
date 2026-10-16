@@ -22,11 +22,26 @@ public partial class DownloadPromptDialog : Window
         TxtFolder.Text = !string.IsNullOrWhiteSpace(request.Directory) ? request.Directory : defaultDir;
         TxtUrl.Text = request.Url;
 
+        ApplyLocalization();
+
         Loaded += (_, _) =>
         {
             TxtFileName.Focus();
             TxtFileName.SelectAll();
         };
+    }
+
+    private void ApplyLocalization()
+    {
+        Title = McDm.App.Resources.Strings.DownloadPromptTitleBar;
+        TxtWinHeader.Text = McDm.App.Resources.Strings.DownloadPromptTitleBar;
+        TxtHeaderQuestion.Text = McDm.App.Resources.Strings.DownloadPromptQuestion;
+        LblFileName.Text = McDm.App.Resources.Strings.FileName;
+        LblFolder.Text = McDm.App.Resources.Strings.SaveFolder;
+        BtnBrowse.Content = McDm.App.Resources.Strings.Browse;
+        LblUrl.Text = McDm.App.Resources.Strings.WebAddress;
+        BtnCancel.Content = McDm.App.Resources.Strings.SettingsCancel;
+        BtnStart.Content = McDm.App.Resources.Strings.DownloadNow;
     }
 
     private static string ResolveInitialName(string url)
@@ -50,7 +65,7 @@ public partial class DownloadPromptDialog : Window
         using var dialog = new Forms.FolderBrowserDialog
         {
             SelectedPath = Directory.Exists(TxtFolder.Text) ? TxtFolder.Text : "",
-            Description = "İndirilecek klasörü seçin:"
+            Description = McDm.App.Resources.Strings.SelectFolder
         };
         if (dialog.ShowDialog() == Forms.DialogResult.OK && !string.IsNullOrWhiteSpace(dialog.SelectedPath))
         {

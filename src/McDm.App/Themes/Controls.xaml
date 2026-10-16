@@ -175,7 +175,7 @@
                             Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="5"
+                            CornerRadius="2"
                             Padding="{TemplateBinding Padding}"
                             SnapsToDevicePixels="True">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
@@ -702,8 +702,8 @@
                             Background="{DynamicResource CardBgBrush}"
                             BorderThickness="1"
                             BorderBrush="{DynamicResource CardBorderBrush}"
-                            CornerRadius="9"
-                            Margin="10,3"
+                            CornerRadius="3"
+                            Margin="8,2.5"
                             Padding="2,0"
                             SnapsToDevicePixels="True">
                         <SelectiveScrollingGrid>
@@ -779,7 +779,7 @@
                 <ControlTemplate TargetType="MenuItem">
                     <Border x:Name="Bd"
                             Background="Transparent"
-                            CornerRadius="6"
+                            CornerRadius="2"
                             Margin="4,1"
                             Padding="{TemplateBinding Padding}"
                             SnapsToDevicePixels="True">
@@ -839,7 +839,7 @@
                     <Border Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="8"
+                            CornerRadius="3"
                             Padding="{TemplateBinding Padding}"
                             SnapsToDevicePixels="True">
                         <ContentPresenter />

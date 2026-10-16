@@ -159,20 +159,62 @@ public static class StreamProbeService
         return $"{trName} Dublaj ({natName})";
     }
 
-    public static string FormatSubtitleLabel(string? langCode, bool isAuto = false, bool isForced = false)
+    public static string GetEnglishLanguageName(string code, string fallback)
     {
+        string c = code.Trim().ToLowerInvariant();
+        if (c.Contains('-')) c = c.Split('-')[0];
+        if (c.Contains('_')) c = c.Split('_')[0];
+        return c switch
+        {
+            "tr" or "tur" => "Turkish",
+            "en" or "eng" => "English",
+            "es" or "spa" => "Spanish",
+            "de" or "ger" or "deu" => "German",
+            "fr" or "fre" or "fra" => "French",
+            "it" or "ita" => "Italian",
+            "ru" or "rus" => "Russian",
+            "pt" or "por" => "Portuguese",
+            "ja" or "jpn" => "Japanese",
+            "ko" or "kor" => "Korean",
+            "zh" or "zho" or "chi" => "Chinese",
+            "ar" or "ara" => "Arabic",
+            "hi" or "hin" => "Hindi",
+            "nl" or "nld" or "dut" => "Dutch",
+            "pl" or "pol" => "Polish",
+            "sv" or "swe" => "Swedish",
+            "no" or "nor" => "Norwegian",
+            "da" or "dan" => "Danish",
+            "fi" or "fin" => "Finnish",
+            "el" or "ell" or "gre" => "Greek",
+            "he" or "heb" => "Hebrew",
+            "uk" or "ukr" => "Ukrainian",
+            "id" or "ind" => "Indonesian",
+            "vi" or "vie" => "Vietnamese",
+            "th" or "tha" => "Thai",
+            "fa" or "fas" or "per" => "Persian",
+            "ro" or "ron" or "rum" => "Romanian",
+            "hu" or "hun" => "Hungarian",
+            "cs" or "ces" or "cze" => "Czech",
+            _ => fallback
+        };
+    }
+
+    public static string FormatSubtitleLabel(string? langCode, bool isAuto = false, bool isForced = false, bool? isTurkish = null)
+    {
+        bool tr = isTurkish ?? !System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("en", StringComparison.OrdinalIgnoreCase);
         var (trName, natName) = GetLanguageInfo(langCode);
-        string langTag = trName.Equals(natName, StringComparison.OrdinalIgnoreCase) ? trName : $"{trName} ({natName})";
+        string langName = tr ? trName : GetEnglishLanguageName(langCode ?? "", trName);
+        string langTag = langName.Equals(natName, StringComparison.OrdinalIgnoreCase) ? langName : $"{langName} ({natName})";
 
         if (isForced)
         {
-            return $"{langTag} Altyazı (Zorunlu)";
+            return tr ? $"{langTag} Altyazı (Zorunlu)" : $"{langTag} Subtitles (Forced)";
         }
         if (isAuto)
         {
-            return $"{langTag} Altyazı (Otomatik)";
+            return tr ? $"{langTag} Altyazı (Otomatik)" : $"{langTag} Subtitles (Auto)";
         }
-        return $"{langTag} Altyazı";
+        return tr ? $"{langTag} Altyazı" : $"{langTag} Subtitles";
     }
 
     private static readonly HttpClient Http = new(new HttpClientHandler
@@ -206,17 +248,21 @@ public static class StreamProbeService
         return shortSide > 0 ? shortSide : height;
     }
 
-    public static string FormatQualityLabel(int height) => height switch
+    public static string FormatQualityLabel(int height, bool? isTurkish = null)
     {
-        >= 4320 => $"{height}p 8K Ultra HD",
-        >= 2160 => $"{height}p 4K Ultra HD",
-        >= 1440 => $"{height}p 2K QHD",
-        >= 1080 => $"{height}p Full HD",
-        >= 720 => $"{height}p HD",
-        >= 480 => $"{height}p SD",
-        >= 360 => $"{height}p Düşük",
-        _ => $"{height}p"
-    };
+        bool tr = isTurkish ?? !System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("en", StringComparison.OrdinalIgnoreCase);
+        return height switch
+        {
+            >= 4320 => $"{height}p 8K Ultra HD",
+            >= 2160 => $"{height}p 4K Ultra HD",
+            >= 1440 => $"{height}p 2K QHD",
+            >= 1080 => $"{height}p Full HD",
+            >= 720 => $"{height}p HD",
+            >= 480 => $"{height}p SD",
+            >= 360 => tr ? $"{height}p Düşük" : $"{height}p Low",
+            _ => $"{height}p"
+        };
+    }
 
     public static async Task<StreamProbeResult> ProbeAsync(
         string url,

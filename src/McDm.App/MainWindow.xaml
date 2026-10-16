@@ -130,9 +130,24 @@
                                 <TextBlock x:Name="TxtBtnExtension" Text="Eklenti" FontWeight="Medium" FontSize="12" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
-                        <Button x:Name="BtnToggleTheme" Style="{DynamicResource IconButton}" Margin="0,0,4,0" Click="ToggleTheme_Click" ToolTip="Tema Değiştir (Siber Mor / AMOLED Siyah)">
-                            <Path Data="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z" Width="13" Height="13" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" />
-                        </Button>
+                        <!-- Quick Accent Palette Switcher -->
+                        <Grid Margin="0,0,4,0">
+                            <Button x:Name="BtnPalette" Style="{DynamicResource IconButton}" Click="Palette_Click" ToolTip="Vurgu Rengi Paleti (Kişiselleştir)">
+                                <Path Data="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L4.35 19c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0l1.9-1.9C9.22 19.38 10.57 20 12 20c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-5 9c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm3-3c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm4 0c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm3 3c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" />
+                            </Button>
+                            <Popup x:Name="PalettePopup" StaysOpen="False" PlacementTarget="{Binding ElementName=BtnPalette}" Placement="Bottom" AllowsTransparency="True" VerticalOffset="6" HorizontalOffset="-140">
+                                <Border Background="{DynamicResource Bg1Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="12" Width="196">
+                                    <Border.Effect>
+                                        <DropShadowEffect BlurRadius="16" ShadowDepth="4" Opacity="0.5" Color="#000000" />
+                                    </Border.Effect>
+                                    <StackPanel>
+                                        <TextBlock x:Name="LblPaletteHeader" Text="VURGU RENGİ SEÇ" FontFamily="{DynamicResource UiFont}" FontWeight="Bold" FontSize="10.5" Foreground="{DynamicResource TextDimBrush}" Margin="2,0,0,8" />
+                                        <WrapPanel x:Name="PnlQuickSwatches" Orientation="Horizontal" Margin="0,0,0,6" />
+                                        <Button x:Name="BtnPaletteOpenSettings" Style="{DynamicResource GhostButton}" Height="24" Content="Tüm Ayarları Aç..." FontSize="10.5" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,4,0,0" Click="OpenSettingsFromPalette_Click" />
+                                    </StackPanel>
+                                </Border>
+                            </Popup>
+                        </Grid>
                         <Button x:Name="BtnSettings" Style="{DynamicResource IconButton}" Margin="0,0,4,0" Click="Settings_Click" ToolTip="Ayarlar">
                             <Path Data="{StaticResource GeoSettings}" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" />
                         </Button>
@@ -143,19 +158,22 @@
                 </DockPanel>
             </Border>
 
-            <!-- 3. Body: Slim Left Rail (64px) + Main Content Area -->
+            <!-- 3. Body: Muscular Left Panel (180px) + Main Content Area -->
             <Grid Grid.Row="2">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="64" />
+                    <ColumnDefinition Width="180" />
                     <ColumnDefinition Width="1" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
-                <!-- Slim Modern Navigation Rail -->
+                <!-- Muscular Navigation Panel -->
                 <Border Grid.Column="0" Background="{DynamicResource Bg1Brush}">
                     <DockPanel LastChildFill="True">
-                        <!-- Invisible label for localization compatibility -->
-                        <TextBlock x:Name="LblCategories" Visibility="Collapsed" />
+                        <!-- Navigation Header -->
+                        <Border DockPanel.Dock="Top" Margin="14,12,14,6">
+                            <TextBlock x:Name="LblCategories" Text="KATEGORİLER" FontFamily="{DynamicResource UiFont}"
+                                       FontWeight="Bold" FontSize="10.5" Foreground="{DynamicResource TextMuteBrush}" />
+                        </Border>
 
                         <!-- Category List -->
                         <ListBox x:Name="LstCategories" BorderThickness="0" Background="Transparent"
@@ -164,8 +182,8 @@
                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                             <ListBox.ItemContainerStyle>
                                 <Style TargetType="ListBoxItem">
-                                    <Setter Property="Height" Value="44" />
-                                    <Setter Property="Margin" Value="4,2" />
+                                    <Setter Property="Height" Value="38" />
+                                    <Setter Property="Margin" Value="6,1.5" />
                                     <Setter Property="Padding" Value="0" />
                                     <Setter Property="Cursor" Value="Hand" />
                                     <Setter Property="FocusVisualStyle" Value="{x:Null}" />
@@ -173,12 +191,12 @@
                                         <Setter.Value>
                                             <ControlTemplate TargetType="ListBoxItem">
                                                 <Grid SnapsToDevicePixels="True">
-                                                    <!-- Glowing left indicator pill -->
-                                                    <Border x:Name="Indicator" Width="3.5" Height="22" Background="{DynamicResource AccentBrush}"
-                                                            CornerRadius="1.75" HorizontalAlignment="Left" Visibility="Collapsed" />
-                                                    <Border x:Name="Bd" Background="Transparent" CornerRadius="8" Margin="4,0"
+                                                    <!-- Razor-sharp Left Indicator -->
+                                                    <Border x:Name="Indicator" Width="3" Height="22" Background="{DynamicResource AccentBrush}"
+                                                            HorizontalAlignment="Left" Visibility="Collapsed" />
+                                                    <Border x:Name="Bd" Background="Transparent" CornerRadius="3" Margin="2,0"
                                                             HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                        <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Center" />
                                                     </Border>
                                                 </Grid>
                                                 <ControlTemplate.Triggers>
@@ -199,58 +217,58 @@
                             </ListBox.ItemContainerStyle>
 
                             <ListBoxItem x:Name="CatAll" IsSelected="True" Tag="all" ToolTip="Tüm İndirmeler">
-                                <Grid Width="36" Height="36">
-                                    <Path Data="{StaticResource GeoCatAll}" Width="15" Height="15" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                    <TextBlock x:Name="CatAllText" Text="Tüm İndirmeler" Visibility="Collapsed" />
-                                </Grid>
+                                <StackPanel Orientation="Horizontal" Margin="10,0">
+                                    <Path Data="{StaticResource GeoCatAll}" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                    <TextBlock x:Name="CatAllText" Text="Tüm İndirmeler" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource TextBrush}" />
+                                </StackPanel>
                             </ListBoxItem>
                             <ListBoxItem x:Name="CatImages" Tag="images" ToolTip="Resimler">
-                                <Grid Width="36" Height="36">
-                                    <Path Data="{StaticResource GeoCatImages}" Width="15" Height="15" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                    <TextBlock x:Name="CatImagesText" Text="Resimler" Visibility="Collapsed" />
-                                </Grid>
+                                <StackPanel Orientation="Horizontal" Margin="10,0">
+                                    <Path Data="{StaticResource GeoCatImages}" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                    <TextBlock x:Name="CatImagesText" Text="Resimler" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource TextBrush}" />
+                                </StackPanel>
                             </ListBoxItem>
                             <ListBoxItem x:Name="CatMusic" Tag="music" ToolTip="Müzik">
-                                <Grid Width="36" Height="36">
-                                    <Path Data="{StaticResource GeoCatMusic}" Width="15" Height="15" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                    <TextBlock x:Name="CatMusicText" Text="Müzik" Visibility="Collapsed" />
-                                </Grid>
+                                <StackPanel Orientation="Horizontal" Margin="10,0">
+                                    <Path Data="{StaticResource GeoCatMusic}" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                    <TextBlock x:Name="CatMusicText" Text="Müzik" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource TextBrush}" />
+                                </StackPanel>
                             </ListBoxItem>
                             <ListBoxItem x:Name="CatVideo" Tag="video" ToolTip="Videolar">
-                                <Grid Width="36" Height="36">
-                                    <Path Data="{StaticResource GeoCatVideo}" Width="15" Height="15" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                    <TextBlock x:Name="CatVideoText" Text="Videolar" Visibility="Collapsed" />
-                                </Grid>
+                                <StackPanel Orientation="Horizontal" Margin="10,0">
+                                    <Path Data="{StaticResource GeoCatVideo}" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                    <TextBlock x:Name="CatVideoText" Text="Videolar" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource TextBrush}" />
+                                </StackPanel>
                             </ListBoxItem>
                             <ListBoxItem x:Name="CatApps" Tag="apps" ToolTip="Programlar">
-                                <Grid Width="36" Height="36">
-                                    <Path Data="{StaticResource GeoCatApps}" Width="15" Height="15" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                    <TextBlock x:Name="CatAppsText" Text="Programlar" Visibility="Collapsed" />
-                                </Grid>
+                                <StackPanel Orientation="Horizontal" Margin="10,0">
+                                    <Path Data="{StaticResource GeoCatApps}" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                    <TextBlock x:Name="CatAppsText" Text="Programlar" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource TextBrush}" />
+                                </StackPanel>
                             </ListBoxItem>
                             <ListBoxItem x:Name="CatDocuments" Tag="documents" ToolTip="Belgeler">
-                                <Grid Width="36" Height="36">
-                                    <Path Data="{StaticResource GeoCatDocs}" Width="15" Height="15" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                    <TextBlock x:Name="CatDocsText" Text="Belgeler" Visibility="Collapsed" />
-                                </Grid>
+                                <StackPanel Orientation="Horizontal" Margin="10,0">
+                                    <Path Data="{StaticResource GeoCatDocs}" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                    <TextBlock x:Name="CatDocsText" Text="Belgeler" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource TextBrush}" />
+                                </StackPanel>
                             </ListBoxItem>
                             <ListBoxItem x:Name="CatArchives" Tag="archives" ToolTip="Arşivler">
-                                <Grid Width="36" Height="36">
-                                    <Path Data="{StaticResource GeoCatArchives}" Width="15" Height="15" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                    <TextBlock x:Name="CatArchivesText" Text="Arşivler" Visibility="Collapsed" />
-                                </Grid>
+                                <StackPanel Orientation="Horizontal" Margin="10,0">
+                                    <Path Data="{StaticResource GeoCatArchives}" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                    <TextBlock x:Name="CatArchivesText" Text="Arşivler" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource TextBrush}" />
+                                </StackPanel>
                             </ListBoxItem>
                             <ListBoxItem x:Name="CatTorrents" Tag="torrents" ToolTip="Torrent / Magnet">
-                                <Grid Width="36" Height="36">
-                                    <Path Data="{StaticResource GeoLink}" Width="15" Height="15" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                    <TextBlock x:Name="CatTorrentsText" Text="Torrent / Magnet" Visibility="Collapsed" />
-                                </Grid>
+                                <StackPanel Orientation="Horizontal" Margin="10,0">
+                                    <Path Data="{StaticResource GeoLink}" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                    <TextBlock x:Name="CatTorrentsText" Text="Torrent / Magnet" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource TextBrush}" />
+                                </StackPanel>
                             </ListBoxItem>
                             <ListBoxItem x:Name="CatOther" Tag="other" ToolTip="Diğer">
-                                <Grid Width="36" Height="36">
-                                    <Path Data="{StaticResource GeoCatOther}" Width="15" Height="15" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                    <TextBlock x:Name="CatOtherText" Text="Diğer" Visibility="Collapsed" />
-                                </Grid>
+                                <StackPanel Orientation="Horizontal" Margin="10,0">
+                                    <Path Data="{StaticResource GeoCatOther}" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                    <TextBlock x:Name="CatOtherText" Text="Diğer" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource TextBrush}" />
+                                </StackPanel>
                             </ListBoxItem>
                         </ListBox>
                     </DockPanel>
@@ -277,7 +295,7 @@
                         </Grid.ColumnDefinitions>
 
                         <!-- Card 1: Bandwidth & Real-time Speed Telemetry -->
-                        <Border Grid.Column="0" Background="{DynamicResource HeroCardGradient}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" CornerRadius="12" Padding="12,9">
+                        <Border Grid.Column="0" Background="{DynamicResource HeroCardGradient}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" CornerRadius="4" Padding="12,9">
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
@@ -295,8 +313,8 @@
                                 </DockPanel>
 
                                 <!-- Live Speed Waveform -->
-                                <Border Grid.Row="1" CornerRadius="6" Background="{DynamicResource Bg0Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" Margin="0,1,0,4" Padding="2" ClipToBounds="True">
-                                    <local:SpeedGraphControl x:Name="SidebarSpeedGraph" Height="36" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+                                <Border Grid.Row="1" CornerRadius="2" Background="{DynamicResource Bg0Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" Margin="0,1,0,4" Padding="2" ClipToBounds="True">
+                                    <local:SpeedGraphControl x:Name="SidebarSpeedGraph" Height="36" LineBrush="{DynamicResource AccentBrush}" FillBrush="{DynamicResource SpeedGraphFillBrush}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
                                 </Border>
 
                                 <!-- Speed Limiter Quick Controls -->
@@ -310,7 +328,7 @@
                                     <Slider Grid.Column="1" x:Name="SldSpeedLimit" Minimum="0" Maximum="50" TickFrequency="5" IsSnapToTickEnabled="False" ValueChanged="SldSpeedLimit_ValueChanged" VerticalAlignment="Center" Margin="0,0,8,0" />
                                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                                         <TextBlock x:Name="TxtSpeedLimitVal" Text="Sınırsız" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="10.5" Foreground="{DynamicResource FlameBrush}" Margin="0,0,6,0" VerticalAlignment="Center" />
-                                        <Button Content="Oto" Style="{DynamicResource ChipButton}" Margin="1,0" Click="SpeedPreset_Click" Tag="0" />
+                                        <Button x:Name="BtnSpeedAuto" Content="Oto" Style="{DynamicResource ChipButton}" Margin="1,0" Click="SpeedPreset_Click" Tag="0" />
                                         <Button Content="2M" Style="{DynamicResource ChipButton}" Margin="1,0" Click="SpeedPreset_Click" Tag="2" />
                                         <Button Content="5M" Style="{DynamicResource ChipButton}" Margin="1,0" Click="SpeedPreset_Click" Tag="5" />
                                         <Button Content="10M" Style="{DynamicResource ChipButton}" Margin="1,0" Click="SpeedPreset_Click" Tag="10" />
@@ -321,7 +339,7 @@
                         </Border>
 
                         <!-- Card 2: Transfer Status & Queue Overview -->
-                        <Border Grid.Column="2" Background="{DynamicResource HeroCardGradient}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" CornerRadius="12" Padding="12,10">
+                        <Border Grid.Column="2" Background="{DynamicResource HeroCardGradient}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" CornerRadius="4" Padding="12,10">
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
@@ -330,20 +348,20 @@
                                 </Grid.RowDefinitions>
                                 <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,4">
                                     <Ellipse Width="6" Height="6" Fill="{DynamicResource FlameBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
-                                    <TextBlock Text="TRANSFER DURUMU" FontFamily="{DynamicResource UiFont}" FontWeight="Bold" FontSize="10.5" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="LblTransferStatus" Text="TRANSFER DURUMU" FontFamily="{DynamicResource UiFont}" FontWeight="Bold" FontSize="10.5" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" />
                                 </StackPanel>
                                 <StackPanel Grid.Row="1" VerticalAlignment="Center">
                                     <TextBlock x:Name="ActiveCountText" Text="0 aktif indirme" FontFamily="{DynamicResource UiFont}" FontWeight="Bold" FontSize="16" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,2" />
-                                    <TextBlock Text="Paralel parçalama optimize" FontFamily="{DynamicResource UiFont}" FontSize="11" Foreground="{DynamicResource TextMuteBrush}" />
+                                    <TextBlock x:Name="LblMultiThreadOptimize" Text="Paralel parçalama optimize" FontFamily="{DynamicResource UiFont}" FontSize="11" Foreground="{DynamicResource TextMuteBrush}" />
                                 </StackPanel>
-                                <Border Grid.Row="2" Background="{DynamicResource Bg1Brush}" CornerRadius="5" Padding="6,2" Margin="0,3,0,0" HorizontalAlignment="Left">
+                                <Border Grid.Row="2" Background="{DynamicResource Bg1Brush}" CornerRadius="2" Padding="6,2" Margin="0,3,0,0" HorizontalAlignment="Left">
                                     <TextBlock Text="⚡ Turbo Multi-Thread" FontFamily="{DynamicResource UiFont}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource FlameBrush}" />
                                 </Border>
                             </Grid>
                         </Border>
 
                         <!-- Card 3: Storage & Bridge Connection Health -->
-                        <Border Grid.Column="4" Background="{DynamicResource HeroCardGradient}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" CornerRadius="12" Padding="12,10">
+                        <Border Grid.Column="4" Background="{DynamicResource HeroCardGradient}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" CornerRadius="4" Padding="12,10">
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
@@ -352,7 +370,7 @@
                                 </Grid.RowDefinitions>
                                 <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,4">
                                     <Ellipse Width="6" Height="6" Fill="{DynamicResource SuccessBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
-                                    <TextBlock Text="DEPOLAMA &amp; EKLENTİ" FontFamily="{DynamicResource UiFont}" FontWeight="Bold" FontSize="10.5" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="LblStorageBridge" Text="DEPOLAMA &amp; EKLENTİ" FontFamily="{DynamicResource UiFont}" FontWeight="Bold" FontSize="10.5" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" />
                                 </StackPanel>
                                 <StackPanel Grid.Row="1" VerticalAlignment="Center">
                                     <TextBlock x:Name="DiskSpaceText" Text="DİSK: HAZIR" FontFamily="{DynamicResource UiFont}" FontWeight="Bold" FontSize="12.5" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,2" />
@@ -361,8 +379,8 @@
                                         <TextBlock x:Name="LblBridgeConnected" Text="Eklenti Bağlı" FontFamily="{DynamicResource UiFont}" FontSize="11" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </StackPanel>
-                                <Border Grid.Row="2" Background="{DynamicResource Bg1Brush}" CornerRadius="5" Padding="6,2" Margin="0,3,0,0" HorizontalAlignment="Left">
-                                    <TextBlock Text="● Native Bridge Aktif" FontFamily="{DynamicResource UiFont}" FontSize="10" Foreground="{DynamicResource TextMuteBrush}" />
+                                <Border Grid.Row="2" Background="{DynamicResource Bg1Brush}" CornerRadius="2" Padding="6,2" Margin="0,3,0,0" HorizontalAlignment="Left">
+                                    <TextBlock x:Name="LblNativeBridgeActive" Text="● Native Bridge Aktif" FontFamily="{DynamicResource UiFont}" FontSize="10" Foreground="{DynamicResource TextMuteBrush}" />
                                 </Border>
                             </Grid>
                         </Border>
@@ -396,7 +414,7 @@
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="6,0">
-                                                <Border Width="28" Height="28" CornerRadius="7" Background="{DynamicResource Bg3Brush}" Margin="0,0,10,0">
+                                                <Border Width="28" Height="28" CornerRadius="3" Background="{DynamicResource Bg3Brush}" Margin="0,0,10,0">
                                                     <Path Data="{StaticResource GeoCatDocs}" Width="13" Height="13" Stretch="Uniform" Fill="{DynamicResource AccentHoverBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                                 </Border>
                                                 <StackPanel VerticalAlignment="Center">
@@ -471,7 +489,7 @@
                                 <DataGridTemplateColumn x:Name="ColHeaderEta" Header="Kalan Süre" Width="105">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
-                                            <Border CornerRadius="6" Padding="6,3" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                            <Border CornerRadius="2" Padding="6,3" HorizontalAlignment="Left" VerticalAlignment="Center">
                                                 <Border.Style>
                                                     <Style TargetType="Border">
                                                         <Setter Property="Background" Value="Transparent" />
@@ -494,7 +512,7 @@
                                                                 </DataTrigger>
                                                                 <DataTrigger Binding="{Binding Status}" Value="Completed">
                                                                     <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}" />
-                                                                    <Setter Property="Text" Value="Tamamlandı" />
+                                                                    <Setter Property="Text" Value="{Binding EtaFormatted}" />
                                                                 </DataTrigger>
                                                                 <DataTrigger Binding="{Binding Status}" Value="Queued">
                                                                     <Setter Property="Foreground" Value="{DynamicResource TextMuteBrush}" />
@@ -513,7 +531,7 @@
                                 <DataGridTemplateColumn x:Name="ColHeaderSpeed" Header="Hız" Width="105">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
-                                            <Border CornerRadius="6" Padding="7,3" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                            <Border CornerRadius="2" Padding="7,3" HorizontalAlignment="Left" VerticalAlignment="Center">
                                                 <Border.Style>
                                                     <Style TargetType="Border">
                                                         <Setter Property="Background" Value="Transparent" />
@@ -547,7 +565,7 @@
                                 <DataGridTemplateColumn x:Name="ColHeaderConn" Header="Bağl." Width="70">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
-                                            <Border CornerRadius="6" Padding="6,3" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                            <Border CornerRadius="2" Padding="6,3" HorizontalAlignment="Left" VerticalAlignment="Center">
                                                 <Border.Style>
                                                     <Style TargetType="Border">
                                                         <Setter Property="Background" Value="Transparent" />
@@ -582,7 +600,7 @@
                                 <DataGridTemplateColumn x:Name="ColHeaderStatus" Header="Durum" Width="125">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
-                                            <Border CornerRadius="6" Padding="7,3" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                            <Border CornerRadius="2" Padding="7,3" HorizontalAlignment="Left" VerticalAlignment="Center">
                                                 <Border.Style>
                                                     <Style TargetType="Border">
                                                         <Setter Property="Background" Value="{DynamicResource Bg2Brush}" />
@@ -680,7 +698,7 @@
                                 </Border>
                                 <TextBlock x:Name="TxtEmptyTitle" Text="Henüz indirme yok" FontFamily="{DynamicResource UiFont}" FontWeight="Bold" FontSize="15" Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Center" Margin="0,0,0,6" />
                                 <TextBlock x:Name="TxtEmptySubtitle" Text="İndirme başlatmak için bir bağlantı yapıştırın veya tarayıcı eklentisini kullanın." FontFamily="{DynamicResource UiFont}" FontSize="12" Foreground="{DynamicResource TextDimBrush}" TextAlignment="Center" TextWrapping="Wrap" HorizontalAlignment="Center" Margin="0,0,0,22" />
-                                <Button Style="{DynamicResource PrimaryButton}" Content="URL Ekle" HorizontalAlignment="Center" Width="140" Height="34" Click="PasteUrl_Click" />
+                                <Button x:Name="BtnEmptyAddUrl" Style="{DynamicResource PrimaryButton}" Content="URL Ekle" HorizontalAlignment="Center" Width="140" Height="34" Click="PasteUrl_Click" />
                             </StackPanel>
                         </Border>
                     </Grid>

@@ -143,7 +143,7 @@ public sealed class DownloadItem : ObservableBase
                 }
                 return Request.Url;
             }
-            return "İsimsiz İndirme";
+            return System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("en", StringComparison.OrdinalIgnoreCase) ? "Unnamed Download" : "İsimsiz İndirme";
         }
     }
     public string SavePath { get => _savePath; set => Set(ref _savePath, value); }
@@ -221,18 +221,26 @@ public sealed class DownloadItem : ObservableBase
     {
         get
         {
-            if (_status == DownloadStatus.Completed) return "Tamamlandı";
+            bool isEn = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("en", StringComparison.OrdinalIgnoreCase);
+            if (_status == DownloadStatus.Completed) return isEn ? "Completed" : "Tamamlandı";
             if (_status != DownloadStatus.Downloading) return "—";
             var eta = Eta;
             if (!eta.HasValue) return "—";
             var ts = eta.Value;
-            if (ts.TotalDays >= 1)
-                return $"{(int)ts.TotalDays}g {ts.Hours}sa";
-            if (ts.TotalHours >= 1)
-                return $"{(int)ts.TotalHours}sa {ts.Minutes}dk";
-            if (ts.TotalMinutes >= 1)
-                return $"{ts.Minutes}dk {ts.Seconds}sn";
-            return $"{Math.Max(1, ts.Seconds)}sn";
+            if (isEn)
+            {
+                if (ts.TotalDays >= 1) return $"{(int)ts.TotalDays}d {ts.Hours}h";
+                if (ts.TotalHours >= 1) return $"{(int)ts.TotalHours}h {ts.Minutes}m";
+                if (ts.TotalMinutes >= 1) return $"{ts.Minutes}m {ts.Seconds}s";
+                return $"{Math.Max(1, ts.Seconds)}s";
+            }
+            else
+            {
+                if (ts.TotalDays >= 1) return $"{(int)ts.TotalDays}g {ts.Hours}sa";
+                if (ts.TotalHours >= 1) return $"{(int)ts.TotalHours}sa {ts.Minutes}dk";
+                if (ts.TotalMinutes >= 1) return $"{ts.Minutes}dk {ts.Seconds}sn";
+                return $"{Math.Max(1, ts.Seconds)}sn";
+            }
         }
     }
     [JsonIgnore] internal CancellationTokenSource? Cts { get; set; }

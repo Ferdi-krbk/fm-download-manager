@@ -1,4 +1,4 @@
-﻿bin/
+bin/
 obj/
 *.user
 .vs/
@@ -6,3 +6,8 @@ Tools/*.exe
 dist/
 publish/
 *.mcdm-part
+*.mp4
+*.mkv
+*.webm
+*.avi
+*.ts

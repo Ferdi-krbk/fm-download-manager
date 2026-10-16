@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using McDm.App.Resources;
 using McDm.Core;
 
 namespace McDm.App;
@@ -34,12 +35,14 @@ public partial class VideoQualityDialog : Window
         ToolLauncher? toolLauncher = null)
     {
         InitializeComponent();
+        ApplyLocalization();
+
         _url = url;
         _request = request;
         _toolLauncher = toolLauncher;
 
         TxtVideoUrl.Text = url;
-        TxtVideoTitle.Text = string.IsNullOrWhiteSpace(title) ? "Video İndirmesi" : title;
+        TxtVideoTitle.Text = string.IsNullOrWhiteSpace(title) ? Strings.VideoDialogDefaultTitle : title;
         ChkDownloadSubtitles.IsChecked = defaultSubtitles;
         DownloadSubtitles = defaultSubtitles;
         SubtitleLangs = defaultLangs;
@@ -55,9 +58,9 @@ public partial class VideoQualityDialog : Window
                 new() { Height = 2160, Label = "2160p 4K Ultra HD" },
                 new() { Height = 1440, Label = "1440p 2K QHD" },
                 new() { Height = 1080, Label = "1080p Full HD (MP4)" },
-                new() { Height = 720, Label = "720p HD (Hızlı İndirme)" },
+                new() { Height = 720, Label = Strings.IsTurkish ? "720p HD (Hızlı İndirme)" : "720p HD (Fast Download)" },
                 new() { Height = 480, Label = "480p SD" },
-                new() { Height = 360, Label = "360p Düşük" }
+                new() { Height = 360, Label = Strings.IsTurkish ? "360p Düşük" : "360p Low" }
             };
         }
 
@@ -68,9 +71,9 @@ public partial class VideoQualityDialog : Window
             {
                 _subtitles = new List<SubtitleTrackInfo>
                 {
-                    new() { Lang = "tr", Label = "Türkçe Altyazı" },
-                    new() { Lang = "en", Label = "İngilizce Altyazı" },
-                    new() { Lang = "all", Label = "Tüm Altyazılar" }
+                    new() { Lang = "tr", Label = Strings.IsTurkish ? "Türkçe Altyazı" : "Turkish Subtitles" },
+                    new() { Lang = "en", Label = Strings.IsTurkish ? "İngilizce Altyazı" : "English Subtitles" },
+                    new() { Lang = "all", Label = Strings.VideoDialogDownloadAllSubs }
                 };
                 DownloadSubtitles = true;
                 ChkDownloadSubtitles.IsChecked = true;
@@ -90,6 +93,22 @@ public partial class VideoQualityDialog : Window
         Closed += (_, _) => _cts.Cancel();
     }
 
+    private void ApplyLocalization()
+    {
+        Title = Strings.VideoDialogTitle;
+        if (TxtWinHeader != null) TxtWinHeader.Text = Strings.VideoDialogTitle;
+        if (LblFormatOption != null) LblFormatOption.Text = Strings.VideoDialogFormatOption;
+        if (TxtOptBestTitle != null) TxtOptBestTitle.Text = Strings.VideoDialogBestTitle;
+        if (TxtOptBestSub != null) TxtOptBestSub.Text = Strings.VideoDialogBestSub;
+        if (TxtOptAudioTitle != null) TxtOptAudioTitle.Text = Strings.VideoDialogAudioTitle;
+        if (TxtOptAudioSub != null) TxtOptAudioSub.Text = Strings.VideoDialogAudioSub;
+        if (LblAudioTrack != null) LblAudioTrack.Text = Strings.VideoDialogAudioTrack;
+        if (ChkDownloadSubtitles != null) ChkDownloadSubtitles.Content = Strings.VideoDialogSubtitlesSave;
+        if (LblSubtitleLang != null) LblSubtitleLang.Text = Strings.VideoDialogSubtitleLangLabel;
+        if (BtnCancel != null) BtnCancel.Content = Strings.Cancel;
+        if (BtnStart != null) BtnStart.Content = Strings.VideoDialogStart;
+    }
+
     private void PopulateQualities()
     {
         string selectedTag = "best";
@@ -103,8 +122,8 @@ public partial class VideoQualityDialog : Window
         // 1. En Yüksek Kalite (Always top choice)
         var rbBest = CreateQualityRadioButton(
             "best",
-            "En Yüksek Kalite (Otomatik En İyi)",
-            "4K / 2K / 1080p mevcut en yüksek video ve ses akışını birleştirir (Önerilen)",
+            Strings.VideoDialogBestTitle,
+            Strings.VideoDialogBestSub,
             "🎬",
             selectedTag == "best"
         );
@@ -119,12 +138,12 @@ public partial class VideoQualityDialog : Window
                 string tag = q.Height.ToString();
                 string subText = q.Height switch
                 {
-                    >= 4320 => "Ultra yüksek çözünürlük (8K UHD)",
-                    >= 2160 => "Ultra yüksek çözünürlük (4K UHD)",
-                    >= 1440 => "Yüksek çözünürlük (2K QHD)",
-                    >= 1080 => "Standart yüksek çözünürlük (Full HD)",
-                    >= 720 => "Daha küçük dosya boyutu, hızlı aktarım (HD)",
-                    _ => "Düşük boyutlu hızlı indirme"
+                    >= 4320 => Strings.IsTurkish ? "Ultra yüksek çözünürlük (8K UHD)" : "Ultra high resolution (8K UHD)",
+                    >= 2160 => Strings.IsTurkish ? "Ultra yüksek çözünürlük (4K UHD)" : "Ultra high resolution (4K UHD)",
+                    >= 1440 => Strings.IsTurkish ? "Yüksek çözünürlük (2K QHD)" : "High resolution (2K QHD)",
+                    >= 1080 => Strings.IsTurkish ? "Standart yüksek çözünürlük (Full HD)" : "Standard high resolution (Full HD)",
+                    >= 720 => Strings.IsTurkish ? "Daha küçük dosya boyutu, hızlı aktarım (HD)" : "Smaller file size, fast transfer (HD)",
+                    _ => Strings.IsTurkish ? "Düşük boyutlu hızlı indirme" : "Compact file size, fast download"
                 };
 
                 var rb = CreateQualityRadioButton(
@@ -142,8 +161,8 @@ public partial class VideoQualityDialog : Window
         AddSeparator(PnlQualityOptions);
         var rbAudio = CreateQualityRadioButton(
             "audio",
-            "Yalnızca Ses Çıkar (MP3 / 320 kbps)",
-            "Görüntüyü atar, sadece müziği / sesi kaydeder",
+            Strings.VideoDialogAudioTitle,
+            Strings.VideoDialogAudioSub,
             "🎵",
             selectedTag == "audio"
         );
@@ -214,51 +233,19 @@ public partial class VideoQualityDialog : Window
         object? previouslySelected = (CmbAudioTrack.SelectedItem as ComboBoxItem)?.Tag;
 
         CmbAudioTrack.Items.Clear();
-        if (_audioTracks.Count > 0)
+
+        if (_audioTracks.Count > 1)
         {
             ComboBoxItem? itemToSelect = null;
-            bool hasTrItem = false;
-            bool hasOrigItem = false;
+            var seenLabels = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var a in _audioTracks)
             {
-                string displayLabel = a.Label ?? "";
-                bool isTrTrack = a.TrackId == "tr" ||
-                                 a.Lang.StartsWith("tr", StringComparison.OrdinalIgnoreCase) ||
-                                 displayLabel.Contains("Türkçe", StringComparison.OrdinalIgnoreCase) ||
-                                 displayLabel.Contains("Turkish", StringComparison.OrdinalIgnoreCase) ||
-                                 displayLabel.Contains("Dublaj", StringComparison.OrdinalIgnoreCase);
-
-                bool isExplicitOrig = a.TrackId == "original" ||
-                                      displayLabel.Contains("Orijinal", StringComparison.OrdinalIgnoreCase) ||
-                                      displayLabel.Contains("Original", StringComparison.OrdinalIgnoreCase);
-
-                // Fix previous mislabeling where a Turkish Dub track with DEFAULT=YES was labeled "Orijinal Ses - Türkçe"
-                if (isTrTrack && displayLabel.Contains("Orijinal Ses - Türkçe", StringComparison.OrdinalIgnoreCase))
+                string displayLabel = GetCleanAudioTrackName(a);
+                if (!seenLabels.Add(displayLabel))
                 {
-                    displayLabel = "Türkçe Dublaj";
-                    a.TrackId = "tr";
-                    isExplicitOrig = false;
+                    if (!string.IsNullOrEmpty(a.FormatId)) displayLabel += $" [{a.FormatId}]";
                 }
-                else if (!displayLabel.Contains("Dublaj", StringComparison.OrdinalIgnoreCase) &&
-                         !displayLabel.Contains("Orijinal", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (isTrTrack && !isExplicitOrig)
-                    {
-                        displayLabel = "Türkçe Dublaj";
-                    }
-                    else if (isExplicitOrig || (!isTrTrack && a.IsDefault))
-                    {
-                        displayLabel = $"Orijinal Ses ({displayLabel})";
-                    }
-                    else
-                    {
-                        displayLabel = $"{displayLabel} Dublaj";
-                    }
-                }
-
-                if (isTrTrack && !isExplicitOrig) hasTrItem = true;
-                if (isExplicitOrig || (!isTrTrack && a.IsDefault)) hasOrigItem = true;
 
                 var cbi = new ComboBoxItem
                 {
@@ -275,59 +262,108 @@ public partial class VideoQualityDialog : Window
                         itemToSelect = cbi;
                     else if (previouslySelected is string prevStr &&
                              (string.Equals(prevStr, a.TrackId, StringComparison.OrdinalIgnoreCase) ||
-                              string.Equals(prevStr, a.Lang, StringComparison.OrdinalIgnoreCase) ||
-                              (prevStr == "best" && a.TrackId == "tr")))
+                              string.Equals(prevStr, a.Lang, StringComparison.OrdinalIgnoreCase)))
                         itemToSelect = cbi;
                 }
             }
 
-            // If only 1 track was detected (e.g. player switched stream or only exposed 1 track in sub-manifest),
-            // always provide the complementary option so the user can still choose "Orijinal Ses (Altyazılı)" or "Türkçe Dublaj"!
-            if (!hasOrigItem)
-            {
-                var origFallback = new ComboBoxItem
-                {
-                    Content = "Orijinal Ses (Altyazılı / Varsayılan)",
-                    Tag = "original"
-                };
-                CmbAudioTrack.Items.Add(origFallback);
-                if (previouslySelected is string ps && ps == "original") itemToSelect = origFallback;
-            }
-            if (!hasTrItem)
-            {
-                var trFallback = new ComboBoxItem
-                {
-                    Content = "Türkçe Dublaj (Varsa)",
-                    Tag = "tr"
-                };
-                CmbAudioTrack.Items.Add(trFallback);
-                if (previouslySelected is string ps && ps == "tr") itemToSelect = trFallback;
-            }
-
             CmbAudioTrack.SelectedItem = itemToSelect ?? CmbAudioTrack.Items[0];
-            TxtAudioTrackCount.Text = $"{_audioTracks.Count} Parça Tespit Edildi";
+            TxtAudioTrackCount.Text = Strings.VideoDialogTracksDetected(_audioTracks.Count);
         }
         else
         {
+            var singleTag = _audioTracks.Count == 1 ? (object)_audioTracks[0] : "best";
             CmbAudioTrack.Items.Add(new ComboBoxItem
             {
-                Content = "En Yüksek Kalite Ses Akışı (Varsayılan)",
-                Tag = "best"
-            });
-            CmbAudioTrack.Items.Add(new ComboBoxItem
-            {
-                Content = "Türkçe Dublaj (Varsa)",
-                Tag = "tr"
-            });
-            CmbAudioTrack.Items.Add(new ComboBoxItem
-            {
-                Content = "Orijinal Ses (Varsa)",
-                Tag = "original"
+                Content = Strings.VideoDialogOriginalAudio,
+                Tag = singleTag
             });
             CmbAudioTrack.SelectedIndex = 0;
             TxtAudioTrackCount.Text = "";
         }
     }
+
+    private static string GetCleanAudioTrackName(AudioTrackInfo a)
+    {
+        string lang = (!string.IsNullOrWhiteSpace(a.Lang) ? a.Lang : a.TrackId ?? "").Trim().ToLowerInvariant();
+        if (lang.Contains('-')) lang = lang.Split('-')[0];
+        if (lang.Contains('_')) lang = lang.Split('_')[0];
+
+        bool isTr = Strings.IsTurkish;
+        var info = StreamProbeService.GetLanguageInfo(lang, a.Label);
+        string name = isTr ? info.Turkish : GetEnglishLanguageName(lang, info.Turkish);
+
+        if (string.Equals(name, "Bilinmeyen", StringComparison.OrdinalIgnoreCase) || string.IsNullOrEmpty(name))
+        {
+            if (!string.IsNullOrWhiteSpace(a.Label) &&
+                !a.Label.Equals("Audio", StringComparison.OrdinalIgnoreCase) &&
+                !a.Label.Equals("Ses", StringComparison.OrdinalIgnoreCase))
+            {
+                name = a.Label.Trim();
+            }
+            else
+            {
+                name = isTr ? "Orijinal Ses" : "Original Audio";
+            }
+        }
+
+        name = name.Replace("(Varsa)", "", StringComparison.OrdinalIgnoreCase)
+                   .Replace("(If Available)", "", StringComparison.OrdinalIgnoreCase)
+                   .Trim();
+
+        bool isOriginal = a.TrackId == "original" ||
+                          a.IsDefault ||
+                          (a.Label?.Contains("Original", StringComparison.OrdinalIgnoreCase) == true) ||
+                          (a.Label?.Contains("Orijinal", StringComparison.OrdinalIgnoreCase) == true);
+
+        bool isDub = (a.Label?.Contains("Dub", StringComparison.OrdinalIgnoreCase) == true) ||
+                     (a.Label?.Contains("Dublaj", StringComparison.OrdinalIgnoreCase) == true);
+
+        if (isOriginal && !name.Contains("Orijinal", StringComparison.OrdinalIgnoreCase) && !name.Contains("Original", StringComparison.OrdinalIgnoreCase))
+        {
+            return isTr ? $"{name} (Orijinal)" : $"{name} (Original)";
+        }
+        if (isDub && !name.Contains("Dub", StringComparison.OrdinalIgnoreCase))
+        {
+            return isTr ? $"{name} (Dublaj)" : $"{name} (Dub)";
+        }
+
+        return name;
+    }
+
+    private static string GetEnglishLanguageName(string code, string fallback) => code switch
+    {
+        "tr" or "tur" => "Turkish",
+        "en" or "eng" => "English",
+        "es" or "spa" => "Spanish",
+        "de" or "ger" or "deu" => "German",
+        "fr" or "fre" or "fra" => "French",
+        "it" or "ita" => "Italian",
+        "ru" or "rus" => "Russian",
+        "pt" or "por" => "Portuguese",
+        "ja" or "jpn" => "Japanese",
+        "ko" or "kor" => "Korean",
+        "zh" or "zho" or "chi" => "Chinese",
+        "ar" or "ara" => "Arabic",
+        "hi" or "hin" => "Hindi",
+        "nl" or "nld" or "dut" => "Dutch",
+        "pl" or "pol" => "Polish",
+        "sv" or "swe" => "Swedish",
+        "no" or "nor" => "Norwegian",
+        "da" or "dan" => "Danish",
+        "fi" or "fin" => "Finnish",
+        "el" or "ell" or "gre" => "Greek",
+        "he" or "heb" => "Hebrew",
+        "uk" or "ukr" => "Ukrainian",
+        "id" or "ind" => "Indonesian",
+        "vi" or "vie" => "Vietnamese",
+        "th" or "tha" => "Thai",
+        "fa" or "fas" or "per" => "Persian",
+        "ro" or "ron" or "rum" => "Romanian",
+        "hu" or "hun" => "Hungarian",
+        "cs" or "ces" or "cze" => "Czech",
+        _ => fallback
+    };
 
     private static bool IsVideoOrAudioHlsPlaylist(string uLower, SubtitleTrackInfo s)
     {
@@ -404,13 +440,17 @@ public partial class VideoQualityDialog : Window
                 continue;
 
             string finalLabel;
-            if (!string.IsNullOrEmpty(label) && !label.Equals("Altyazı", StringComparison.OrdinalIgnoreCase) && !label.Equals("Subtitle", StringComparison.OrdinalIgnoreCase))
+            bool isTr = Strings.IsTurkish;
+            if (!string.IsNullOrEmpty(label) && !label.Equals("Altyazı", StringComparison.OrdinalIgnoreCase) && !label.Equals("Subtitle", StringComparison.OrdinalIgnoreCase) && !label.Equals("Subtitles", StringComparison.OrdinalIgnoreCase))
             {
-                finalLabel = label.Contains("Altyazı", StringComparison.OrdinalIgnoreCase) ? label : $"{label} Altyazı";
+                if (isTr)
+                    finalLabel = label.Contains("Altyazı", StringComparison.OrdinalIgnoreCase) ? label : $"{label} Altyazı";
+                else
+                    finalLabel = (label.Contains("Subtitle", StringComparison.OrdinalIgnoreCase) || label.Contains("Subtitles", StringComparison.OrdinalIgnoreCase)) ? label : $"{label} Subtitles";
             }
             else
             {
-                finalLabel = StreamProbeService.FormatSubtitleLabel(lang, isAuto, isForced);
+                finalLabel = StreamProbeService.FormatSubtitleLabel(lang, isAuto, isForced, isTr);
             }
 
             string dedupKey = $"{lang}_{finalLabel}";
@@ -471,7 +511,7 @@ public partial class VideoQualityDialog : Window
             {
                 var allItem = new ComboBoxItem
                 {
-                    Content = "Tüm Altyazıları İndir",
+                    Content = Strings.VideoDialogDownloadAllSubs,
                     Tag = "all"
                 };
                 CmbSubtitleLang.Items.Add(allItem);
@@ -484,7 +524,7 @@ public partial class VideoQualityDialog : Window
         {
             CmbSubtitleLang.Items.Add(new ComboBoxItem
             {
-                Content = "Harici Altyazı Yok (Video İçi Gömülü veya Yok)",
+                Content = Strings.VideoDialogNoSubtitles,
                 Tag = "none"
             });
             CmbSubtitleLang.SelectedIndex = 0;
@@ -497,7 +537,7 @@ public partial class VideoQualityDialog : Window
         try
         {
             TxtProbeStatus.Visibility = Visibility.Visible;
-            TxtProbeStatus.Text = "🔍 Akış formatları taranıyor...";
+            TxtProbeStatus.Text = Strings.VideoDialogProbing;
 
             var launcher = _toolLauncher;
             if (launcher == null)
@@ -566,12 +606,12 @@ public partial class VideoQualityDialog : Window
                     updated = true;
                 }
 
-                if (!string.IsNullOrWhiteSpace(result.Title) && TxtVideoTitle.Text == "Video İndirmesi")
+                if (!string.IsNullOrWhiteSpace(result.Title) && (TxtVideoTitle.Text == "Video İndirmesi" || TxtVideoTitle.Text == "Video Download"))
                 {
                     TxtVideoTitle.Text = result.Title;
                 }
 
-                TxtProbeStatus.Text = updated ? "✓ Akış formatları hazır" : "";
+                TxtProbeStatus.Text = updated ? Strings.VideoDialogReady : "";
                 if (!updated) TxtProbeStatus.Visibility = Visibility.Collapsed;
             });
         }

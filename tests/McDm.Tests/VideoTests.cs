@@ -164,6 +164,22 @@ Son sahne metni.
             check(rAudio.Downloaded == 10485760 + 500000, "accumulated downloaded across streams mismatch");
             check(rAudio.Total == 10485760 + 2000000, "accumulated total across streams mismatch");
 
+            // Test transition where "finished" status is NOT emitted by yt-dlp (e.g. HLS stream transition)
+            var accNoFin = new VideoDownloader.ProgressAccumulator();
+            accNoFin.Apply(VideoDownloader.ParseProgress("MCDM_PROGRESS|downloading|700000000|700000000|700000000|20000000||")!);
+            var rSeamlessAudio = accNoFin.Apply(VideoDownloader.ParseProgress("MCDM_PROGRESS|downloading|100000|30000000|30000000|1000000|1|300")!);
+            check(rSeamlessAudio.Downloaded == 700000000 + 100000, "progress should not reset to 0 when transitioning streams: " + rSeamlessAudio.Downloaded);
+            check(rSeamlessAudio.Total == 700000000 + 30000000, "total should encompass both streams: " + rSeamlessAudio.Total);
+
+            // Test concurrent fragments configuration
+            var ytArgs = VideoDownloader.BuildArguments("https://www.youtube.com/watch?v=abc", new VideoOptions(), @"C:\Downloads", @"C:\Downloads\.temp", null, null);
+            check(ytArgs.Contains("--concurrent-fragments"), "should have concurrent-fragments");
+            check(ytArgs[ytArgs.IndexOf("--concurrent-fragments") + 1] == "5", "YouTube should have 5 concurrent fragments");
+
+            var hlsArgs = VideoDownloader.BuildArguments("https://srv9.cdnimages3140.cyou/master.txt", new VideoOptions(), @"C:\Downloads", @"C:\Downloads\.temp", null, null);
+            check(hlsArgs[hlsArgs.IndexOf("--concurrent-fragments") + 1] == "1", "Generic HLS should have 1 fragment worker to prevent 429 rate limits");
+            check(hlsArgs.Contains("fragment:0.5"), "should use fragment retry sleep");
+
             return Task.CompletedTask;
         });
 

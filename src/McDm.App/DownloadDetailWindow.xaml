@@ -47,30 +47,36 @@
                 </StackPanel>
 
                 <!-- Key stats row (SIZE, DOWNLOADED, SPEED, STATUS) -->
-                <Border Grid.Row="1" Background="{DynamicResource Bg1Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="10" Padding="14,10" Margin="0,0,0,10">
-                    <UniformGrid Columns="4">
-                        <StackPanel>
-                            <TextBlock x:Name="LblDownloaded" Text="DOWNLOADED" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="10" Foreground="{DynamicResource TextDimBrush}" />
-                            <TextBlock x:Name="TxtDownloaded" Text="0 B" FontFamily="{DynamicResource MonoFont}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextBrush}" Margin="0,4,0,0" />
+                <Border Grid.Row="1" Background="{DynamicResource Bg1Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="14,10" Margin="0,0,0,10">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1.3*" />
+                            <ColumnDefinition Width="1.0*" />
+                            <ColumnDefinition Width="1.3*" />
+                            <ColumnDefinition Width="0.8*" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                            <TextBlock x:Name="LblDownloaded" Text="DOWNLOADED" FontFamily="{DynamicResource UiFont}" FontWeight="Bold" FontSize="10" Foreground="{DynamicResource TextDimBrush}" />
+                            <TextBlock x:Name="TxtDownloaded" Text="0 B" FontFamily="{DynamicResource MonoFont}" FontWeight="Bold" FontSize="11.5" Foreground="{DynamicResource TextBrush}" Margin="0,4,0,0" TextTrimming="CharacterEllipsis" />
                         </StackPanel>
-                        <StackPanel>
-                            <TextBlock x:Name="LblSpeed" Text="SPEED" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="10" Foreground="{DynamicResource TextDimBrush}" />
-                            <TextBlock x:Name="TxtSpeed" Text="0 B/s" FontFamily="{DynamicResource MonoFont}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource AccentBrush}" Margin="0,4,0,0" />
+                        <StackPanel Grid.Column="1" Margin="0,0,8,0">
+                            <TextBlock x:Name="LblSpeed" Text="SPEED" FontFamily="{DynamicResource UiFont}" FontWeight="Bold" FontSize="10" Foreground="{DynamicResource TextDimBrush}" />
+                            <TextBlock x:Name="TxtSpeed" Text="0 B/s" FontFamily="{DynamicResource MonoFont}" FontWeight="Bold" FontSize="11.5" Foreground="{DynamicResource AccentBrush}" Margin="0,4,0,0" TextTrimming="CharacterEllipsis" />
                         </StackPanel>
-                        <StackPanel>
-                            <TextBlock x:Name="LblStatus" Text="STATUS" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="10" Foreground="{DynamicResource TextDimBrush}" />
-                            <TextBlock x:Name="TxtStatus" Text="Ready" FontFamily="{DynamicResource UiFont}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource SuccessBrush}" Margin="0,4,0,0" />
+                        <StackPanel Grid.Column="2" Margin="0,0,8,0">
+                            <TextBlock x:Name="LblStatus" Text="STATUS" FontFamily="{DynamicResource UiFont}" FontWeight="Bold" FontSize="10" Foreground="{DynamicResource TextDimBrush}" />
+                            <TextBlock x:Name="TxtStatus" Text="Ready" FontFamily="{DynamicResource UiFont}" FontWeight="Bold" FontSize="11.5" Foreground="{DynamicResource SuccessBrush}" Margin="0,4,0,0" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
                         </StackPanel>
-                        <StackPanel>
-                            <TextBlock Text="CONNECTIONS" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="10" Foreground="{DynamicResource TextDimBrush}" />
-                            <TextBlock Text="8 ACTIVE" FontFamily="{DynamicResource MonoFont}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextBrush}" Margin="0,4,0,0" />
+                        <StackPanel Grid.Column="3">
+                            <TextBlock x:Name="LblConnections" Text="CONNECTIONS" FontFamily="{DynamicResource UiFont}" FontWeight="Bold" FontSize="10" Foreground="{DynamicResource TextDimBrush}" />
+                            <TextBlock x:Name="TxtActiveConn" Text="1 AKTİF" FontFamily="{DynamicResource MonoFont}" FontWeight="Bold" FontSize="11.5" Foreground="{DynamicResource TextBrush}" Margin="0,4,0,0" TextTrimming="CharacterEllipsis" />
                         </StackPanel>
-                    </UniformGrid>
+                    </Grid>
                 </Border>
 
                 <!-- Real-time Speed Graph -->
-                <Border Grid.Row="2" Background="{DynamicResource Bg1Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="10" Padding="8,6" Margin="0,0,0,12" Height="68">
-                    <local:SpeedGraphControl x:Name="DetailSpeedGraph" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+                <Border Grid.Row="2" Background="{DynamicResource Bg1Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="8,6" Margin="0,0,0,12" Height="68">
+                    <local:SpeedGraphControl x:Name="DetailSpeedGraph" LineBrush="{DynamicResource AccentBrush}" FillBrush="{DynamicResource SpeedGraphFillBrush}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
                 </Border>
 
                 <!-- Overall Progress -->
@@ -86,9 +92,9 @@
                               BorderThickness="0">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="#" Binding="{Binding Index}" Width="40" />
-                            <DataGridTextColumn Header="RANGE" Binding="{Binding RangeText}" Width="*" />
-                            <DataGridTextColumn Header="DOWNLOADED" Binding="{Binding DoneText}" Width="110" />
-                            <DataGridTextColumn Header="PROGRESS" Binding="{Binding PercentText}" Width="85" />
+                            <DataGridTextColumn x:Name="ColRange" Header="RANGE" Binding="{Binding RangeText}" Width="*" />
+                            <DataGridTextColumn x:Name="ColDownloaded" Header="DOWNLOADED" Binding="{Binding DoneText}" Width="110" />
+                            <DataGridTextColumn x:Name="ColProgress" Header="PROGRESS" Binding="{Binding PercentText}" Width="85" />
                         </DataGrid.Columns>
                     </DataGrid>
                 </GroupBox>

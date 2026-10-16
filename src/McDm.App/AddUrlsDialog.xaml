@@ -1,7 +1,7 @@
 <Window x:Class="McDm.App.AddUrlsDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="ADD DOWNLOAD URLS" Width="620" Height="480" MinWidth="480" MinHeight="340"
+        Title="ADD DOWNLOAD URLS" Width="620" Height="540" MinWidth="480" MinHeight="400"
         WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
         Background="{DynamicResource Bg0Brush}"
         FontFamily="{DynamicResource UiFont}">
@@ -33,6 +33,7 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
                 <TextBlock x:Name="PromptText" Grid.Row="0"
@@ -41,7 +42,7 @@
                            Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,8" />
 
                 <!-- Multi-line URL TextBox (Consolas, Bg2, 1px Line) -->
-                <Border Grid.Row="1" Background="{DynamicResource Bg2Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="10">
+                <Border Grid.Row="1" Background="{DynamicResource Bg2Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4">
                     <TextBox x:Name="UrlsBox"
                              Style="{DynamicResource MultiLineTextBox}"
                              AcceptsReturn="True" TextWrapping="Wrap"
@@ -61,6 +62,19 @@
                            Text="0 VALID LINKS"
                            FontFamily="{DynamicResource MonoFont}" FontSize="11"
                            Foreground="{DynamicResource TextDimBrush}" Margin="0,8,0,0" />
+
+                <!-- Save Directory Field -->
+                <StackPanel Grid.Row="3" Margin="0,12,0,0">
+                    <TextBlock x:Name="LblFolder" Text="Kaydedilecek Klasör:" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,4" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="TxtFolder" Height="32" FontSize="12" Padding="8,4" FontFamily="{DynamicResource UiFont}" />
+                        <Button x:Name="BtnBrowse" Grid.Column="1" Style="{DynamicResource SecondaryButton}" Content="Gözat..." Height="32" Padding="14,0" Margin="8,0,0,0" Click="Browse_Click" />
+                    </Grid>
+                </StackPanel>
             </Grid>
 
             <!-- Action Footer -->

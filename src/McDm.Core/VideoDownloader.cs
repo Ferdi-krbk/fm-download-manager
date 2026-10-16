@@ -27,9 +27,40 @@ public sealed class ToolPaths
 
     public string? YtDlpPath => Find("yt-dlp", "MCDM_YTDLP");
     public string? FfmpegPath => Find("ffmpeg", "MCDM_FFMPEG");
+    public string? QuickJsPath => Find("quickjs", "MCDM_QUICKJS") ?? Find("qjs", "MCDM_QUICKJS");
+    public string? NodePath => Find("node", "MCDM_NODE") ?? FindNodeDefault();
+    public string? DenoPath => Find("deno", "MCDM_DENO") ?? FindDenoDefault();
+
     public bool YtDlpAvailable => YtDlpPath != null;
     /// <summary>Where "Update yt-dlp" writes the new binary (always writable, per user).</summary>
     public string UserYtDlpTarget => Path.Combine(UserToolsDirectory, "yt-dlp" + Exe);
+    public string UserQuickJsTarget => Path.Combine(UserToolsDirectory, "quickjs" + Exe);
+
+    public (string Name, string Path)? GetPreferredJsRuntime()
+    {
+        if (QuickJsPath is { } qjs) return ("quickjs", qjs);
+        if (NodePath is { } node) return ("node", node);
+        if (DenoPath is { } deno) return ("deno", deno);
+        return null;
+    }
+
+    private static string? FindNodeDefault()
+    {
+        var pf = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+        var p86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
+        string[] common = [
+            Path.Combine(pf, "nodejs", "node.exe"),
+            Path.Combine(p86, "nodejs", "node.exe")
+        ];
+        return common.FirstOrDefault(File.Exists);
+    }
+
+    private static string? FindDenoDefault()
+    {
+        var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        string deno = Path.Combine(userProfile, ".deno", "bin", "deno.exe");
+        return File.Exists(deno) ? deno : null;
+    }
 
     public async Task<string> DownloadYtDlpAsync(CancellationToken ct = default)
     {
@@ -39,6 +70,24 @@ public sealed class ToolPaths
         using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
         client.DefaultRequestHeaders.UserAgent.ParseAdd("FMDownloadManager/3.6 (Windows; x64)");
         using (var resp = await client.GetAsync("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe", HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false))
+        {
+            resp.EnsureSuccessStatusCode();
+            using var fs = File.Create(tmp);
+            await resp.Content.CopyToAsync(fs, ct).ConfigureAwait(false);
+        }
+        if (File.Exists(target)) File.Delete(target);
+        File.Move(tmp, target);
+        return target;
+    }
+
+    public async Task<string> DownloadQuickJsAsync(CancellationToken ct = default)
+    {
+        Directory.CreateDirectory(UserToolsDirectory);
+        string target = UserQuickJsTarget;
+        string tmp = target + ".tmp";
+        using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("FMDownloadManager/3.6 (Windows; x64)");
+        using (var resp = await client.GetAsync("https://github.com/quickjs-ng/quickjs/releases/download/v0.17.0/qjs-windows-x86_64.exe", HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false))
         {
             resp.EnsureSuccessStatusCode();
             using var fs = File.Create(tmp);
@@ -175,7 +224,8 @@ public sealed class VideoDownloader
     public static List<string> BuildArguments(string url, VideoOptions o, string outputDir, string workDir,
                                               string? cookiesFile, string? ffmpegLocation,
                                               string? userAgent = null, string? referer = null,
-                                              string? fileName = null)
+                                              string? fileName = null,
+                                              (string Name, string Path)? jsRuntime = null)
     {
         var cacheDir = Path.Combine(AppPaths.DataDirectory, "yt-dlp-cache");
         try { Directory.CreateDirectory(cacheDir); } catch { }
@@ -191,19 +241,28 @@ public sealed class VideoDownloader
             "--windows-filenames",
             "--trim-filenames", "60",
             "--no-mtime",
-            "--concurrent-fragments", "5",
+            "--concurrent-fragments", IsYouTubeUrl(url) ? "5" : "1",
             "--buffer-size", "1024K",
             "--no-check-certificates",
-            "--socket-timeout", "8",
+            "--socket-timeout", "20",
             "--extractor-retries", "10",
             "--file-access-retries", "20",
             "--fragment-retries", "30",
             "--retry-sleep", "fragment:0.5",
             "--cache-dir", cacheDir,
             "-c",                                  // continue partial downloads (resume)
-            "--force-overwrites",
         };
         a.RemoveAll(string.IsNullOrEmpty);
+        if (IsYouTubeUrl(url))
+        {
+            a.Add("--throttled-rate");
+            a.Add("100K");
+        }
+        if (jsRuntime != null)
+        {
+            a.Add("--js-runtimes");
+            a.Add($"{jsRuntime.Value.Name}:{jsRuntime.Value.Path}");
+        }
         if (!IsYouTubeUrl(url))
         {
             a.Add("--extractor-args");
@@ -280,7 +339,12 @@ public sealed class VideoDownloader
             : "";
         if (!string.IsNullOrWhiteSpace(safeName) &&
             !safeName.StartsWith("index-", StringComparison.OrdinalIgnoreCase) &&
-            !safeName.StartsWith("master", StringComparison.OrdinalIgnoreCase))
+            !safeName.StartsWith("master", StringComparison.OrdinalIgnoreCase) &&
+            !safeName.Equals("watch", StringComparison.OrdinalIgnoreCase) &&
+            !safeName.Equals("video", StringComparison.OrdinalIgnoreCase) &&
+            !safeName.Equals("shorts", StringComparison.OrdinalIgnoreCase) &&
+            !safeName.Equals("Video İndirmesi", StringComparison.OrdinalIgnoreCase) &&
+            !safeName.Equals("Video Download", StringComparison.OrdinalIgnoreCase))
         {
             if (safeName.Length > 60) safeName = safeName[..60].Trim();
             a.Add("-o"); a.Add(safeName + ".%(ext)s");
@@ -320,16 +384,38 @@ public sealed class VideoDownloader
         private long _finished;
         private long _lastStreamDownloaded;
         private long _lastStreamTotal;
+        private readonly HashSet<string> _accountedFiles = new(StringComparer.OrdinalIgnoreCase);
+
+        public void AddFinished(long bytes, string? fileKey = null)
+        {
+            if (fileKey != null && !_accountedFiles.Add(fileKey)) return;
+            _finished += bytes;
+        }
 
         public (long Downloaded, long Total) Apply(VideoProgress p)
         {
             long total = p.Total ?? 0;
             if (total <= 0 && p.Fragment is > 0 && p.FragmentCount is > 0 && p.Downloaded > 0)
                 total = p.Downloaded * p.FragmentCount.Value / p.Fragment.Value;   // HLS/DASH: estimate from fragments
+
+            // If yt-dlp transitioned to the next stream (e.g. video finished and audio started),
+            // p.Downloaded will drop below _lastStreamDownloaded. Latch the finished stream!
+            if (p.Downloaded < _lastStreamDownloaded && _lastStreamDownloaded > 0)
+            {
+                _finished += _lastStreamDownloaded;
+                _lastStreamDownloaded = 0;
+                _lastStreamTotal = 0;
+            }
+
             _lastStreamDownloaded = p.Downloaded;
             _lastStreamTotal = Math.Max(total, p.Downloaded);
             var result = (_finished + p.Downloaded, total > 0 ? _finished + _lastStreamTotal : -1);
-            if (p.Status == "finished") { _finished += _lastStreamDownloaded; _lastStreamDownloaded = 0; _lastStreamTotal = 0; }
+            if (p.Status == "finished")
+            {
+                _finished += _lastStreamDownloaded;
+                _lastStreamDownloaded = 0;
+                _lastStreamTotal = 0;
+            }
             return result;
         }
     }
@@ -447,12 +533,14 @@ public sealed class VideoDownloader
         return "tr";
     }
 
+    private static bool IsTurkish => (CultureInfo.CurrentUICulture ?? CultureInfo.InstalledUICulture).TwoLetterISOLanguageName.Equals("tr", StringComparison.OrdinalIgnoreCase);
+
     public async Task RunAsync(DownloadItem item, CancellationToken ct)
     {
         var tool = _ytDlp();
         if (tool == null)
         {
-            item.Stage = "yt-dlp hazırlanıyor...";
+            item.Stage = IsTurkish ? "yt-dlp hazırlanıyor..." : "Preparing yt-dlp...";
             try
             {
                 var tp = new ToolPaths();
@@ -461,7 +549,9 @@ public sealed class VideoDownloader
             }
             catch (Exception ex)
             {
-                throw new FatalDownloadException("yt-dlp aracı bulunamadı ve otomatik indirilemedi: " + ex.Message);
+                throw new FatalDownloadException(IsTurkish 
+                    ? "yt-dlp aracı bulunamadı ve otomatik indirilemedi: " + ex.Message 
+                    : "yt-dlp tool not found and could not be downloaded automatically: " + ex.Message);
             }
         }
         var baseOpt = _options();
@@ -518,7 +608,7 @@ public sealed class VideoDownloader
         // 1. Direct subtitle-only download (fast HTTP download + VTT/XML->SRT conversion)
         if (opt.SubtitlesOnly && !string.IsNullOrWhiteSpace(srtContent) && opt.SubtitleLangs != "all")
         {
-            item.Stage = "Altyazılar Kaydediliyor...";
+            item.Stage = IsTurkish ? "Altyazılar Kaydediliyor..." : "Saving Subtitles...";
             string baseName = Path.GetFileNameWithoutExtension(string.IsNullOrWhiteSpace(item.FileName) ? "subtitle" : item.FileName);
             string srtFile = Path.Combine(outDir, $"{baseName}.{cleanSubLang}.srt");
             await File.WriteAllTextAsync(srtFile, srtContent, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), ct);
@@ -530,7 +620,7 @@ public sealed class VideoDownloader
             item.TotalBytes = sz;
             item.DownloadedBytes = sz;
             item.Status = DownloadStatus.Completed;
-            item.Stage = "Tamamlandı";
+            item.Stage = IsTurkish ? "Tamamlandı" : "Completed";
             try { Directory.Delete(item.WorkDir!, recursive: true); } catch { }
             item.WorkDir = null;
             return;
@@ -560,12 +650,25 @@ public sealed class VideoDownloader
             }
 
             bool isYt = IsYouTubeUrl(item.Request.Url);
+            var tp = new ToolPaths();
+            var jsRuntime = tp.GetPreferredJsRuntime();
+            if (jsRuntime == null && isYt)
+            {
+                item.Stage = IsTurkish ? "QuickJS motoru hazırlanıyor..." : "Preparing QuickJS engine...";
+                try
+                {
+                    string qjs = await tp.DownloadQuickJsAsync(ct).ConfigureAwait(false);
+                    jsRuntime = ("quickjs", qjs);
+                }
+                catch { /* non-fatal fallback */ }
+            }
+
             string? firstAttemptCookies = isYt ? null : cookieFile;
             string? fallbackCookies = isYt ? cookieFile : null;
 
             try
             {
-                await ExecuteYtDlpOnceAsync(item, opt, outDir, firstAttemptCookies, tool, ct);
+                await ExecuteYtDlpOnceAsync(item, opt, outDir, firstAttemptCookies, tool, jsRuntime, ct);
             }
             catch (FatalDownloadException ex) when (fallbackCookies != firstAttemptCookies && !ct.IsCancellationRequested &&
                    (ex.Message.Contains("reload", StringComparison.OrdinalIgnoreCase) ||
@@ -578,7 +681,7 @@ public sealed class VideoDownloader
                     ex.Message.Contains("403", StringComparison.OrdinalIgnoreCase)))
             {
                 // Retry with alternate cookie mode (with cookies for age-restricted YouTube, or without cookies if cookies caused Video unavailable/reload)
-                await ExecuteYtDlpOnceAsync(item, opt, outDir, fallbackCookies, tool, ct);
+                await ExecuteYtDlpOnceAsync(item, opt, outDir, fallbackCookies, tool, jsRuntime, ct);
             }
 
             // 3. Post-process video with subtitle (save .srt alongside and embed with ffmpeg)
@@ -601,11 +704,23 @@ public sealed class VideoDownloader
                     string? srtToEmbed = File.Exists(finalSrt) ? finalSrt : Directory.GetFiles(outDir, $"{baseName}*.srt").FirstOrDefault();
                     if (srtToEmbed != null && File.Exists(srtToEmbed) && _ffmpeg() is { } ffmpegPath && File.Exists(ffmpegPath))
                     {
-                        item.Stage = "Altyazı Gömülüyor (FFmpeg)...";
-                        EmbedSubtitleWithFfmpeg(ffmpegPath, item.SavePath, srtToEmbed, cleanSubLang);
+                        item.Stage = IsTurkish ? "Altyazı Gömülüyor (FFmpeg)..." : "Embedding Subtitles (FFmpeg)...";
+                        try
+                        {
+                            EmbedSubtitleWithFfmpeg(ffmpegPath, item.SavePath, srtToEmbed, cleanSubLang);
+                        }
+                        catch { }
+                        finally
+                        {
+                            item.Stage = null;
+                        }
                     }
                 }
                 catch { }
+                finally
+                {
+                    item.Stage = null;
+                }
             }
 
             // Clean up temporary work directory now that yt-dlp and subtitle muxing succeeded
@@ -628,7 +743,7 @@ public sealed class VideoDownloader
     }
 
     private async Task ExecuteYtDlpOnceAsync(DownloadItem item, VideoOptions opt, string outDir, string? cookieFile,
-                                             ToolLauncher tool, CancellationToken ct)
+                                             ToolLauncher tool, (string Name, string Path)? jsRuntime, CancellationToken ct)
     {
         var psi = new ProcessStartInfo(tool.FileName)
         {
@@ -637,7 +752,8 @@ public sealed class VideoDownloader
             StandardOutputEncoding = Encoding.UTF8, StandardErrorEncoding = Encoding.UTF8,
         };
         foreach (var l in tool.Lead) psi.ArgumentList.Add(l);
-        foreach (var a in BuildArguments(item.Request.Url, opt, outDir, item.WorkDir!, cookieFile, _ffmpeg(), item.Request.UserAgent, item.Request.Referer, item.FileName))
+        var targetFileParam = !string.IsNullOrWhiteSpace(item.Request.FileName) ? item.Request.FileName : null;
+        foreach (var a in BuildArguments(item.Request.Url, opt, outDir, item.WorkDir!, cookieFile, _ffmpeg(), item.Request.UserAgent, item.Request.Referer, targetFileParam, jsRuntime))
             psi.ArgumentList.Add(a);
         psi.Environment["PYTHONUNBUFFERED"] = "1";
         psi.Environment["PYTHONIOENCODING"] = "utf-8";
@@ -646,10 +762,30 @@ public sealed class VideoDownloader
         string? finalPath = null;
         string? lastError = null;
         var acc = new ProgressAccumulator();
+        if (Directory.Exists(item.WorkDir))
+        {
+            try
+            {
+                var existingStreams = Directory.GetFiles(item.WorkDir)
+                    .Where(f => !f.EndsWith(".part", StringComparison.OrdinalIgnoreCase) &&
+                                !f.EndsWith(".ytdl", StringComparison.OrdinalIgnoreCase) &&
+                                !f.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase) &&
+                                !f.EndsWith(".srt", StringComparison.OrdinalIgnoreCase))
+                    .Select(f => new FileInfo(f))
+                    .Where(fi => fi.Length > 0)
+                    .ToList();
+                foreach (var es in existingStreams)
+                {
+                    acc.AddFinished(es.Length, es.FullName);
+                }
+            }
+            catch { }
+        }
         var clock = Stopwatch.StartNew();
         var startUtc = DateTime.UtcNow.AddSeconds(-5);
         item.Stage = null;
         item.ActiveConnections = 1;
+        string currentStreamType = IsTurkish ? "Akış" : "Stream";
 
         void OnLine(string? line)
         {
@@ -660,7 +796,34 @@ public sealed class VideoDownloader
                 item.TotalBytes = total;
                 item.DownloadedBytes = done;
                 item.Speed = p.Speed;
-                item.Stage = null;
+                if (p.Fragment is > 0 && p.FragmentCount is > 0)
+                {
+                    item.Stage = IsTurkish 
+                        ? $"{currentStreamType} İndiriliyor ({p.Fragment}/{p.FragmentCount})" 
+                        : $"{currentStreamType} Downloading ({p.Fragment}/{p.FragmentCount})";
+                }
+                else
+                {
+                    item.Stage = null;
+                }
+            }
+            else if (line.Contains("has already been downloaded", StringComparison.OrdinalIgnoreCase))
+            {
+                var m = Regex.Match(line, @"\[download\]\s+(.+?)\s+has already been downloaded");
+                if (m.Success)
+                {
+                    var path = m.Groups[1].Value.Trim().Trim('"', '\'');
+                    if (File.Exists(path))
+                    {
+                        try
+                        {
+                            var fi = new FileInfo(path);
+                            acc.AddFinished(fi.Length, fi.FullName);
+                            item.DownloadedBytes = Math.Max(item.DownloadedBytes, fi.Length);
+                        }
+                        catch { }
+                    }
+                }
             }
             else if (line.StartsWith(TitlePrefix + "|", StringComparison.Ordinal))
             {
@@ -685,38 +848,57 @@ public sealed class VideoDownloader
             }
             else if (line.StartsWith("[Merger] Merging formats into \"", StringComparison.Ordinal))
             {
-                item.Stage = "Dosyalar Birleştiriliyor (FFmpeg)...";
+                item.Stage = IsTurkish ? "Dosyalar Birleştiriliyor (FFmpeg)..." : "Merging Streams (FFmpeg)...";
                 item.Speed = 0;
                 var fp = line.Substring("[Merger] Merging formats into \"".Length).TrimEnd('"').Trim();
                 if (!string.IsNullOrEmpty(fp)) finalPath = fp;
             }
             else if (line.StartsWith("[download] Destination: ", StringComparison.Ordinal))
             {
-                item.Stage = "İndirme Başlatılıyor...";
+                item.Stage = IsTurkish ? "İndirme Başlatılıyor..." : "Starting Download...";
                 var fp = line.Substring("[download] Destination: ".Length).Trim();
                 if (!string.IsNullOrEmpty(fp) && string.IsNullOrEmpty(finalPath)) finalPath = fp;
             }
             else if (line.StartsWith("[Merger]", StringComparison.Ordinal) || line.StartsWith("[VideoConvertor]", StringComparison.Ordinal)
                      || line.StartsWith("[ExtractAudio]", StringComparison.Ordinal) || line.StartsWith("[FixupM3u8]", StringComparison.Ordinal))
             {
-                item.Stage = "Dosyalar Birleştiriliyor (FFmpeg)...";
+                item.Stage = IsTurkish ? "Dosyalar Birleştiriliyor (FFmpeg)..." : "Merging Streams (FFmpeg)...";
                 item.Speed = 0;
             }
             else if (line.Contains("Writing video subtitles") || line.Contains("Downloading subtitles"))
             {
-                item.Stage = "Altyazılar İndiriliyor...";
+                item.Stage = IsTurkish ? "Altyazılar İndiriliyor..." : "Downloading Subtitles...";
             }
             else if (line.Contains("Extracting URL:") || line.Contains("[youtube]") || line.Contains("[twitter]") || line.Contains("[tiktok]") || line.Contains("[generic]"))
             {
-                if (item.DownloadedBytes == 0 && item.Stage == null) item.Stage = "Akışlar Çözülüyor...";
+                if (item.DownloadedBytes == 0 && item.Stage == null) item.Stage = IsTurkish ? "Akışlar Çözülüyor..." : "Resolving Streams...";
             }
             else if (line.Contains("Downloading webpage") || line.Contains("Downloading player") || line.Contains("Downloading API") || line.Contains("Downloading JSON"))
             {
-                if (item.DownloadedBytes == 0) item.Stage = "Formatlar Alınıyor...";
+                if (item.DownloadedBytes == 0) item.Stage = IsTurkish ? "Formatlar Alınıyor..." : "Fetching Formats...";
+            }
+            else if (line.Contains("Downloading 1 format(s):", StringComparison.OrdinalIgnoreCase))
+            {
+                if (line.Contains("audio", StringComparison.OrdinalIgnoreCase) ||
+                    line.Contains("aud", StringComparison.OrdinalIgnoreCase) ||
+                    line.Contains("turkish", StringComparison.OrdinalIgnoreCase) ||
+                    line.Contains("original", StringComparison.OrdinalIgnoreCase))
+                {
+                    currentStreamType = IsTurkish ? "Ses Akışı" : "Audio Stream";
+                }
+                else
+                {
+                    currentStreamType = IsTurkish ? "Görüntü Akışı" : "Video Stream";
+                }
+                item.Stage = IsTurkish ? $"{currentStreamType} Başlatılıyor..." : $"{currentStreamType} Starting...";
+            }
+            else if (line.Contains("Retrying fragment", StringComparison.OrdinalIgnoreCase) || line.Contains("HTTP Error 429", StringComparison.OrdinalIgnoreCase))
+            {
+                item.Stage = IsTurkish ? "Sunucu yoğunluğu, parça yeniden deneniyor..." : "Server busy, retrying chunk...";
             }
             else if (line.Contains("Downloading 1 format") || line.Contains("Downloading m3u8"))
             {
-                if (item.DownloadedBytes == 0) item.Stage = "Bağlantı Kuruluyor...";
+                if (item.DownloadedBytes == 0) item.Stage = IsTurkish ? "Bağlantı Kuruluyor..." : "Connecting...";
             }
             else if (line.StartsWith("ERROR:", StringComparison.Ordinal))
             {
@@ -782,8 +964,8 @@ public sealed class VideoDownloader
         if (finalPath == null || !File.Exists(finalPath))
         {
             if (opt.SubtitlesOnly)
-                throw new FatalDownloadException("Altyazı akışı bulunamadı veya indirilemedi.");
-            throw new FatalDownloadException("yt-dlp tamamlandı ancak indirilen dosya bulunamadı.");
+                throw new FatalDownloadException(IsTurkish ? "Altyazı akışı bulunamadı veya indirilemedi." : "Subtitle stream not found or could not be downloaded.");
+            throw new FatalDownloadException(IsTurkish ? "yt-dlp tamamlandı ancak indirilen dosya bulunamadı." : "yt-dlp completed but downloaded file was not found.");
         }
 
         var full = Path.GetFullPath(finalPath);
@@ -979,9 +1161,15 @@ public sealed class VideoDownloader
             var psi = new ProcessStartInfo(ffmpeg)
             {
                 CreateNoWindow = true,
-                UseShellExecute = false
+                UseShellExecute = false,
+                RedirectStandardInput = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
             };
+            psi.ArgumentList.Add("-nostdin");
             psi.ArgumentList.Add("-y");
+            psi.ArgumentList.Add("-loglevel");
+            psi.ArgumentList.Add("error");
             psi.ArgumentList.Add("-i");
             psi.ArgumentList.Add(videoPath);
             psi.ArgumentList.Add("-i");
@@ -1012,13 +1200,13 @@ public sealed class VideoDownloader
             using var proc = Process.Start(psi);
             if (proc != null)
             {
-                bool exited = proc.WaitForExit(180000);
+                bool exited = proc.WaitForExit(40000);
                 if (!exited)
                 {
                     try { proc.Kill(entireProcessTree: true); } catch { }
                     return false;
                 }
-                if (proc.ExitCode == 0 && File.Exists(tempOut))
+                if (proc.ExitCode == 0 && File.Exists(tempOut) && new FileInfo(tempOut).Length > 1024)
                 {
                     File.Move(tempOut, videoPath, true);
                     return true;

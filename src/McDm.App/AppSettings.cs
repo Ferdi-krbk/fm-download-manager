@@ -22,6 +22,7 @@ public sealed class AppSettings
     public int MaxVideoResolution { get; set; } = 0;
 
     public string Language { get; set; } = "auto"; // "auto", "en", "tr"
+    public string AccentColor { get; set; } = "#E50914"; // Default High-Octane Crimson
     public bool StartWithWindows { get; set; } = false;
     public bool ClipboardWatcherEnabled { get; set; } = true;
     public bool NotificationsEnabled { get; set; } = true;
@@ -50,6 +51,7 @@ public sealed class AppSettings
                 {
                     loaded.ConnectionsPerDownload = Math.Clamp(loaded.ConnectionsPerDownload <= 0 ? 16 : loaded.ConnectionsPerDownload, 1, 32);
                     loaded.MaxConcurrentDownloads = Math.Clamp(loaded.MaxConcurrentDownloads <= 0 ? 3 : loaded.MaxConcurrentDownloads, 1, 10);
+                    if (string.IsNullOrWhiteSpace(loaded.AccentColor)) loaded.AccentColor = "#E50914";
                     return loaded;
                 }
             }

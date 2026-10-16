@@ -21,6 +21,8 @@ public partial class BrowserSetupWindow : Window
     public BrowserSetupWindow(TokenStore tokenStore, BridgeServer? bridge = null)
     {
         InitializeComponent();
+        ApplyLocalization();
+
         _tokenStore = tokenStore;
         _bridge = bridge;
 
@@ -47,6 +49,31 @@ public partial class BrowserSetupWindow : Window
 
         Loaded += (_, _) => CheckConnection();
         Closed += (_, _) => _pollTimer.Stop();
+    }
+
+    private void ApplyLocalization()
+    {
+        Title = Strings.BrowserSetup;
+        TxtWinHeader.Text = Strings.BrowserSetup;
+        TxtTitle.Text = Strings.BrowserSetupHeader;
+        TxtSubtitle.Text = Strings.BrowserSetupSub;
+        LblAutoSection.Text = Strings.BrowserSetupAutoSection;
+        TxtChromeTitle.Text = Strings.BrowserSetupChromeTitle;
+        TxtChromeSub.Text = Strings.BrowserSetupChromeSub;
+        TxtEdgeTitle.Text = Strings.BrowserSetupEdgeTitle;
+        TxtEdgeSub.Text = Strings.BrowserSetupEdgeSub;
+        TxtBraveTitle.Text = Strings.BrowserSetupBraveTitle;
+        TxtBraveSub.Text = Strings.BrowserSetupBraveSub;
+        LblQuickTipTitle.Text = Strings.BrowserSetupQuickTipTitle;
+        TxtQuickTipSteps.Text = Strings.BrowserSetupQuickTipSteps;
+        TxtQuickTipAuto.Text = Strings.BrowserSetupQuickTipAuto;
+        LblConnectionStatus.Text = Strings.BrowserSetupStatusTitle;
+        ExpManual.Header = Strings.BrowserSetupAdvanced;
+        LblExtPath.Text = Strings.BrowserSetupFolderPath;
+        BtnOpenFolder.Content = Strings.BrowserSetupFolder;
+        LblToken.Text = Strings.BrowserSetupSecurityToken;
+        BtnCopyCode.Content = Strings.BrowserSetupCopy;
+        BtnClose.Content = Strings.BrowserSetupComplete;
     }
 
     private void SeedExtensionToken()
@@ -83,14 +110,16 @@ public partial class BrowserSetupWindow : Window
 
         if (connected)
         {
-            string bName = (_bridge?.LastExtensionBrowser ?? "Tarayıcı").ToUpperInvariant();
-            TxtStatus.Text = $"✓ {bName} eklentisi başarıyla bağlandı ve aktif!";
+            string bName = (_bridge?.LastExtensionBrowser ?? (Strings.IsTurkish ? "Tarayıcı" : "Browser")).ToUpperInvariant();
+            TxtStatus.Text = Strings.IsTurkish
+                ? $"✓ {bName} eklentisi başarıyla bağlandı ve aktif!"
+                : $"✓ {bName} extension successfully connected and active!";
             TxtStatus.Foreground = Brushes.LightGreen;
             DotStatus.Fill = Brushes.LimeGreen;
         }
         else
         {
-            TxtStatus.Text = "Tarayıcı eklentisi henüz yüklenmedi / bekleniyor...";
+            TxtStatus.Text = Strings.BrowserSetupWaiting;
             TxtStatus.Foreground = (Brush)FindResource("TextMuteBrush");
             DotStatus.Fill = (Brush)FindResource("DangerBrush");
         }
@@ -129,7 +158,9 @@ public partial class BrowserSetupWindow : Window
         // 3. Register in Windows Registry
         RegisterExtensionInRegistry(browserKey, _extensionDir);
 
-        TxtStatus.Text = "Klasör ve tarayıcı açıldı. 'Paketlenmemiş öge yükle' diyerek panodaki klasörü seçin...";
+        TxtStatus.Text = Strings.IsTurkish
+            ? "Klasör ve tarayıcı açıldı. 'Paketlenmemiş öge yükle' diyerek panodaki klasörü seçin..."
+            : "Folder and browser opened. Click 'Load unpacked' and select the folder from your clipboard...";
         TxtStatus.Foreground = (Brush)FindResource("AccentHoverBrush");
 
         // 4. Launch browser directly to extensions management page
@@ -186,7 +217,7 @@ public partial class BrowserSetupWindow : Window
 
         if (ok)
         {
-            BtnCopyCode.Content = "✓ Kod Kopyalandı";
+            BtnCopyCode.Content = Strings.IsTurkish ? "✓ Kod Kopyalandı" : "✓ Code Copied";
         }
     }
 

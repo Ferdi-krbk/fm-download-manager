@@ -23,7 +23,7 @@
                     <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" WindowChrome.IsHitTestVisibleInChrome="True">
                         <Button Style="{DynamicResource WindowCloseButtonStyle}" Click="Cancel_Click" />
                     </StackPanel>
-                    <TextBlock Text="Video Kalitesi &amp; Formatı Seçin" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" Margin="14,0" />
+                    <TextBlock x:Name="TxtWinHeader" Text="Video Kalitesi &amp; Formatı Seçin" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" Margin="14,0" />
                 </DockPanel>
             </Border>
 
@@ -34,7 +34,7 @@
                 <TextBlock x:Name="TxtVideoUrl" Text="https://..." FontSize="11" FontFamily="{DynamicResource MonoFont}" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,14" TextTrimming="CharacterEllipsis" />
 
                 <DockPanel Margin="0,0,0,8">
-                    <TextBlock Text="KALİTE VE FORMAT SEÇENEĞİ:" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
+                    <TextBlock x:Name="LblFormatOption" Text="KALİTE VE FORMAT SEÇENEĞİ:" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
                     <TextBlock x:Name="TxtProbeStatus" Text="🔍 Akış formatları taranıyor..." FontSize="10" Foreground="{DynamicResource TextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
                 </DockPanel>
 
@@ -45,8 +45,8 @@
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="🎬" FontSize="13" Margin="0,0,8,0" VerticalAlignment="Center" />
                                 <StackPanel VerticalAlignment="Center">
-                                    <TextBlock Text="En Yüksek Kalite (Otomatik En İyi)" FontWeight="SemiBold" FontSize="12.5" Foreground="{DynamicResource TextBrush}" />
-                                    <TextBlock Text="En iyi video ve ses akışlarını birleştirir (Önerilen)" FontSize="10.5" Foreground="{DynamicResource TextDimBrush}" />
+                                    <TextBlock x:Name="TxtOptBestTitle" Text="En Yüksek Kalite (Otomatik En İyi)" FontWeight="SemiBold" FontSize="12.5" Foreground="{DynamicResource TextBrush}" />
+                                    <TextBlock x:Name="TxtOptBestSub" Text="En iyi video ve ses akışlarını birleştirir (Önerilen)" FontSize="10.5" Foreground="{DynamicResource TextDimBrush}" />
                                 </StackPanel>
                             </StackPanel>
                         </RadioButton>
@@ -57,8 +57,8 @@
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="🎵" FontSize="13" Margin="0,0,8,0" VerticalAlignment="Center" />
                                 <StackPanel VerticalAlignment="Center">
-                                    <TextBlock Text="Yalnızca Ses Çıkar (MP3 / 320 kbps)" FontWeight="SemiBold" FontSize="12.5" Foreground="{DynamicResource TextBrush}" />
-                                    <TextBlock Text="Görüntüyü atar, sadece müziği / sesi kaydeder" FontSize="10.5" Foreground="{DynamicResource TextDimBrush}" />
+                                    <TextBlock x:Name="TxtOptAudioTitle" Text="Yalnızca Ses Çıkar (MP3 / 320 kbps)" FontWeight="SemiBold" FontSize="12.5" Foreground="{DynamicResource TextBrush}" />
+                                    <TextBlock x:Name="TxtOptAudioSub" Text="Görüntüyü atar, sadece müziği / sesi kaydeder" FontSize="10.5" Foreground="{DynamicResource TextDimBrush}" />
                                 </StackPanel>
                             </StackPanel>
                         </RadioButton>
@@ -69,13 +69,11 @@
                 <Border Background="{DynamicResource Bg1Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="10" Padding="12,8" Margin="0,8,0,0">
                     <StackPanel>
                         <DockPanel Margin="0,0,0,6">
-                            <TextBlock Text="🔊 SES PARÇASI (DUBLAJ / ORİJİNAL):" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
+                            <TextBlock x:Name="LblAudioTrack" Text="🔊 SES PARÇASI (DUBLAJ / ORİJİNAL):" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
                             <TextBlock x:Name="TxtAudioTrackCount" Text="" FontSize="10" Foreground="{DynamicResource TextDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
                         </DockPanel>
                         <ComboBox x:Name="CmbAudioTrack" Height="28" FontSize="11.5" SelectedIndex="0">
-                            <ComboBoxItem Content="Orijinal Ses (Varsayılan - İngilizce vb.)" Tag="original" />
-                            <ComboBoxItem Content="Türkçe Dublaj (Varsa)" Tag="tr" />
-                            <ComboBoxItem Content="En Yüksek Kalite Ses Akışı" Tag="best" />
+                            <ComboBoxItem Content="Orijinal Ses" Tag="best" />
                         </ComboBox>
                     </StackPanel>
                 </Border>
@@ -85,7 +83,7 @@
                     <StackPanel>
                         <CheckBox x:Name="ChkDownloadSubtitles" Content="💬 Altyazıyı videoya göm ve kaydet (.srt)" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" />
                         <StackPanel x:Name="PnlSubtitleLang" Orientation="Horizontal" Margin="24,6,0,0">
-                            <TextBlock Text="Altyazı Dili:" FontSize="11" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <TextBlock x:Name="LblSubtitleLang" Text="Altyazı Dili:" FontSize="11" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
                             <ComboBox x:Name="CmbSubtitleLang" MinWidth="320" Height="26" FontSize="11" SelectedIndex="0">
                                 <ComboBoxItem Content="Harici Altyazı Yok (Video İçi Gömülü)" Tag="embedded" />
                             </ComboBox>
@@ -98,8 +96,8 @@
             <!-- Footer -->
             <Border Grid.Row="2" Background="{DynamicResource Bg1Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="16,0">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                    <Button Style="{DynamicResource SecondaryButton}" Content="Vazgeç" Width="85" Margin="0,0,8,0" Click="Cancel_Click" />
-                    <Button Style="{DynamicResource PrimaryButton}" Content="İndirmeyi Başlat" MinWidth="130" Padding="14,0" Click="Start_Click" />
+                    <Button x:Name="BtnCancel" Style="{DynamicResource SecondaryButton}" Content="Vazgeç" Width="85" Margin="0,0,8,0" Click="Cancel_Click" />
+                    <Button x:Name="BtnStart" Style="{DynamicResource PrimaryButton}" Content="İndirmeyi Başlat" MinWidth="130" Padding="14,0" Click="Start_Click" />
                 </StackPanel>
             </Border>
         </Grid>

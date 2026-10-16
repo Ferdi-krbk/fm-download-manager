@@ -44,8 +44,12 @@ public partial class DownloadDetailWindow : Window
         LblStatus.Text = Strings.DetailsStatus;
         LblDownloaded.Text = Strings.DetailsDownloaded;
         LblSpeed.Text = Strings.DetailsSpeed;
-        GrpSegments.Header = Strings.DetailsSegments;
-        BtnClose.Content = Strings.SettingsCancel; // or close label
+        if (LblConnections != null) LblConnections.Text = Strings.IsTurkish ? "BAĞLANTI" : "CONNECTIONS";
+        GrpSegments.Header = Strings.DetailsSegmentsHeader;
+        if (ColRange != null) ColRange.Header = Strings.DetailsRangeCol;
+        if (ColDownloaded != null) ColDownloaded.Header = Strings.DetailsDownloadedCol;
+        if (ColProgress != null) ColProgress.Header = Strings.DetailsProgressCol;
+        BtnClose.Content = Strings.Ok;
     }
 
     private void UpdateInfo()
@@ -58,7 +62,8 @@ public partial class DownloadDetailWindow : Window
         string totalText = _item.TotalBytes > 0 ? BytesConverter.Format(_item.TotalBytes) : "—";
         TxtDownloaded.Text = $"{dlText} / {totalText}";
 
-        TxtSpeed.Text = _item.Speed > 0 ? $"{BytesConverter.Format(_item.Speed)}/s ({_item.ActiveConnections} connections)" : "0 B/s";
+        TxtSpeed.Text = _item.Speed > 0 ? $"{BytesConverter.Format(_item.Speed)}/s" : "0 B/s";
+        TxtActiveConn.Text = Strings.ActiveConnections(_item.ActiveConnections);
         DetailSpeedGraph?.PushSample(_item.Speed);
         PrgOverall.Value = _item.Progress;
 

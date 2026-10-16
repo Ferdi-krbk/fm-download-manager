@@ -19,6 +19,7 @@ public sealed class DownloadManager : IDisposable
     private readonly TorrentDownloader? _torrentEngine;
     private readonly SynchronizationContext? _ui;
     private readonly string _dbPath;
+    private readonly Dictionary<string, Task> _runningWorkers = new();
 
     /// <summary>UI-bound mirror of the download list; mutated on the supplied SynchronizationContext.</summary>
     public ObservableCollection<DownloadItem> Items { get; } = new();
@@ -137,7 +138,13 @@ public sealed class DownloadManager : IDisposable
         else if (Uri.TryCreate(request.Url, UriKind.Absolute, out var parsedUri))
         {
             var seg = Path.GetFileName(parsedUri.AbsolutePath);
-            if (!string.IsNullOrWhiteSpace(seg))
+            if (request.Kind == DownloadKind.Video && (string.IsNullOrWhiteSpace(seg) || seg.Equals("watch", StringComparison.OrdinalIgnoreCase) || seg.Equals("shorts", StringComparison.OrdinalIgnoreCase) || seg.Equals("video", StringComparison.OrdinalIgnoreCase)))
+            {
+                initialFileName = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("en", StringComparison.OrdinalIgnoreCase)
+                    ? "Video Download"
+                    : "Video İndirmesi";
+            }
+            else if (!string.IsNullOrWhiteSpace(seg))
             {
                 initialFileName = FileNames.Sanitize(Uri.UnescapeDataString(seg));
             }
@@ -258,17 +265,26 @@ public sealed class DownloadManager : IDisposable
         List<DownloadItem> toStart = new();
         lock (_gate)
         {
+            var finished = _runningWorkers.Where(kv => kv.Value.IsCompleted).Select(kv => kv.Key).ToList();
+            foreach (var id in finished) _runningWorkers.Remove(id);
+
             int running = _all.Count(i => i.Status == DownloadStatus.Downloading);
             foreach (var i in _all.Where(i => i.Status == DownloadStatus.Queued))
             {
                 if (running >= MaxConcurrentDownloads) break;
+                if (_runningWorkers.TryGetValue(i.Id, out var existing) && !existing.IsCompleted) continue;
+
                 i.Status = DownloadStatus.Downloading;
                 i.Cts = new CancellationTokenSource();
                 toStart.Add(i);
                 running++;
             }
+
+            foreach (var item in toStart)
+            {
+                _runningWorkers[item.Id] = Task.Run(() => RunItemAsync(item));
+            }
         }
-        foreach (var item in toStart) _ = Task.Run(() => RunItemAsync(item));
     }
 
     private async Task RunItemAsync(DownloadItem item)
@@ -319,6 +335,10 @@ public sealed class DownloadManager : IDisposable
             item.Cts = null;
             cts.Dispose();
             if (item.Status == DownloadStatus.Cancelled) CleanupPartial(item);
+            lock (_gate)
+            {
+                _runningWorkers.Remove(item.Id);
+            }
             Save();
             Pump();
         }

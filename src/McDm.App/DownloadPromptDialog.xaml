@@ -29,7 +29,7 @@
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0,0,0">
                         <Path Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" Margin="0,0,8,0"
                               Data="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
-                        <TextBlock Text="FM Download Manager — İndirme Onayı" FontWeight="SemiBold" FontSize="12.5" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" />
+                        <TextBlock x:Name="TxtWinHeader" Text="FM Download Manager — İndirme Onayı" FontWeight="SemiBold" FontSize="12.5" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" />
                     </StackPanel>
                 </DockPanel>
             </Border>
@@ -37,14 +37,14 @@
             <!-- Form Content -->
             <StackPanel Grid.Row="1" Margin="22,14,22,6">
                 <!-- Header Question -->
-                <TextBlock Text="Bu dosya FM Download Manager ile indirilsin mi?" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,12" />
+                <TextBlock x:Name="TxtHeaderQuestion" Text="Bu dosya FM Download Manager ile indirilsin mi?" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,12" />
 
                 <!-- File Name Field -->
-                <TextBlock Text="Dosya Adı:" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,4" />
+                <TextBlock x:Name="LblFileName" Text="Dosya Adı:" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,4" />
                 <TextBox x:Name="TxtFileName" Height="32" FontSize="12.5" Padding="8,4" FontFamily="{DynamicResource UiFont}" Margin="0,0,0,10" />
 
                 <!-- Save Directory Field -->
-                <TextBlock Text="Kaydedilecek Klasör:" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,4" />
+                <TextBlock x:Name="LblFolder" Text="Kaydedilecek Klasör:" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,4" />
                 <Grid Margin="0,0,0,10">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -55,7 +55,7 @@
                 </Grid>
 
                 <!-- URL Preview -->
-                <TextBlock Text="Web Bağlantısı (URL):" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,2" />
+                <TextBlock x:Name="LblUrl" Text="Web Bağlantısı (URL):" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,2" />
                 <TextBlock x:Name="TxtUrl" FontSize="11" Foreground="{DynamicResource TextMuteBrush}" TextTrimming="CharacterEllipsis" FontFamily="{DynamicResource MonoFont}" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
             </StackPanel>
 

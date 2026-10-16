@@ -601,5 +601,34 @@ v1.m3u8";
 
             return Task.CompletedTask;
         });
+
+        // ── 18. VideoDownloader .mcdm-video-<id> WorkDir Cleanup Regression ─
+        await test("regression: VideoDownloader cleans up .mcdm-video-<id> workDir on completion", async () =>
+        {
+            var testDir = tmp();
+            var item = new DownloadItem
+            {
+                Id = "testclean123",
+                Directory = testDir,
+                FileName = "TestMovie.mp4",
+                WorkDir = Path.Combine(testDir, ".mcdm-video-testclean123"),
+                Status = DownloadStatus.Downloading,
+                Request = new DownloadRequest
+                {
+                    Url = "https://cdn.example/video.mp4",
+                    Kind = DownloadKind.Video,
+                    SubtitlesOnly = true,
+                    SubtitleLangs = "tr",
+                    SubtitleContent = "WEBVTT\n\n00:01.000 --> 00:03.000\nTest Altyazı Satırı\n"
+                }
+            };
+
+            var vd = new VideoDownloader(() => new ToolLauncher("cmd.exe", Array.Empty<string>()), () => null, () => new VideoOptions());
+            await vd.RunAsync(item, CancellationToken.None);
+
+            check(File.Exists(item.SavePath), "Final SRT file must exist at SavePath");
+            check(!Directory.Exists(Path.Combine(testDir, ".mcdm-video-testclean123")), ".mcdm-video-<id> WorkDir must be completely deleted after RunAsync finishes");
+        });
     }
 }
+

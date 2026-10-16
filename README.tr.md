@@ -12,7 +12,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Ferdi-krbk/fm-download-manager/releases/latest"><img src="https://img.shields.io/badge/S%C3%BCr%C3%BCm-v3.4.8-crimson.svg?style=for-the-badge&logo=windows&logoColor=white" alt="Sürüm v3.4.8"></a>
+  <a href="https://github.com/Ferdi-krbk/fm-download-manager/releases/latest"><img src="https://img.shields.io/badge/S%C3%BCr%C3%BCm-v3.5.0-crimson.svg?style=for-the-badge&logo=windows&logoColor=white" alt="Sürüm v3.5.0"></a>
   <a href="https://dotnet.microsoft.com/download/dotnet/8.0"><img src="https://img.shields.io/badge/.NET-8.0%20LTS-purple.svg?style=for-the-badge&logo=dotnet&logoColor=white" alt=".NET 8 LTS"></a>
   <a href="https://github.com/Ferdi-krbk/fm-download-manager"><img src="https://img.shields.io/badge/Motor-MonoTorrent%203.0-blue.svg?style=for-the-badge&logo=bittorrent&logoColor=white" alt="BitTorrent"></a>
   <a href="https://github.com/Ferdi-krbk/fm-download-manager"><img src="https://img.shields.io/badge/Medya-yt--dlp%20%2B%20FFmpeg-red.svg?style=for-the-badge&logo=youtube&logoColor=white" alt="yt-dlp"></a>
@@ -102,7 +102,7 @@
 
 ## 💎 Karşılaştırma ve Özellik Matrisi
 
-| Özellik | FM Download Manager v3.4.3 | Standart Tarayıcılar | Klasik İndirme Yöneticileri |
+| Özellik | FM Download Manager v3.5.0 | Standart Tarayıcılar | Klasik İndirme Yöneticileri |
 |---|:---:|:---:|:---:|
 | **Dinamik Yeniden Segmentasyon** | ✅ **Canlı Parça Bölme** | ❌ Tek Bağlantı | ⚠️ Sabit parçalar |
 | **Entegre BitTorrent & Magnet** | ✅ **Dahili (MonoTorrent 3.0)** | ❌ Desteklemez | ❌ Harici istemci gerekir |
@@ -119,7 +119,7 @@
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│  FM DOWNLOAD MANAGER v3.4.3 — EVRENSEL MEDYA & TURBO MOTOR             │
+│  FM DOWNLOAD MANAGER v3.5.0 — EVRENSEL MEDYA & TURBO MOTOR             │
 ├────────────────────────────────────────────────────────────────────────┤
 │  ⚡ 1 Gbps Turbo Çok Parçalı Motor │  🧲 Dahili BitTorrent & Magnet   │
 │  📊 Canlı Vektör EMA Hız Grafiği   │  🎛️ Anlık Hız Limiti Kadranı     │
@@ -203,7 +203,7 @@ flowchart TD
 ## 📦 Hızlı Kurulum
 
 ### Yöntem 1: Windows Kurulum Paketi (Önerilen)
-1. Güncel kurulum dosyasını indirin: [FMDownloadManager-Setup-3.4.8.exe](https://github.com/Ferdi-krbk/fm-download-manager/releases/download/v3.4.8/FMDownloadManager-Setup-3.4.8.exe).
+1. Güncel kurulum dosyasını indirin: [FMDownloadManager-Setup-3.5.0.exe](https://github.com/Ferdi-krbk/fm-download-manager/releases/download/v3.5.0/FMDownloadManager-Setup-3.5.0.exe).
 2. Kurulumu çalıştırın (yönetici izni gerektirmeden `%LOCALAPPDATA%\Programs\FM Download Manager` dizinine yüklenir).
 3. Kurulum tamamlandığında tarayıcı eklentisi klasörü ve kurulum rehberi otomatik olarak açılır.
 

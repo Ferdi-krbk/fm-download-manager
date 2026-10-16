@@ -202,16 +202,26 @@ Son sahne metni.
 
             var item = new DownloadItem
             {
-                Request = new DownloadRequest { Url = "https://example.com/video", Kind = DownloadKind.Video },
+                Request = new DownloadRequest
+                {
+                    Url = "https://example.com/video",
+                    Kind = DownloadKind.Video,
+                    WriteSubtitles = true,
+                    SubtitleLangs = "tr",
+                    SubtitleContent = "WEBVTT\n\n00:01.000 --> 00:03.000\nMerhaba Dünya\n"
+                },
                 Directory = testDir
             };
 
+            string expectedWorkDir = Path.Combine(testDir, ".mcdm-video-" + item.Id);
             await downloader.RunAsync(item, CancellationToken.None);
 
             check(item.Status == DownloadStatus.Completed || item.SavePath == outMp4, "save path was not set");
             check(item.FileName == "video_out.mp4", "file name was not updated");
             check(item.TotalBytes == "FAKE_VIDEO_CONTENT".Length, "total bytes not updated from final file");
             check(item.DownloadedBytes == "FAKE_VIDEO_CONTENT".Length, "downloaded bytes not updated");
+            check(!Directory.Exists(expectedWorkDir), ".mcdm-video-* temporary work directory must be deleted after video+subtitle download");
+            check(File.Exists(Path.Combine(testDir, "video_out.tr.srt")), "sidecar .tr.srt file must be copied to output directory");
 
             // Test cancellation / pause kills process
             var hangScript = Path.Combine(testDir, "hang_ytdlp.js");

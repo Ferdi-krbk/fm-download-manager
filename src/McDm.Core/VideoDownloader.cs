@@ -568,11 +568,19 @@ public sealed class VideoDownloader
                 }
                 catch { }
             }
+
+            // Clean up temporary work directory now that yt-dlp and subtitle muxing succeeded
+            if (!string.IsNullOrEmpty(item.WorkDir) && Directory.Exists(item.WorkDir))
+            {
+                try { Directory.Delete(item.WorkDir, recursive: true); } catch { }
+                item.WorkDir = null;
+            }
         }
         finally
         {
             if (cookieFile != null) SegmentedDownloader.TryDelete(cookieFile);
-            if (item.Status == DownloadStatus.Completed && !string.IsNullOrEmpty(item.WorkDir) && Directory.Exists(item.WorkDir))
+            if ((item.Status == DownloadStatus.Completed || item.Status == DownloadStatus.Cancelled || (!string.IsNullOrEmpty(item.SavePath) && File.Exists(item.SavePath)))
+                && !string.IsNullOrEmpty(item.WorkDir) && Directory.Exists(item.WorkDir))
             {
                 try { Directory.Delete(item.WorkDir, recursive: true); } catch { }
                 item.WorkDir = null;

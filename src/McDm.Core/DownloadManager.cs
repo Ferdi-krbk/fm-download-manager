@@ -293,6 +293,11 @@ public sealed class DownloadManager : IDisposable
             }
             item.Status = DownloadStatus.Completed;
             item.Error = null;
+            if (!string.IsNullOrEmpty(item.WorkDir))
+            {
+                try { if (Directory.Exists(item.WorkDir)) Directory.Delete(item.WorkDir, recursive: true); } catch { }
+                item.WorkDir = null;
+            }
             ItemCompleted?.Invoke(item);
         }
         catch (OperationCanceledException)

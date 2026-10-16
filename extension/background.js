@@ -449,9 +449,12 @@ async function writeMedia(tabId, list) {
     await api.action.setBadgeBackgroundColor({ tabId, color: '#2f6feb' });
   } catch {}
 }
+const tabActiveMedia = new Map(); // tabId -> media object
+
 async function clearMedia(tabId) {
   if (api.storage.session) await api.storage.session.remove('media:' + tabId);
   mem.delete(tabId);
+  tabActiveMedia.delete(tabId);
   try { await api.action.setBadgeText({ tabId, text: '' }); } catch {}
 }
 
@@ -829,6 +832,8 @@ if (api.webRequest?.onHeadersReceived) {
         addSubtitle(d.tabId, { url: d.url, lang, label, time: Date.now() }).catch?.(() => {});
       }
 
+      if (/googlevideo\.com\/videoplayback/i.test(d.url)) return;
+
       const kind = classify(d.url, ct);
       if (!kind) return;
       let size = parseInt(headerVal(d.responseHeaders, 'content-length'), 10) || 0;
@@ -949,6 +954,48 @@ api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           await api.storage.local.set({ token });
           const raw = await pingRaw();
           sendResponse({ ok: !!(raw && raw.paired), reachable: !!raw });
+          break;
+        }
+        case 'reportActiveMedia': {
+          const tabId = sender.tab?.id || msg.tabId;
+          if (tabId && msg.media && msg.media.url) {
+            tabActiveMedia.set(tabId, msg.media);
+            try {
+              const currentList = await readMedia(tabId);
+              const m = msg.media;
+              let targetUrl = m.url;
+              const ytEmbed = targetUrl.match(/(?:youtube\.com|youtube-nocookie\.com)\/embed\/([a-zA-Z0-9_-]{11})/i);
+              if (ytEmbed) targetUrl = `https://www.youtube.com/watch?v=${ytEmbed[1]}`;
+              const key = normalizeKey(targetUrl);
+              const idx = currentList.findIndex((x) => x.key === key || x.url === targetUrl || x.url === m.url);
+              const richEntry = {
+                url: targetUrl,
+                key,
+                name: m.name || 'Video',
+                kind: m.kind || 'video',
+                type: 'video/mp4',
+                size: m.size || 0,
+                quality: m.videoQualities?.[0]?.label || (m.quality || 'HD'),
+                videoQualities: m.videoQualities || [],
+                audioTracks: m.audioTracks || [],
+                subtitles: m.subtitles || [],
+                initiator: m.referer || ''
+              };
+              if (idx >= 0) {
+                currentList[idx] = { ...currentList[idx], ...richEntry };
+              } else {
+                currentList.unshift(richEntry);
+              }
+              await writeMedia(tabId, currentList);
+            } catch {}
+          }
+          sendResponse({ ok: true });
+          break;
+        }
+        case 'getActiveMedia': {
+          const tabId = msg.tabId || sender.tab?.id;
+          const active = tabId ? tabActiveMedia.get(tabId) : null;
+          sendResponse(active || null);
           break;
         }
         case 'getMedia': sendResponse(await readMedia(msg.tabId)); break;

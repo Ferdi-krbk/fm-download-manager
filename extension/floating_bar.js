@@ -18,6 +18,8 @@
 
   // Active tracking state
   let currentVideo = null;
+  let lastActiveVideo = null;
+  let lastReportedUrl = null;
   let hideTimer = null;
   let updatePositionRaf = null;
 
@@ -915,6 +917,30 @@
     });
   }
 
+  function findRealVideoOnPage() {
+    if (currentVideo && currentVideo.isConnected && isRealDownloadableVideo(currentVideo)) {
+      return currentVideo;
+    }
+    if (lastActiveVideo && lastActiveVideo.isConnected && isRealDownloadableVideo(lastActiveVideo)) {
+      return lastActiveVideo;
+    }
+    const vids = Array.from(document.querySelectorAll('video')).filter(v => isRealDownloadableVideo(v));
+    return vids.find(v => !v.paused && v.currentTime > 0) || vids[0] || null;
+  }
+
+  async function reportActiveMediaToBackground() {
+    try {
+      const media = await resolveTargetMedia();
+      if (media && media.url && !/^https?:\/\/[^/]+\/?$/i.test(media.url)) {
+        if (media.url === lastReportedUrl) return;
+        lastReportedUrl = media.url;
+        api.runtime.sendMessage({ type: 'reportActiveMedia', media }, () => {
+          if (api.runtime.lastError) {}
+        });
+      }
+    } catch {}
+  }
+
   // 2. Resolve Active Video / Stream URL
   async function resolveTargetMedia() {
     const isYouTube = /(youtube\.com|youtu\.be)/i.test(location.hostname);
@@ -922,30 +948,38 @@
     const isTikTok = /tiktok\.com/i.test(location.hostname);
 
     if (isYouTube) {
+      const isTop = window.self === window.top;
+      let ytUrl = location.href;
+      if (!isTop) {
+        const m = location.href.match(/(?:embed|v)\/([a-zA-Z0-9_-]{11})/i) || location.search.match(/[?&]v=([a-zA-Z0-9_-]{11})/i);
+        if (m) ytUrl = `https://www.youtube.com/watch?v=${m[1]}`;
+      }
       const ytTitleEl = document.querySelector('h1.ytd-watch-metadata yt-formatted-string, #title h1 yt-formatted-string, h1.title');
       let cleanTitle = (ytTitleEl ? ytTitleEl.textContent : '') || document.title || 'YouTube Video';
       cleanTitle = cleanTitle.replace(/^\(\d+\)\s*/, '').replace(/\s*-\s*YouTube$/i, '').trim();
+      cleanTitle = cleanTitle.replace(/^(?:youtube\s*(?:video\s*player|frame)?|iframe)\s*[-–|•]?\s*/i, '').trim();
+      if (!cleanTitle || cleanTitle.toLowerCase() === 'youtube') cleanTitle = 'YouTube Video';
       const ytMeta = extractYouTubeMetadata();
       return {
-        url: location.href,
+        url: ytUrl,
         name: cleanTitle,
         kind: 'video',
-        referer: location.href,
+        referer: ytUrl,
         videoQualities: ytMeta?.videoQualities || [],
         audioTracks: ytMeta?.audioTracks || [],
         subtitles: ytMeta?.subtitles || []
       };
     }
 
+    const videoToUse = findRealVideoOnPage();
+
     if (isTwitter) {
       if (location.pathname.includes('/status/')) {
         return { url: location.href.split('?')[0], name: document.title, kind: 'video', referer: location.href };
       }
-      if (currentVideo) {
-        const a = currentVideo.closest('article')?.querySelector('a[href*="/status/"]');
-        if (a && a.href) {
-          return { url: a.href.split('?')[0], name: document.title, kind: 'video', referer: location.href };
-        }
+      const a = videoToUse?.closest('article')?.querySelector('a[href*="/status/"]') || document.querySelector('article a[href*="/status/"]');
+      if (a && a.href) {
+        return { url: a.href.split('?')[0], name: document.title, kind: 'video', referer: location.href };
       }
     }
 
@@ -953,11 +987,9 @@
       if (location.pathname.includes('/video/')) {
         return { url: location.href.split('?')[0], name: document.title, kind: 'video', referer: location.href };
       }
-      if (currentVideo) {
-        const a = currentVideo.closest('[data-e2e*="feed-item"], article, div')?.querySelector('a[href*="/video/"]');
-        if (a && a.href) {
-          return { url: a.href.split('?')[0], name: document.title, kind: 'video', referer: location.href };
-        }
+      const a = videoToUse?.closest('[data-e2e*="feed-item"], article, div')?.querySelector('a[href*="/video/"]') || document.querySelector('a[href*="/video/"]');
+      if (a && a.href) {
+        return { url: a.href.split('?')[0], name: document.title, kind: 'video', referer: location.href };
       }
     }
 
@@ -980,10 +1012,10 @@
     } catch {}
 
     // 2. Direct HTML5 video / HLS stream fallback
-    if (currentVideo) {
-      let src = currentVideo.currentSrc || currentVideo.src;
+    if (videoToUse) {
+      let src = videoToUse.currentSrc || videoToUse.src;
       if (!src) {
-        const source = currentVideo.querySelector('source');
+        const source = videoToUse.querySelector('source');
         if (source) src = source.src || source.getAttribute('src');
       }
 
@@ -1222,7 +1254,9 @@
     if (!hostEl || !barContainer) return;
 
     currentVideo = video;
+    lastActiveVideo = video;
     clearTimeout(hideTimer);
+    reportActiveMediaToBackground();
 
     // Attach to fullscreen element if playing fullscreen
     const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
@@ -1264,8 +1298,10 @@
     // IDM-style auto show on video start or load
     v.addEventListener('play', () => {
       if (isDismissedForPage || isPageDismissed()) return;
+      lastActiveVideo = v;
       showBarFor(v);
       scheduleHide(4500);
+      reportActiveMediaToBackground();
     }, { passive: true });
 
     v.addEventListener('playing', () => {
@@ -1320,11 +1356,16 @@
       showBarFor(activeVideo);
       scheduleHide(4500);
     }
+    reportActiveMediaToBackground();
   }, 400);
 
   setTimeout(() => {
     detectSubtitleTracks().catch?.(() => {});
+    reportActiveMediaToBackground();
   }, 2000);
+
+  window.addEventListener('yt-navigate-finish', () => setTimeout(reportActiveMediaToBackground, 400), { passive: true });
+  window.addEventListener('popstate', () => setTimeout(reportActiveMediaToBackground, 400), { passive: true });
 
   // Fail-safe global capture mousemove: detect cursor over any video or player element even with complex overlays
   let lastMouseMoveTime = 0;
@@ -1416,6 +1457,7 @@
     if (location.href !== lastTrackedUrl) {
       lastTrackedUrl = location.href;
       isDismissedForPage = false;
+      setTimeout(reportActiveMediaToBackground, 400);
     }
     scanAllVideos();
   });
@@ -1447,6 +1489,17 @@
       return true;
     }
     if (msg?.type === 'getActiveMedia') {
+      const isTop = window.self === window.top;
+      const isYouTube = /(youtube\.com|youtu\.be)/i.test(location.hostname);
+
+      if (!isTop && isYouTube) {
+        return false;
+      }
+      const hasRealVideo = !!findRealVideoOnPage();
+      if (!isTop && !hasRealVideo) {
+        return false;
+      }
+
       resolveTargetMedia().then((media) => {
         sendResponse(media || {});
       }).catch(() => {

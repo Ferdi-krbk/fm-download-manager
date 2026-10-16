@@ -133,13 +133,56 @@ async function refresh() {
   }
 }
 
+async function getActiveMediaFromTab(tabId) {
+  if (!tabId) return null;
+  // 1. Check background.js registry first (reported directly by floating_bar.js)
+  try {
+    const fromBg = await send({ type: 'getActiveMedia', tabId });
+    if (fromBg && fromBg.url && !/^https?:\/\/[^/]+\/?$/i.test(fromBg.url) && !/^(?:youtube\s*(?:video\s*player|frame)?|iframe)$/i.test(fromBg.name || '')) {
+      return fromBg;
+    }
+  } catch {}
+
+  // 2. Query top frame specifically (frameId: 0) to prevent iframe hijacking
+  try {
+    const fromTop = await new Promise((resolve) => {
+      let settled = false;
+      const timer = setTimeout(() => { if (!settled) { settled = true; resolve(null); } }, 1000);
+      try {
+        api.tabs.sendMessage(tabId, { type: 'getActiveMedia' }, { frameId: 0 }, (r) => {
+          if (!settled) {
+            settled = true;
+            clearTimeout(timer);
+            resolve(api.runtime.lastError ? null : r);
+          }
+        });
+      } catch {
+        if (!settled) { settled = true; clearTimeout(timer); resolve(null); }
+      }
+    });
+    if (fromTop && fromTop.url && !/^https?:\/\/[^/]+\/?$/i.test(fromTop.url) && !/^(?:youtube\s*(?:video\s*player|frame)?|iframe)$/i.test(fromTop.name || '')) {
+      return fromTop;
+    }
+  } catch {}
+
+  // 3. Fallback: query active tab with timeout
+  try {
+    const fromAny = await sendTabMessageWithTimeout(tabId, { type: 'getActiveMedia' }, 1200);
+    if (fromAny && fromAny.url && !/^https?:\/\/[^/]+\/?$/i.test(fromAny.url) && !/^(?:youtube\s*(?:video\s*player|frame)?|iframe)$/i.test(fromAny.name || '')) {
+      return fromAny;
+    }
+  } catch {}
+
+  return null;
+}
+
 async function loadMedia() {
   tab = await currentTab();
   const list = (tab && (await send({ type: 'getMedia', tabId: tab.id }))) || [];
 
   if (tab && tab.id) {
     try {
-      const active = await sendTabMessageWithTimeout(tab.id, { type: 'getActiveMedia' }, 1200);
+      const active = await getActiveMediaFromTab(tab.id);
       if (active && active.url) {
         let canonicalUrl = active.url;
         const ytEmbed = canonicalUrl.match(/(?:youtube\.com|youtube-nocookie\.com)\/embed\/([a-zA-Z0-9_-]{11})/i);
@@ -149,19 +192,23 @@ async function loadMedia() {
         cleanName = cleanName.replace(/^(?:youtube\s*(?:video\s*player|frame)?|iframe)\s*[-–|•]?\s*/i, '').trim();
         if (!cleanName || cleanName.toLowerCase() === 'youtube') cleanName = (tab.title || 'Video').replace(/\s*-\s*YouTube$/i, '').trim();
 
-        const alreadyExists = list.some(m => m.url === canonicalUrl || m.url === active.url);
-        if (!alreadyExists) {
-          list.unshift({
-            url: canonicalUrl,
-            name: cleanName,
-            kind: active.kind || 'video',
-            size: active.size || 0,
-            quality: active.videoQualities?.[0]?.label || 'HD',
-            videoQualities: active.videoQualities || [],
-            audioTracks: active.audioTracks || [],
-            subtitles: active.subtitles || [],
-            initiator: active.referer || tab.url
-          });
+        const richItem = {
+          url: canonicalUrl,
+          name: cleanName,
+          kind: active.kind || 'video',
+          size: active.size || 0,
+          quality: active.videoQualities?.[0]?.label || (active.quality || 'HD'),
+          videoQualities: active.videoQualities || [],
+          audioTracks: active.audioTracks || [],
+          subtitles: active.subtitles || [],
+          initiator: active.referer || tab.url
+        };
+
+        const existingIdx = list.findIndex(m => m.url === canonicalUrl || m.url === active.url || (tab.url && m.url === tab.url));
+        if (existingIdx >= 0) {
+          list[existingIdx] = { ...list[existingIdx], ...richItem };
+        } else {
+          list.unshift(richItem);
         }
       }
     } catch {}
@@ -169,9 +216,12 @@ async function loadMedia() {
 
   const ul = $('media');
   ul.innerHTML = '';
-  // Filter out redundant audio-only chunks if real video exists
+  // Filter out redundant audio-only chunks, unplayable googlevideo chunks, or generic iframe placeholders
   const hasVideo = list.some(m => /-v\d+|video/i.test(m.url) || (m.size && m.size > 20 * 1024 * 1024));
   const filtered = list.filter(m => {
+    if (!m || !m.url) return false;
+    if (/googlevideo\.com\/videoplayback/i.test(m.url)) return false;
+    if (/^(?:youtube\s*(?:video\s*player|frame)?|iframe)$/i.test(m.name || '')) return false;
     if (hasVideo && /sublist_aud|audio[_-]track|-a\d+\.m3u8/i.test(m.url) && !/-v\d+/i.test(m.url)) return false;
     return true;
   });
@@ -326,10 +376,10 @@ $('pageVideo').onclick = async () => {
   tab = tab || (await currentTab());
   if (!tab?.url) return;
 
-  // 1. ALWAYS query the page (floating bar) first!
+  // 1. ALWAYS query the page / background active media first!
   let activeMedia = null;
   try {
-    activeMedia = await sendTabMessageWithTimeout(tab.id, { type: 'getActiveMedia' }, 1200);
+    activeMedia = await getActiveMediaFromTab(tab.id);
   } catch {}
 
   let targetUrl = activeMedia?.url || '';
@@ -394,10 +444,10 @@ $('pageVideo').onclick = async () => {
   $('pageVideo').textContent = t('popupSending');
   try {
     const isVid = kind === 'video' || kind === 'hls' || kind === 'dash';
-    const subs = isVid ? ((activeMedia?.subtitles && activeMedia.subtitles.length) ? activeMedia.subtitles : await getTabSubtitles(tab?.id)) : [];
-    const chosenSub = isVid ? chooseBestSubUrl(subs, 'tr') : '';
-    const audios = (activeMedia?.audioTracks && activeMedia.audioTracks.length) ? activeMedia.audioTracks : (best?.audioTracks || []);
-    const qualities = (activeMedia?.videoQualities && activeMedia.videoQualities.length) ? activeMedia.videoQualities : (best?.videoQualities || []);
+    const finalSubs = isVid ? ((subs && subs.length) ? subs : ((activeMedia?.subtitles && activeMedia.subtitles.length) ? activeMedia.subtitles : await getTabSubtitles(tab?.id))) : [];
+    const chosenSub = isVid ? chooseBestSubUrl(finalSubs, 'tr') : '';
+    const finalAudios = (audios && audios.length) ? audios : ((activeMedia?.audioTracks && activeMedia.audioTracks.length) ? activeMedia.audioTracks : (best?.audioTracks || []));
+    const finalQualities = (qualities && qualities.length) ? qualities : ((activeMedia?.videoQualities && activeMedia.videoQualities.length) ? activeMedia.videoQualities : (best?.videoQualities || []));
 
     const r = await send({
       type: 'download',
@@ -406,11 +456,11 @@ $('pageVideo').onclick = async () => {
       referer,
       kind,
       writeSubtitles: isVid,
-      subtitles: subs,
+      subtitles: finalSubs,
       subtitleUrl: chosenSub,
       subtitleLangs: 'tr,en',
-      videoQualities: qualities,
-      audioTracks: audios
+      videoQualities: finalQualities,
+      audioTracks: finalAudios
     });
     if (r && r.ok) {
       $('pageVideo').textContent = t('popupStarted');

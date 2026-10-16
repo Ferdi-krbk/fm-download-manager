@@ -451,8 +451,34 @@ async function writeMedia(tabId, list) {
 }
 const tabActiveMedia = new Map(); // tabId -> media object
 
+async function setActiveMedia(tabId, media) {
+  if (!tabId || tabId < 0 || !media) return;
+  tabActiveMedia.set(tabId, media);
+  if (api.storage?.session) {
+    try { await api.storage.session.set({ ['activeMedia:' + tabId]: media }); } catch {}
+  }
+}
+
+async function getActiveMedia(tabId) {
+  if (!tabId || tabId < 0) return null;
+  let m = tabActiveMedia.get(tabId);
+  if (!m && api.storage?.session) {
+    try {
+      const key = 'activeMedia:' + tabId;
+      const r = await api.storage.session.get(key);
+      m = r[key];
+      if (m) tabActiveMedia.set(tabId, m);
+    } catch {}
+  }
+  return m || null;
+}
+
 async function clearMedia(tabId) {
-  if (api.storage.session) await api.storage.session.remove('media:' + tabId);
+  if (api.storage?.session) {
+    try {
+      await api.storage.session.remove(['media:' + tabId, 'activeMedia:' + tabId]);
+    } catch {}
+  }
   mem.delete(tabId);
   tabActiveMedia.delete(tabId);
   try { await api.action.setBadgeText({ tabId, text: '' }); } catch {}
@@ -699,6 +725,19 @@ function pickBestMedia(list) {
   return nonAudio || list[0];
 }
 
+function formatReferer(raw, fallbackUrl) {
+  if (!raw || raw.startsWith('chrome-extension://')) return fallbackUrl || '';
+  try {
+    const u = new URL(raw);
+    if (!u.pathname || u.pathname === '/') {
+      return u.origin + '/';
+    }
+    return u.href;
+  } catch {
+    return raw;
+  }
+}
+
 function guessExt(type) {
   const t = (type || '').toLowerCase();
   if (t.includes('mp4')) return '.mp4';
@@ -906,18 +945,23 @@ menus?.onClicked.addListener(async (info, tab) => {
     let url = info.pageUrl || tab?.url;
     let kind = 'video';
     let referer = tab?.url || url;
+    let filename = '';
     if (tab && tab.id) {
       const isKnown = /(youtube\.com|youtu\.be|tiktok\.com|twitter\.com|x\.com|vimeo\.com|dailymotion\.com|instagram\.com|twitch\.tv|reddit\.com)/i.test(url || '');
-      if (!isKnown) {
+      const active = await getActiveMedia(tab.id);
+      if (active && active.url) {
+        url = active.url;
+        filename = active.name || tab.title || '';
+        referer = active.referer || tab.url || url;
+        kind = 'video';
+      } else if (!isKnown) {
         const list = await readMedia(tab.id);
         const best = pickBestMedia(list);
-        if (best) {
+        if (best && best.url) {
           url = best.url;
-          filename = best.name || '';
-          kind = best.kind === 'hls' || best.kind === 'dash' || best.kind === 'video' ? 'video' : 'file';
-          if (best.initiator && !best.initiator.startsWith('chrome-extension://')) {
-            referer = best.initiator.endsWith('/') ? best.initiator : best.initiator + '/';
-          }
+          filename = best.name || tab.title || '';
+          kind = 'video';
+          referer = formatReferer(best.initiator, tab.url || url);
         }
       }
     }
@@ -958,7 +1002,7 @@ api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
               sendResponse({ ok: false });
               break;
             }
-            tabActiveMedia.set(tabId, msg.media);
+            await setActiveMedia(tabId, msg.media);
             try {
               const currentList = await readMedia(tabId);
               const m = msg.media;
@@ -993,7 +1037,7 @@ api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         }
         case 'getActiveMedia': {
           const tabId = msg.tabId || sender.tab?.id;
-          const active = tabId ? tabActiveMedia.get(tabId) : null;
+          const active = tabId ? await getActiveMedia(tabId) : null;
           sendResponse(active || null);
           break;
         }

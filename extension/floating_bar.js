@@ -1018,11 +1018,12 @@
         api.runtime.sendMessage({ type: 'getBestMedia' }, (r) => res(api.runtime.lastError ? null : r));
       });
       if (bgData?.best?.url) {
+        const isEmbedFrame = window.self !== window.top;
         return {
           url: bgData.best.url,
           name: bgData.best.name || document.title || 'video',
           kind: bgData.best.kind || 'video',
-          referer: bgData.best.initiator || location.href,
+          referer: isEmbedFrame ? location.href : (bgData.best.initiator || location.href),
           subtitles: bgData.subtitles || [],
           videoQualities: bgData.best.videoQualities || [],
           audioTracks: bgData.best.audioTracks || []

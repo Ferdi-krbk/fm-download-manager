@@ -105,16 +105,7 @@
 
   // Allow popup.js to ask for the active video URL directly
   api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-    if (msg?.type === 'getActiveMedia') {
-      let url = location.href;
-      if (isTwitter) url = findActiveTweetUrl() || location.href;
-      else if (isTikTok) url = findActiveTikTokUrl() || location.href;
-      else {
-        const embed = findActiveMovieEmbedUrl();
-        if (embed) url = embed;
-      }
-      sendResponse({ url, ok: true });
-    } else if (msg?.type === 'getDirectMediaUrl') {
+    if (msg?.type === 'getDirectMediaUrl') {
       const mediaEl = Array.from(document.querySelectorAll('video, audio')).find(el => !el.paused || el.currentTime > 0) || document.querySelector('video, audio');
       if (mediaEl) {
         const src = mediaEl.currentSrc || mediaEl.src || mediaEl.querySelector('source')?.src;

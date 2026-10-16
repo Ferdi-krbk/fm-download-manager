@@ -472,6 +472,11 @@ async function addMedia(tabId, info) {
 
   // Upgrade fragment streams to master.m3u8 so yt-dlp gets the highest quality video and audio
   let targetUrl = info.url;
+  const ytEmbed = targetUrl.match(/(?:youtube\.com|youtube-nocookie\.com)\/embed\/([a-zA-Z0-9_-]{11})/i);
+  if (ytEmbed) {
+    targetUrl = `https://www.youtube.com/watch?v=${ytEmbed[1]}`;
+  }
+
   if (info.kind === 'hls') {
     if (/sublist_vid\d*\.m3u8/i.test(targetUrl)) {
       targetUrl = targetUrl.replace(/sublist_vid\d*\.m3u8/i, 'master.m3u8');
@@ -483,6 +488,7 @@ async function addMedia(tabId, info) {
 function cleanMediaTitle(raw) {
   if (!raw) return '';
   let s = raw.replace(/[\\/:*?"<>|]/g, '').trim();
+  s = s.replace(/^(?:youtube\s*(?:video\s*player|frame)?|iframe)\s*[-–|•]?\s*/i, '');
   s = s.replace(/\s*[-–|•]\s*(?:hdfilmcehennemi|filmmodu|dizipal|fullhdfilmizlesene|dizibox|sezonlukdizi|filmevreni|youtube|netflix|blutv|gain|disney\+?).*$/i, '');
   s = s.replace(/\s+(?:izle|full izle|1080p|720p|türkçe dublaj|türkçe altyazılı|dublaj|altyazılı).*$/i, '');
   s = s.replace(/\s*[-–|•]\s*$/, '').trim();
@@ -505,7 +511,10 @@ function detectQualityLabel(url) {
   const key = normalizeKey(targetUrl);
   const idx = list.findIndex((m) => m.key === key);
   let name = info.name || guessName(targetUrl, info.type);
-  if (!info.name || /^(master|index|playlist|video|audio|stream)\.(m3u8|mp4|mpd|ts)$/i.test(name)) {
+  if (name) {
+    name = name.replace(/^(?:youtube\s*(?:video\s*player|frame)?|iframe)\s*[-–|•]?\s*/i, '').trim();
+  }
+  if (!name || /^(master|index|playlist|video|audio|stream)\.(m3u8|mp4|mpd|ts)$/i.test(name) || /^youtube$/i.test(name)) {
     try {
       const tab = await api.tabs.get(tabId);
       if (tab?.title) {
@@ -517,6 +526,7 @@ function detectQualityLabel(url) {
       }
     } catch {}
   }
+  if (!name) name = 'Video';
   const quality = detectQualityLabel(targetUrl);
   const entry = { ...info, url: targetUrl, key, name, quality };
   if (idx >= 0) {
@@ -956,11 +966,14 @@ api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
                 await addMedia(sender.tab.id, {
                   url: m.url,
                   type: m.type || '',
-                  size: 0,
+                  size: m.size || 0,
                   kind: kind || 'media',
                   time: Date.now(),
                   name: m.name,
                   initiator: init,
+                  videoQualities: m.videoQualities || [],
+                  audioTracks: m.audioTracks || [],
+                  subtitles: m.subtitles || []
                 });
               }
             }

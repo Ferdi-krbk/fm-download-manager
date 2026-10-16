@@ -136,6 +136,37 @@ async function refresh() {
 async function loadMedia() {
   tab = await currentTab();
   const list = (tab && (await send({ type: 'getMedia', tabId: tab.id }))) || [];
+
+  if (tab && tab.id) {
+    try {
+      const active = await sendTabMessageWithTimeout(tab.id, { type: 'getActiveMedia' }, 1200);
+      if (active && active.url) {
+        let canonicalUrl = active.url;
+        const ytEmbed = canonicalUrl.match(/(?:youtube\.com|youtube-nocookie\.com)\/embed\/([a-zA-Z0-9_-]{11})/i);
+        if (ytEmbed) canonicalUrl = `https://www.youtube.com/watch?v=${ytEmbed[1]}`;
+
+        let cleanName = active.name || tab.title || '';
+        cleanName = cleanName.replace(/^(?:youtube\s*(?:video\s*player|frame)?|iframe)\s*[-–|•]?\s*/i, '').trim();
+        if (!cleanName || cleanName.toLowerCase() === 'youtube') cleanName = (tab.title || 'Video').replace(/\s*-\s*YouTube$/i, '').trim();
+
+        const alreadyExists = list.some(m => m.url === canonicalUrl || m.url === active.url);
+        if (!alreadyExists) {
+          list.unshift({
+            url: canonicalUrl,
+            name: cleanName,
+            kind: active.kind || 'video',
+            size: active.size || 0,
+            quality: active.videoQualities?.[0]?.label || 'HD',
+            videoQualities: active.videoQualities || [],
+            audioTracks: active.audioTracks || [],
+            subtitles: active.subtitles || [],
+            initiator: active.referer || tab.url
+          });
+        }
+      }
+    } catch {}
+  }
+
   const ul = $('media');
   ul.innerHTML = '';
   // Filter out redundant audio-only chunks if real video exists
@@ -150,7 +181,12 @@ async function loadMedia() {
   for (const m of filtered) {
     const li = document.createElement('li');
     const info = document.createElement('div'); info.className = 'info';
-    const name = document.createElement('div'); name.className = 'name'; name.textContent = m.name || m.url; name.title = m.name || m.url;
+    let cleanItemName = m.name || m.url;
+    cleanItemName = cleanItemName.replace(/^(?:youtube\s*(?:video\s*player|frame)?|iframe)\s*[-–|•]?\s*/i, '').trim();
+    if (!cleanItemName || cleanItemName.toLowerCase() === 'youtube') {
+      cleanItemName = (tab?.title || 'Video').replace(/\s*-\s*YouTube$/i, '').trim();
+    }
+    const name = document.createElement('div'); name.className = 'name'; name.textContent = cleanItemName; name.title = cleanItemName;
     const meta = document.createElement('div'); meta.className = 'meta';
     const kind = m.kind === 'hls' ? t('kindHls') : m.kind === 'dash' ? t('kindDash') : (m.type || t('kindMedia'));
     const metaText = [kind, fmtSize(m.size)].filter(Boolean).join(' · ');
@@ -170,13 +206,16 @@ async function loadMedia() {
       const k = m.kind === 'video' || m.kind === 'hls' || m.kind === 'dash' ? 'video' : 'file';
       const isVid = k === 'video';
       const ref = (m.initiator && !m.initiator.startsWith('chrome-extension://')) ? (m.initiator.endsWith('/') ? m.initiator : m.initiator + '/') : tab.url;
-      const subs = isVid ? await getTabSubtitles(tab?.id) : [];
+      let dlUrl = m.url;
+      const ytEmbed = dlUrl.match(/(?:youtube\.com|youtube-nocookie\.com)\/embed\/([a-zA-Z0-9_-]{11})/i);
+      if (ytEmbed) dlUrl = `https://www.youtube.com/watch?v=${ytEmbed[1]}`;
+      const subs = isVid ? ((m.subtitles && m.subtitles.length) ? m.subtitles : await getTabSubtitles(tab?.id)) : [];
       const chosenSub = isVid ? chooseBestSubUrl(subs, 'tr') : '';
 
       const r = await send({
         type: 'download',
-        url: m.url,
-        filename: k === 'file' ? m.name : '',
+        url: dlUrl,
+        filename: cleanItemName || '',
         referer: ref,
         kind: k,
         writeSubtitles: isVid,
@@ -287,51 +326,67 @@ $('pageVideo').onclick = async () => {
   tab = tab || (await currentTab());
   if (!tab?.url) return;
 
+  // 1. ALWAYS query the page (floating bar) first!
+  let activeMedia = null;
+  try {
+    activeMedia = await sendTabMessageWithTimeout(tab.id, { type: 'getActiveMedia' }, 1200);
+  } catch {}
+
+  let targetUrl = activeMedia?.url || '';
+  let filename = activeMedia?.name || '';
+  let kind = activeMedia?.kind || 'video';
+  let referer = activeMedia?.referer || tab.url;
+  let qualities = activeMedia?.videoQualities || [];
+  let audios = activeMedia?.audioTracks || [];
+  let subs = activeMedia?.subtitles || [];
+  let best = null;
+
+  if (targetUrl) {
+    const ytEmbed = targetUrl.match(/(?:youtube\.com|youtube-nocookie\.com)\/embed\/([a-zA-Z0-9_-]{11})/i);
+    if (ytEmbed) targetUrl = `https://www.youtube.com/watch?v=${ytEmbed[1]}`;
+    filename = filename.replace(/^(?:youtube\s*(?:video\s*player|frame)?|iframe)\s*[-–|•]?\s*/i, '').trim();
+    if (!filename || filename.toLowerCase() === 'youtube') {
+      filename = (tab.title || 'Video').replace(/\s*-\s*YouTube$/i, '').trim();
+    }
+  }
+
   const isKnownVideoHost = /(youtube\.com|youtu\.be|tiktok\.com|twitter\.com|x\.com|vimeo\.com|dailymotion\.com|instagram\.com|twitch\.tv|reddit\.com)/i.test(tab.url);
 
-  let targetUrl = tab.url;
-  let kind = 'video';
-  let filename = tab.title || '';
-  let referer = tab.url;
-  let best = null;
-  let activeMedia = null;
-
-  if (isKnownVideoHost) {
-    // Known video platform (YouTube, TikTok, Twitter): ALWAYS use the active page URL & title!
-    targetUrl = tab.url;
-    filename = tab.title || '';
-    kind = 'video';
-    referer = tab.url;
-    try {
-      activeMedia = await sendTabMessageWithTimeout(tab.id, { type: 'getActiveMedia' }, 1200);
-      if (activeMedia && activeMedia.url) targetUrl = activeMedia.url;
-      if (activeMedia && activeMedia.name) filename = activeMedia.name;
-    } catch {}
-  } else {
-    const mediaList = (await send({ type: 'getMedia', tabId: tab.id })) || [];
-    best = pickBestMedia(mediaList);
-
-    if (best) {
-      targetUrl = best.url;
-      filename = best.name || tab.title || '';
-      kind = best.kind === 'hls' || best.kind === 'dash' || best.kind === 'video' ? 'video' : 'file';
-      if (best.initiator && !best.initiator.startsWith('chrome-extension://')) {
-        referer = best.initiator.endsWith('/') ? best.initiator : best.initiator + '/';
-      }
+  if (!targetUrl) {
+    if (isKnownVideoHost) {
+      targetUrl = tab.url;
+      filename = (tab.title || 'Video').replace(/\s*-\s*YouTube$/i, '').trim();
+      kind = 'video';
+      referer = tab.url;
     } else {
-      // Generic website with no captured media yet: check for playing video/audio element
-      const direct = await sendTabMessageWithTimeout(tab.id, { type: 'getDirectMediaUrl' }, 1200);
+      const mediaList = (await send({ type: 'getMedia', tabId: tab.id })) || [];
+      best = pickBestMedia(mediaList);
 
-      if (direct && direct.url && !direct.url.startsWith('blob:')) {
-        targetUrl = direct.url;
-        filename = direct.name || '';
-        kind = /\.m3u8(\?|$)/i.test(direct.url) ? 'video' : 'file';
+      if (best) {
+        targetUrl = best.url;
+        const ytEmbed = targetUrl.match(/(?:youtube\.com|youtube-nocookie\.com)\/embed\/([a-zA-Z0-9_-]{11})/i);
+        if (ytEmbed) targetUrl = `https://www.youtube.com/watch?v=${ytEmbed[1]}`;
+        filename = best.name || tab.title || '';
+        filename = filename.replace(/^(?:youtube\s*(?:video\s*player|frame)?|iframe)\s*[-–|•]?\s*/i, '').trim();
+        kind = best.kind === 'hls' || best.kind === 'dash' || best.kind === 'video' ? 'video' : 'file';
+        if (best.initiator && !best.initiator.startsWith('chrome-extension://')) {
+          referer = best.initiator.endsWith('/') ? best.initiator : best.initiator + '/';
+        }
+        if (best.videoQualities?.length) qualities = best.videoQualities;
+        if (best.audioTracks?.length) audios = best.audioTracks;
+        if (best.subtitles?.length) subs = best.subtitles;
       } else {
-        // No media detected on generic page (e.g. NotebookLM before clicking play):
-        // Alert user instead of sending unsupported webpage URL to yt-dlp
-        $('pageVideo').textContent = t('popupPlayFirst') || 'Önce medyayı oynatın';
-        setTimeout(() => ($('pageVideo').textContent = t('popupPageVideo')), 2500);
-        return;
+        const direct = await sendTabMessageWithTimeout(tab.id, { type: 'getDirectMediaUrl' }, 1200);
+
+        if (direct && direct.url && !direct.url.startsWith('blob:')) {
+          targetUrl = direct.url;
+          filename = direct.name || '';
+          kind = /\.m3u8(\?|$)/i.test(direct.url) ? 'video' : 'file';
+        } else {
+          $('pageVideo').textContent = t('popupPlayFirst') || 'Önce medyayı oynatın';
+          setTimeout(() => ($('pageVideo').textContent = t('popupPageVideo')), 2500);
+          return;
+        }
       }
     }
   }

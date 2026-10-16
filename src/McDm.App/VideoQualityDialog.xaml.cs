@@ -64,21 +64,6 @@ public partial class VideoQualityDialog : Window
             };
         }
 
-        if (_url.Contains("youtube.com", StringComparison.OrdinalIgnoreCase) ||
-            _url.Contains("youtu.be", StringComparison.OrdinalIgnoreCase))
-        {
-            if (_subtitles.Count == 0)
-            {
-                _subtitles = new List<SubtitleTrackInfo>
-                {
-                    new() { Lang = "tr", Label = Strings.IsTurkish ? "Türkçe Altyazı" : "Turkish Subtitles" },
-                    new() { Lang = "en", Label = Strings.IsTurkish ? "İngilizce Altyazı" : "English Subtitles" },
-                    new() { Lang = "all", Label = Strings.VideoDialogDownloadAllSubs }
-                };
-                DownloadSubtitles = true;
-                ChkDownloadSubtitles.IsChecked = true;
-            }
-        }
 
         if (_audioTracks.Count > 0)
         {
@@ -602,6 +587,12 @@ public partial class VideoQualityDialog : Window
                                 _subtitles.Add(s);
                         }
                     }
+                    PopulateSubtitles();
+                    updated = true;
+                }
+                else if (_subtitles.Any(s => string.IsNullOrEmpty(s.Url)))
+                {
+                    _subtitles.Clear();
                     PopulateSubtitles();
                     updated = true;
                 }

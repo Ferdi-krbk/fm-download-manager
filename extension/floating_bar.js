@@ -635,11 +635,6 @@
       }
     });
 
-    if (isYouTube && list.length === 0) {
-      list.push({ code: 'tr', lang: 'tr', label: 'Türkçe Altyazı', url: null });
-      list.push({ code: 'en', lang: 'en', label: 'İngilizce Altyazı', url: null });
-      list.push({ code: 'all', lang: 'all', label: 'Tüm Altyazıları İndir', url: null });
-    }
 
     if (list && list.length > 0) {
       try {

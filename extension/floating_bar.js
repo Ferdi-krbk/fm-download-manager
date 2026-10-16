@@ -12,6 +12,13 @@
   const EXCLUDED_HOSTS = /(^|\.)(office\.com|office\.live\.com|officeapps\.live\.com|office365\.com|sharepoint\.com|onedrive\.live\.com|live\.com|microsoft365\.com|docs\.google\.com|sheets\.google\.com|slides\.google\.com|drive\.google\.com|mail\.google\.com|outlook\.live\.com|outlook\.office\.com|notion\.so|figma\.com|canva\.com)$/i;
   if (EXCLUDED_HOSTS.test(location.hostname)) return;
 
+  // If running inside a subframe, exit immediately for tracking, auth, or non-embed YouTube frames
+  const isTopWindow = window.self === window.top;
+  if (!isTopWindow) {
+    if (/(studio\.youtube\.com|accounts\.google\.com|googleads|doubleclick)/i.test(location.hostname)) return;
+    if (/(youtube\.com|youtu\.be)/i.test(location.hostname) && !location.pathname.startsWith('/embed/')) return;
+  }
+
   // Minimum dimensions to be considered a real video (ignores avatars, ads, stickers)
   const MIN_WIDTH = 220;
   const MIN_HEIGHT = 130;
@@ -928,12 +935,16 @@
     return vids.find(v => !v.paused && v.currentTime > 0) || vids[0] || null;
   }
 
+  let lastReportTime = 0;
   async function reportActiveMediaToBackground() {
     try {
       const media = await resolveTargetMedia();
       if (media && media.url && !/^https?:\/\/[^/]+\/?$/i.test(media.url)) {
-        if (media.url === lastReportedUrl) return;
+        if (/(persist_identity|googleads|doubleclick)/i.test(media.url)) return;
+        const now = Date.now();
+        if (media.url === lastReportedUrl && (now - lastReportTime < 1500)) return;
         lastReportedUrl = media.url;
+        lastReportTime = now;
         api.runtime.sendMessage({ type: 'reportActiveMedia', media }, () => {
           if (api.runtime.lastError) {}
         });
@@ -953,6 +964,14 @@
       if (!isTop) {
         const m = location.href.match(/(?:embed|v)\/([a-zA-Z0-9_-]{11})/i) || location.search.match(/[?&]v=([a-zA-Z0-9_-]{11})/i);
         if (m) ytUrl = `https://www.youtube.com/watch?v=${m[1]}`;
+        else return null;
+      } else {
+        const m = location.href.match(/(?:v=|\/shorts\/)([a-zA-Z0-9_-]{11})/i);
+        if (m) ytUrl = `https://www.youtube.com/watch?v=${m[1]}`;
+        else {
+          const v = findRealVideoOnPage();
+          if (!v) return null;
+        }
       }
       const ytTitleEl = document.querySelector('h1.ytd-watch-metadata yt-formatted-string, #title h1 yt-formatted-string, h1.title');
       let cleanTitle = (ytTitleEl ? ytTitleEl.textContent : '') || document.title || 'YouTube Video';

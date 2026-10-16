@@ -182,29 +182,37 @@ async function loadMedia() {
 
   if (tab && tab.id) {
     try {
+      const isYouTube = tab.url && /(youtube\.com|youtu\.be)/i.test(tab.url);
+      const ytMatch = isYouTube ? tab.url.match(/(?:v=|\/shorts\/)([a-zA-Z0-9_-]{11})/i) : null;
       const active = await getActiveMediaFromTab(tab.id);
-      if (active && active.url) {
-        let canonicalUrl = active.url;
+
+      let canonicalUrl = '';
+      if (ytMatch) {
+        canonicalUrl = `https://www.youtube.com/watch?v=${ytMatch[1]}`;
+      } else if (active && active.url && !/persist_identity|googleads/i.test(active.url)) {
+        canonicalUrl = active.url;
         const ytEmbed = canonicalUrl.match(/(?:youtube\.com|youtube-nocookie\.com)\/embed\/([a-zA-Z0-9_-]{11})/i);
         if (ytEmbed) canonicalUrl = `https://www.youtube.com/watch?v=${ytEmbed[1]}`;
+      }
 
-        let cleanName = active.name || tab.title || '';
+      if (canonicalUrl) {
+        let cleanName = (active && active.name) || tab.title || '';
         cleanName = cleanName.replace(/^(?:youtube\s*(?:video\s*player|frame)?|iframe)\s*[-–|•]?\s*/i, '').trim();
         if (!cleanName || cleanName.toLowerCase() === 'youtube') cleanName = (tab.title || 'Video').replace(/\s*-\s*YouTube$/i, '').trim();
 
         const richItem = {
           url: canonicalUrl,
           name: cleanName,
-          kind: active.kind || 'video',
-          size: active.size || 0,
-          quality: active.videoQualities?.[0]?.label || (active.quality || 'HD'),
-          videoQualities: active.videoQualities || [],
-          audioTracks: active.audioTracks || [],
-          subtitles: active.subtitles || [],
-          initiator: active.referer || tab.url
+          kind: (active && active.kind) || 'video',
+          size: (active && active.size) || 0,
+          quality: active?.videoQualities?.[0]?.label || (active?.quality || 'HD'),
+          videoQualities: active?.videoQualities || [],
+          audioTracks: active?.audioTracks || [],
+          subtitles: active?.subtitles || [],
+          initiator: active?.referer || tab.url
         };
 
-        const existingIdx = list.findIndex(m => m.url === canonicalUrl || m.url === active.url || (tab.url && m.url === tab.url));
+        const existingIdx = list.findIndex(m => m.url === canonicalUrl || (active && m.url === active.url) || (tab.url && m.url === tab.url));
         if (existingIdx >= 0) {
           list[existingIdx] = { ...list[existingIdx], ...richItem };
         } else {
@@ -221,6 +229,7 @@ async function loadMedia() {
   const filtered = list.filter(m => {
     if (!m || !m.url) return false;
     if (/googlevideo\.com\/videoplayback/i.test(m.url)) return false;
+    if (/persist_identity|googleads|doubleclick/i.test(m.url)) return false;
     if (/^(?:youtube\s*(?:video\s*player|frame)?|iframe)$/i.test(m.name || '')) return false;
     if (hasVideo && /sublist_aud|audio[_-]track|-a\d+\.m3u8/i.test(m.url) && !/-v\d+/i.test(m.url)) return false;
     return true;
@@ -376,61 +385,66 @@ $('pageVideo').onclick = async () => {
   tab = tab || (await currentTab());
   if (!tab?.url) return;
 
+  const isYouTube = tab.url && /(youtube\.com|youtu\.be)/i.test(tab.url);
+  const ytMatch = isYouTube ? tab.url.match(/(?:v=|\/shorts\/)([a-zA-Z0-9_-]{11})/i) : null;
+
   // 1. ALWAYS query the page / background active media first!
   let activeMedia = null;
   try {
     activeMedia = await getActiveMediaFromTab(tab.id);
   } catch {}
 
-  let targetUrl = activeMedia?.url || '';
-  let filename = activeMedia?.name || '';
-  let kind = activeMedia?.kind || 'video';
-  let referer = activeMedia?.referer || tab.url;
-  let qualities = activeMedia?.videoQualities || [];
-  let audios = activeMedia?.audioTracks || [];
-  let subs = activeMedia?.subtitles || [];
+  let targetUrl = '';
+  let filename = '';
+  let kind = 'video';
+  let referer = tab.url;
+  let qualities = [];
+  let audios = [];
+  let subs = [];
   let best = null;
 
-  if (targetUrl) {
+  if (ytMatch) {
+    targetUrl = `https://www.youtube.com/watch?v=${ytMatch[1]}`;
+    filename = (activeMedia?.name || tab.title || 'YouTube Video').replace(/\s*-\s*YouTube$/i, '').trim();
+    qualities = activeMedia?.videoQualities || [];
+    audios = activeMedia?.audioTracks || [];
+    subs = activeMedia?.subtitles || [];
+  } else if (activeMedia && activeMedia.url && !/persist_identity|googleads|doubleclick/i.test(activeMedia.url)) {
+    targetUrl = activeMedia.url;
     const ytEmbed = targetUrl.match(/(?:youtube\.com|youtube-nocookie\.com)\/embed\/([a-zA-Z0-9_-]{11})/i);
     if (ytEmbed) targetUrl = `https://www.youtube.com/watch?v=${ytEmbed[1]}`;
-    filename = filename.replace(/^(?:youtube\s*(?:video\s*player|frame)?|iframe)\s*[-–|•]?\s*/i, '').trim();
-    if (!filename || filename.toLowerCase() === 'youtube') {
-      filename = (tab.title || 'Video').replace(/\s*-\s*YouTube$/i, '').trim();
-    }
-  }
-
-  const isKnownVideoHost = /(youtube\.com|youtu\.be|tiktok\.com|twitter\.com|x\.com|vimeo\.com|dailymotion\.com|instagram\.com|twitch\.tv|reddit\.com)/i.test(tab.url);
-
-  if (!targetUrl) {
-    if (isKnownVideoHost) {
-      targetUrl = tab.url;
-      filename = (tab.title || 'Video').replace(/\s*-\s*YouTube$/i, '').trim();
-      kind = 'video';
-      referer = tab.url;
+    filename = activeMedia.name || tab.title || 'Video';
+    kind = activeMedia.kind || 'video';
+    referer = activeMedia.referer || tab.url;
+    qualities = activeMedia.videoQualities || [];
+    audios = activeMedia.audioTracks || [];
+    subs = activeMedia.subtitles || [];
+  } else {
+    // Non-YouTube sites (e.g. HDFilmcehennemi, movie embeds)
+    const mediaList = (await send({ type: 'getMedia', tabId: tab.id })) || [];
+    best = pickBestMedia(mediaList);
+    if (best && best.url) {
+      targetUrl = best.url;
+      const ytEmbed = targetUrl.match(/(?:youtube\.com|youtube-nocookie\.com)\/embed\/([a-zA-Z0-9_-]{11})/i);
+      if (ytEmbed) targetUrl = `https://www.youtube.com/watch?v=${ytEmbed[1]}`;
+      filename = best.name || tab.title || 'Video';
+      kind = best.kind === 'hls' || best.kind === 'dash' || best.kind === 'video' ? 'video' : 'file';
+      if (best.initiator && !best.initiator.startsWith('chrome-extension://')) {
+        referer = best.initiator.endsWith('/') ? best.initiator : best.initiator + '/';
+      }
+      qualities = best.videoQualities || [];
+      audios = best.audioTracks || [];
+      subs = best.subtitles || [];
     } else {
-      const mediaList = (await send({ type: 'getMedia', tabId: tab.id })) || [];
-      best = pickBestMedia(mediaList);
-
-      if (best) {
-        targetUrl = best.url;
-        const ytEmbed = targetUrl.match(/(?:youtube\.com|youtube-nocookie\.com)\/embed\/([a-zA-Z0-9_-]{11})/i);
-        if (ytEmbed) targetUrl = `https://www.youtube.com/watch?v=${ytEmbed[1]}`;
-        filename = best.name || tab.title || '';
-        filename = filename.replace(/^(?:youtube\s*(?:video\s*player|frame)?|iframe)\s*[-–|•]?\s*/i, '').trim();
-        kind = best.kind === 'hls' || best.kind === 'dash' || best.kind === 'video' ? 'video' : 'file';
-        if (best.initiator && !best.initiator.startsWith('chrome-extension://')) {
-          referer = best.initiator.endsWith('/') ? best.initiator : best.initiator + '/';
-        }
-        if (best.videoQualities?.length) qualities = best.videoQualities;
-        if (best.audioTracks?.length) audios = best.audioTracks;
-        if (best.subtitles?.length) subs = best.subtitles;
+      const isKnownVideoHost = /(tiktok\.com|twitter\.com|x\.com|vimeo\.com|dailymotion\.com|instagram\.com|twitch\.tv|reddit\.com)/i.test(tab.url);
+      if (isKnownVideoHost) {
+        targetUrl = tab.url;
+        filename = tab.title || 'Video';
       } else {
         const direct = await sendTabMessageWithTimeout(tab.id, { type: 'getDirectMediaUrl' }, 1200);
-
         if (direct && direct.url && !direct.url.startsWith('blob:')) {
           targetUrl = direct.url;
-          filename = direct.name || '';
+          filename = direct.name || tab.title || 'Video';
           kind = /\.m3u8(\?|$)/i.test(direct.url) ? 'video' : 'file';
         } else {
           $('pageVideo').textContent = t('popupPlayFirst') || 'Önce medyayı oynatın';
@@ -439,6 +453,11 @@ $('pageVideo').onclick = async () => {
         }
       }
     }
+  }
+
+  filename = filename.replace(/^(?:youtube\s*(?:video\s*player|frame)?|iframe)\s*[-–|•]?\s*/i, '').trim();
+  if (!filename || filename.toLowerCase() === 'youtube') {
+    filename = (tab.title || 'Video').replace(/\s*-\s*YouTube$/i, '').trim();
   }
 
   $('pageVideo').textContent = t('popupSending');

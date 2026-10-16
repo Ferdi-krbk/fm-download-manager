@@ -857,7 +857,8 @@ if (api.webRequest?.onHeadersReceived) {
 const dismissedTabs = new Set();
 
 api.tabs.onUpdated.addListener((tabId, info) => {
-  if (info.url || info.status === 'loading') {
+  // Only clear media when the top-level URL genuinely navigates
+  if (info.url && !info.url.startsWith('chrome-extension://')) {
     clearMedia(tabId);
     clearSubtitles(tabId);
     dismissedTabs.delete(tabId);
@@ -959,6 +960,10 @@ api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         case 'reportActiveMedia': {
           const tabId = sender.tab?.id || msg.tabId;
           if (tabId && msg.media && msg.media.url) {
+            if (/(persist_identity|googleads|doubleclick)/i.test(msg.media.url)) {
+              sendResponse({ ok: false });
+              break;
+            }
             tabActiveMedia.set(tabId, msg.media);
             try {
               const currentList = await readMedia(tabId);

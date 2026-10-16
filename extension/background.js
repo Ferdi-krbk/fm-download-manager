@@ -481,13 +481,7 @@ async function addMedia(tabId, info) {
     targetUrl = `https://www.youtube.com/watch?v=${ytEmbed[1]}`;
   }
 
-  if (info.kind === 'hls') {
-    if (/sublist_vid\d*\.m3u8/i.test(targetUrl)) {
-      targetUrl = targetUrl.replace(/sublist_vid\d*\.m3u8/i, 'master.m3u8');
-    } else if (/index-f\d+-[a-z0-9-]+\.m3u8/i.test(targetUrl)) {
-      targetUrl = targetUrl.replace(/index-f\d+-[a-z0-9-]+\.m3u8/i, 'master.m3u8');
-    }
-  }
+
 
 function cleanMediaTitle(raw) {
   if (!raw) return '';

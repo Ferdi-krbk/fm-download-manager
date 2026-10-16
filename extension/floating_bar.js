@@ -1039,26 +1039,17 @@
       }
 
       if (src && /^https?:/i.test(src) && !src.startsWith('blob:')) {
-        let upgradedSrc = src;
-        if (/index-f\d+-[a-z0-9-]+\.m3u8/i.test(upgradedSrc)) upgradedSrc = upgradedSrc.replace(/index-f\d+-[a-z0-9-]+\.m3u8/i, 'master.m3u8');
-        else if (/sublist_vid\d*\.m3u8/i.test(upgradedSrc)) upgradedSrc = upgradedSrc.replace(/sublist_vid\d*\.m3u8/i, 'master.m3u8');
         return {
-          url: upgradedSrc,
+          url: src,
           name: document.title || 'video',
-          kind: /\.m3u8(\?|$)/i.test(upgradedSrc) ? 'hls' : 'video',
+          kind: /\.m3u8(\?|$)/i.test(src) ? 'hls' : 'video',
           referer: location.href,
           subtitles: await detectSubtitleTracks()
         };
       }
     }
 
-    // 3. Fallback to active movie iframe or page URL
-    const iframe = document.querySelector('iframe[src*="vidmoly"], iframe[src*="rapid"], iframe[src*="stream"], iframe[src*="embed"]');
-    if (iframe && iframe.src) {
-      return { url: iframe.src, name: document.title, kind: 'video', referer: location.href };
-    }
-
-    return { url: location.href, name: document.title, kind: 'video', referer: location.href };
+    return null;
   }
 
   // 3. Dispatch Download to Desktop App

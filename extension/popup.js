@@ -409,7 +409,7 @@ $('pageVideo').onclick = async () => {
     qualities = activeMedia?.videoQualities || [];
     audios = activeMedia?.audioTracks || [];
     subs = activeMedia?.subtitles || [];
-  } else if (activeMedia && activeMedia.url && !/persist_identity|googleads|doubleclick/i.test(activeMedia.url)) {
+  } else if (activeMedia && activeMedia.url && !/\.html?(\?|$)/i.test(activeMedia.url) && !/persist_identity|googleads|doubleclick/i.test(activeMedia.url)) {
     targetUrl = activeMedia.url;
     const ytEmbed = targetUrl.match(/(?:youtube\.com|youtube-nocookie\.com)\/embed\/([a-zA-Z0-9_-]{11})/i);
     if (ytEmbed) targetUrl = `https://www.youtube.com/watch?v=${ytEmbed[1]}`;

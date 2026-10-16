@@ -352,7 +352,7 @@ public partial class VideoQualityDialog : Window
             if (!seenKeys.Add(dedupKey))
                 continue;
 
-            cleaned.Add(new SubtitleTrackInfo { Url = s.Url, Lang = lang, Label = finalLabel });
+            cleaned.Add(new SubtitleTrackInfo { Url = s.Url ?? "", Lang = lang, Label = finalLabel });
         }
 
         // Sort: Non-forced Turkish first, then forced Turkish, then auto Turkish, then English, then others

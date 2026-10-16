@@ -357,25 +357,25 @@ public sealed class VideoDownloader
 
         // 1. Exact language, non-forced
         var nonForcedLang = list.FirstOrDefault(s =>
-            (s.Lang.Equals(lang, StringComparison.OrdinalIgnoreCase) || s.Code.Equals(lang, StringComparison.OrdinalIgnoreCase) ||
-             (lang == "tr" && (s.Label.Contains("Türkçe", StringComparison.OrdinalIgnoreCase) || s.Url.Contains("-tr-", StringComparison.OrdinalIgnoreCase) || s.Url.Contains("_tr", StringComparison.OrdinalIgnoreCase)))) &&
-            !s.Url.Contains("forced", StringComparison.OrdinalIgnoreCase) && !s.Label.Contains("forced", StringComparison.OrdinalIgnoreCase));
+            ((s.Lang ?? "").Equals(lang, StringComparison.OrdinalIgnoreCase) || (s.Code ?? "").Equals(lang, StringComparison.OrdinalIgnoreCase) ||
+             (lang == "tr" && ((s.Label ?? "").Contains("Türkçe", StringComparison.OrdinalIgnoreCase) || (s.Url ?? "").Contains("-tr-", StringComparison.OrdinalIgnoreCase) || (s.Url ?? "").Contains("_tr", StringComparison.OrdinalIgnoreCase)))) &&
+            !(s.Url ?? "").Contains("forced", StringComparison.OrdinalIgnoreCase) && !(s.Label ?? "").Contains("forced", StringComparison.OrdinalIgnoreCase));
         if (nonForcedLang != null) return nonForcedLang;
 
         // 2. Language match even if forced
         var anyLang = list.FirstOrDefault(s =>
-            s.Lang.Equals(lang, StringComparison.OrdinalIgnoreCase) || s.Code.Equals(lang, StringComparison.OrdinalIgnoreCase) ||
-            (lang == "tr" && (s.Label.Contains("Türkçe", StringComparison.OrdinalIgnoreCase) || s.Url.Contains("turk", StringComparison.OrdinalIgnoreCase))));
+            (s.Lang ?? "").Equals(lang, StringComparison.OrdinalIgnoreCase) || (s.Code ?? "").Equals(lang, StringComparison.OrdinalIgnoreCase) ||
+            (lang == "tr" && ((s.Label ?? "").Contains("Türkçe", StringComparison.OrdinalIgnoreCase) || (s.Url ?? "").Contains("turk", StringComparison.OrdinalIgnoreCase))));
         if (anyLang != null) return anyLang;
 
         // 3. Turkish non-forced
         var trNonForced = list.FirstOrDefault(s =>
-            (s.Lang.Equals("tr", StringComparison.OrdinalIgnoreCase) || s.Code.Equals("tr", StringComparison.OrdinalIgnoreCase) || s.Label.Contains("Türkçe", StringComparison.OrdinalIgnoreCase)) &&
-            !s.Url.Contains("forced", StringComparison.OrdinalIgnoreCase));
+            ((s.Lang ?? "").Equals("tr", StringComparison.OrdinalIgnoreCase) || (s.Code ?? "").Equals("tr", StringComparison.OrdinalIgnoreCase) || (s.Label ?? "").Contains("Türkçe", StringComparison.OrdinalIgnoreCase)) &&
+            !(s.Url ?? "").Contains("forced", StringComparison.OrdinalIgnoreCase));
         if (trNonForced != null) return trNonForced;
 
         // 4. Any non-forced
-        var anyNonForced = list.FirstOrDefault(s => !s.Url.Contains("forced", StringComparison.OrdinalIgnoreCase) && !s.Label.Contains("forced", StringComparison.OrdinalIgnoreCase));
+        var anyNonForced = list.FirstOrDefault(s => !(s.Url ?? "").Contains("forced", StringComparison.OrdinalIgnoreCase) && !(s.Label ?? "").Contains("forced", StringComparison.OrdinalIgnoreCase));
         if (anyNonForced != null) return anyNonForced;
 
         return list[0];
@@ -791,11 +791,12 @@ public sealed class VideoDownloader
 
     public static bool EmbedSubtitleWithFfmpeg(string ffmpeg, string videoPath, string srtPath)
     {
+        string? tempOut = null;
         try
         {
             string ext = Path.GetExtension(videoPath).ToLowerInvariant();
             if (ext != ".mp4" && ext != ".mkv" && ext != ".webm") return false;
-            string tempOut = Path.Combine(Path.GetDirectoryName(videoPath)!, "temp_embed_" + Guid.NewGuid().ToString("N")[..8] + ext);
+            tempOut = Path.Combine(Path.GetDirectoryName(videoPath)!, "temp_embed_" + Guid.NewGuid().ToString("N")[..8] + ext);
             string subCodec = ext == ".mkv" ? "srt" : "mov_text";
 
             var psi = new ProcessStartInfo(ffmpeg)
@@ -817,13 +818,26 @@ public sealed class VideoDownloader
             psi.ArgumentList.Add(tempOut);
 
             using var proc = Process.Start(psi);
-            if (proc != null && proc.WaitForExit(45000) && proc.ExitCode == 0 && File.Exists(tempOut))
+            if (proc != null)
             {
-                File.Move(tempOut, videoPath, true);
-                return true;
+                bool exited = proc.WaitForExit(180000);
+                if (!exited)
+                {
+                    try { proc.Kill(entireProcessTree: true); } catch { }
+                    return false;
+                }
+                if (proc.ExitCode == 0 && File.Exists(tempOut))
+                {
+                    File.Move(tempOut, videoPath, true);
+                    return true;
+                }
             }
         }
         catch { }
+        finally
+        {
+            if (tempOut != null) SegmentedDownloader.TryDelete(tempOut);
+        }
         return false;
     }
 

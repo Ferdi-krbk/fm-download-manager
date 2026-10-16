@@ -144,7 +144,6 @@ public sealed class SegmentedDownloader
                 RandomAccess.SetLength(handle, probe.Total);
 
             for (int i = 0; i < chunks.Count; i++) if (!chunks[i].IsComplete) ctx.Queue.Enqueue(i);
-            ctx.Throttles = new int[chunks.Count];
             int workers = Math.Min(maxConnections, Math.Max(1, ctx.Queue.Count));
             ctx.Active = workers;
             ctx.Target = workers;
@@ -295,7 +294,7 @@ public sealed class SegmentedDownloader
         public required SafeFileHandle Handle;
         public readonly object StateLock = new();
         public ConcurrentQueue<int> Queue = new();
-        public int[] Throttles = Array.Empty<int>();
+        public ConcurrentDictionary<int, int> Throttles = new();
         public int Active;
         public int Target;
         public Exception? Failure;
@@ -344,7 +343,7 @@ public sealed class SegmentedDownloader
                 }
                 catch (ThrottledException tex)
                 {
-                    if (Interlocked.Increment(ref c.Throttles[idx]) > _opt.MaxRetries * 2)
+                    if (c.Throttles.AddOrUpdate(idx, 1, (_, v) => v + 1) > _opt.MaxRetries * 2)
                         throw new FatalDownloadException("Server keeps rejecting requests (429/503)");
                     c.ReduceTarget();
                     c.Queue.Enqueue(idx);
@@ -407,7 +406,8 @@ public sealed class SegmentedDownloader
 
     private async Task DownloadChunkAsync(RunCtx c, int idx, CancellationToken ct)
     {
-        var chunk = c.Chunks[idx];
+        Chunk chunk;
+        lock (c.StateLock) chunk = c.Chunks[idx];
         int attempt = 0;
         while (true)
         {
@@ -567,11 +567,16 @@ public sealed class SegmentedDownloader
 
     // ───────────────────────── progress & persistence ─────────────────────────
 
+    private static long SumDone(RunCtx c)
+    {
+        lock (c.StateLock) return c.Chunks.Sum(x => x.Done);
+    }
+
     private async Task ProgressLoopAsync(RunCtx c, CancellationToken token)
     {
         using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(200));
         var clock = Stopwatch.StartNew();
-        long initialBytes = c.Chunks.Sum(x => x.Done);
+        long initialBytes = SumDone(c);
         long lastBytes = initialBytes;
         double lastT = 0, speed = 0;
         int ticks = 0;
@@ -579,7 +584,7 @@ public sealed class SegmentedDownloader
         {
             while (await timer.WaitForNextTickAsync(token))
             {
-                long bytes = c.Chunks.Sum(x => x.Done);
+                long bytes = SumDone(c);
                 double now = clock.Elapsed.TotalSeconds;
                 double inst = (bytes - lastBytes) / Math.Max(0.001, now - lastT);
 
@@ -604,7 +609,7 @@ public sealed class SegmentedDownloader
 
     private static void UpdateProgress(RunCtx c, double speed)
     {
-        c.Item.DownloadedBytes = c.Chunks.Sum(x => x.Done);
+        c.Item.DownloadedBytes = SumDone(c);
         c.Item.ActiveConnections = speed > 0 ? Volatile.Read(ref c.Active) : 0;
         c.Item.Speed = speed;
     }
@@ -618,7 +623,12 @@ public sealed class SegmentedDownloader
         try
         {
             if (flush) RandomAccess.FlushToDisk(c.Handle);
-            var state = new ResumeState { Total = c.Total, Validator = c.Validator, Ranges = true, Chunks = c.Chunks };
+            List<Chunk> chunksSnapshot;
+            lock (c.StateLock)
+            {
+                chunksSnapshot = c.Chunks.Select(ch => new Chunk { Start = ch.Start, End = ch.End, Done = ch.Done }).ToList();
+            }
+            var state = new ResumeState { Total = c.Total, Validator = c.Validator, Ranges = true, Chunks = chunksSnapshot };
             var path = StatePath(c.Item.SavePath);
             var tmp = path + ".tmp";
             File.WriteAllText(tmp, JsonSerializer.Serialize(state));

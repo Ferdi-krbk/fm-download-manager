@@ -162,7 +162,8 @@ public static class StressAndBoundaryTests
             check(store.Matches(store.Token), "exact token matches");
             check(!store.Matches(null), "null candidate rejected");
             check(!store.Matches(""), "empty candidate rejected");
-            check(!store.Matches(store.Token[..63] + "0"), "single bit difference rejected");
+            char flippedLast = store.Token[63] == '0' ? '1' : '0';
+            check(!store.Matches(store.Token[..63] + flippedLast), "single bit difference rejected");
             check(!store.Matches(store.Token[..32]), "truncated candidate rejected");
             check(!store.Matches(store.Token + "extra"), "longer candidate rejected");
 
@@ -411,6 +412,109 @@ Late timestamp with full 3-part hour specification.";
             check(restored.Request.CookieHeader == item.Request.CookieHeader, "CookieHeader restored");
             check(restored.Request.Kind == DownloadKind.File, "Request Kind restored");
 
+            return Task.CompletedTask;
+        });
+
+        // ── 13. Dynamic Chunk Splitting + 429 Throttling Regression ───────
+        await test("regression: dynamic chunk splitting survives 429 throttling without IndexOutOfRangeException", async () =>
+        {
+            var payload = new byte[10 * 1024 * 1024]; // 10 MB so chunks > 4MB can split dynamically
+            new Random(99).NextBytes(payload);
+            int reqCount = 0;
+
+            var builder = Microsoft.AspNetCore.Builder.WebApplication.CreateBuilder();
+            builder.Logging.ClearProviders();
+            builder.WebHost.UseKestrel(o => o.Listen(System.Net.IPAddress.Loopback, 0));
+            await using var app = builder.Build();
+
+            app.MapGet("/split429", async ctx =>
+            {
+                var rh = ctx.Request.Headers.Range.ToString();
+                if (rh != "bytes=0-0")
+                {
+                    int c = Interlocked.Increment(ref reqCount);
+                    // Trigger 429 on later worker requests (including dynamically split chunks)
+                    if (c is 3 or 5 or 7)
+                    {
+                        ctx.Response.StatusCode = 429;
+                        ctx.Response.Headers.RetryAfter = "0";
+                        return;
+                    }
+                }
+                long start = 0, end = payload.Length - 1;
+                if (rh.StartsWith("bytes="))
+                {
+                    var spec = rh[6..].Split('-');
+                    start = long.Parse(spec[0]);
+                    end = spec[1].Length > 0 ? Math.Min(long.Parse(spec[1]), payload.Length - 1) : payload.Length - 1;
+                    ctx.Response.StatusCode = 206;
+                    ctx.Response.Headers.ContentRange = $"bytes {start}-{end}/{payload.Length}";
+                }
+                ctx.Response.Headers.AcceptRanges = "bytes";
+                ctx.Response.ContentLength = end - start + 1;
+                await ctx.Response.Body.WriteAsync(payload.AsMemory((int)start, (int)(end - start + 1)));
+            });
+
+            await app.StartAsync();
+            var port = new Uri(app.Services.GetRequiredService<Microsoft.AspNetCore.Hosting.Server.IServer>()
+                .Features.Get<Microsoft.AspNetCore.Hosting.Server.Features.IServerAddressesFeature>()!.Addresses.First()).Port;
+
+            var dir = tmp();
+            // Force large initial chunk (MaxChunkBytes=10MB, MinChunkBytes=8MB) with 8 workers so 7 workers must dynamically split!
+            var downloader = new SegmentedDownloader(null, new EngineOptions
+            {
+                MinChunkBytes = 8 * 1024 * 1024,
+                MaxChunkBytes = 10 * 1024 * 1024,
+                ThrottleBackoff = TimeSpan.FromMilliseconds(50)
+            });
+            var item = new DownloadItem
+            {
+                Directory = dir,
+                FileName = "split429.bin",
+                Request = new DownloadRequest { Url = $"http://127.0.0.1:{port}/split429", FileName = "split429.bin" }
+            };
+
+            await downloader.RunAsync(item, maxConnections: 8, CancellationToken.None);
+            check(File.Exists(item.SavePath), "split429 output file exists");
+            var actualHash = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(item.SavePath)));
+            var expectedHash = Convert.ToHexString(SHA256.HashData(payload));
+            check(actualHash == expectedHash, "split429 byte-exact hash match");
+            await app.StopAsync();
+        });
+
+        // ── 14. DownloadManager.Remove(deleteFile: true) Cleanup Regression ─
+        await test("regression: DownloadManager.Remove(deleteFile: true) cleans partial & target files in Paused/Failed states", () =>
+        {
+            var dir = tmp();
+            using var dm = new DownloadManager(dir, dir);
+            var item = dm.Add(new DownloadRequest { Url = "http://127.0.0.1:1/unreachable.bin", FileName = "partial_test.bin" });
+            dm.Pause(item.Id);
+
+            var savePath = Path.Combine(dir, "partial_test.bin");
+            item.SavePath = savePath;
+            File.WriteAllText(savePath, "final");
+            File.WriteAllText(savePath + ".mcdm-part", "part");
+            File.WriteAllText(savePath + ".mcdm", "state");
+
+            bool removed = dm.Remove(item.Id, deleteFile: true);
+            check(removed, "Remove returned true");
+            check(!File.Exists(savePath), "SavePath deleted even when Paused");
+            check(!File.Exists(savePath + ".mcdm-part"), ".mcdm-part deleted");
+            check(!File.Exists(savePath + ".mcdm"), ".mcdm state deleted");
+
+            return Task.CompletedTask;
+        });
+
+        // ── 15. PickBestSubtitle Null-Safety Regression ───────────────────
+        await test("regression: VideoDownloader.PickBestSubtitle handles null Label, Code, and Url safely", () =>
+        {
+            var subs = new List<SubtitleTrackInfo>
+            {
+                new() { Lang = null!, Label = null, Url = null! },
+                new() { Lang = "tr", Label = null, Url = "https://sub.example/tr.vtt" }
+            };
+            var picked = VideoDownloader.PickBestSubtitle(subs, "tr");
+            check(picked != null && picked.Url == "https://sub.example/tr.vtt", "picked valid Turkish track without NullReferenceException");
             return Task.CompletedTask;
         });
     }

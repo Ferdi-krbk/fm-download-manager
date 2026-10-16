@@ -88,7 +88,7 @@ public partial class SettingsWindow : Window
             }
         }
 
-        ChkStartWithWindows.IsChecked = _settings.StartWithWindows;
+        ChkStartWithWindows.IsChecked = App.IsStartupEnabled() || _settings.StartWithWindows;
         ChkClipboardWatcher.IsChecked = _settings.ClipboardWatcherEnabled;
         ChkNotifications.IsChecked = _settings.NotificationsEnabled;
         ChkAutoCategorize.IsChecked = _settings.AutoCategorizeSubfolders;
@@ -146,6 +146,7 @@ public partial class SettingsWindow : Window
             _settings.Language = langItem.Tag.ToString()!;
 
         _settings.StartWithWindows = ChkStartWithWindows.IsChecked == true;
+        try { App.SetStartup(_settings.StartWithWindows); } catch { }
         _settings.ClipboardWatcherEnabled = ChkClipboardWatcher.IsChecked == true;
         _settings.NotificationsEnabled = ChkNotifications.IsChecked == true;
         _settings.AutoCategorizeSubfolders = ChkAutoCategorize.IsChecked == true;

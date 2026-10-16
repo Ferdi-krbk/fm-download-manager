@@ -240,7 +240,11 @@ public sealed class DownloadManager : IDisposable
         if (item == null) return false;
         if (item.Status == DownloadStatus.Downloading || item.Status == DownloadStatus.Queued)
             Cancel(id);
-        if (deleteFile && item.Status == DownloadStatus.Completed) SegmentedDownloader.TryDelete(item.SavePath);
+        if (deleteFile)
+        {
+            CleanupPartial(item);
+            SegmentedDownloader.TryDelete(item.SavePath);
+        }
         lock (_gate) _all.Remove(item);
         Post(() => Items.Remove(item));
         Save();

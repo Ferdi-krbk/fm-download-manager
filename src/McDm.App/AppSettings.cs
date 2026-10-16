@@ -48,7 +48,8 @@ public sealed class AppSettings
                 var loaded = JsonSerializer.Deserialize<AppSettings>(json);
                 if (loaded != null)
                 {
-                    if (loaded.ConnectionsPerDownload < 16) loaded.ConnectionsPerDownload = 16;
+                    loaded.ConnectionsPerDownload = Math.Clamp(loaded.ConnectionsPerDownload <= 0 ? 16 : loaded.ConnectionsPerDownload, 1, 32);
+                    loaded.MaxConcurrentDownloads = Math.Clamp(loaded.MaxConcurrentDownloads <= 0 ? 3 : loaded.MaxConcurrentDownloads, 1, 10);
                     return loaded;
                 }
             }
@@ -65,7 +66,9 @@ public sealed class AppSettings
             var dir = Path.GetDirectoryName(path);
             if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
             var json = JsonSerializer.Serialize(this, JsonOptions);
-            File.WriteAllText(path, json);
+            var tmp = path + ".tmp";
+            File.WriteAllText(tmp, json);
+            File.Move(tmp, path, overwrite: true);
         }
         catch { }
     }

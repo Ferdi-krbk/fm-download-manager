@@ -51,16 +51,41 @@ public sealed class TorrentDownloader : IDisposable
         }
         else
         {
-            // Direct .torrent file path or URL
-            if (File.Exists(item.Request.Url))
+            // Direct .torrent file path or HTTP(S) URL
+            string torrentFilePath = item.Request.Url;
+            string? tempTorrentPath = null;
+            try
             {
-                var torrent = await Torrent.LoadAsync(item.Request.Url);
-                item.FileName = string.IsNullOrWhiteSpace(item.FileName) ? torrent.Name : item.FileName;
-                manager = await engine.AddAsync(torrent, targetDir);
+                if (!File.Exists(torrentFilePath) &&
+                    Uri.TryCreate(item.Request.Url, UriKind.Absolute, out var tUri) &&
+                    tUri.Scheme is "http" or "https")
+                {
+                    tempTorrentPath = Path.Combine(Path.GetTempPath(), "mcdm-" + Guid.NewGuid().ToString("N")[..8] + ".torrent");
+                    using var http = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(20) };
+                    http.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", item.Request.UserAgent ?? "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+                    if (!string.IsNullOrWhiteSpace(item.Request.Referer))
+                        http.DefaultRequestHeaders.TryAddWithoutValidation("Referer", item.Request.Referer);
+                    if (!string.IsNullOrWhiteSpace(item.Request.CookieHeader))
+                        http.DefaultRequestHeaders.TryAddWithoutValidation("Cookie", item.Request.CookieHeader);
+                    var bytes = await http.GetByteArrayAsync(tUri, cancel);
+                    await File.WriteAllBytesAsync(tempTorrentPath, bytes, cancel);
+                    torrentFilePath = tempTorrentPath;
+                }
+
+                if (File.Exists(torrentFilePath))
+                {
+                    var torrent = await Torrent.LoadAsync(torrentFilePath);
+                    item.FileName = string.IsNullOrWhiteSpace(item.FileName) ? torrent.Name : item.FileName;
+                    manager = await engine.AddAsync(torrent, targetDir);
+                }
+                else
+                {
+                    throw new NotSupportedException("Torrent download requires magnet link or valid .torrent file/URL");
+                }
             }
-            else
+            finally
             {
-                throw new NotSupportedException("Torrent download requires magnet link or local .torrent file");
+                if (tempTorrentPath != null) SegmentedDownloader.TryDelete(tempTorrentPath);
             }
         }
 

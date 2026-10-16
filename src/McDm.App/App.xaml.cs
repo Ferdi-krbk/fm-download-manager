@@ -35,6 +35,7 @@ public partial class App : System.Windows.Application
     private bool _schedulerWasInWindow;
     private TorrentDownloader? _torrentEngine;
     private string _lastSeenClipboard = "";
+    private Action? _onBalloonClicked;
 
     [System.Runtime.InteropServices.DllImport("shell32.dll", SetLastError = true)]
     private static extern int SetCurrentProcessExplicitAppUserModelID([System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPWStr)] string AppID);
@@ -259,8 +260,21 @@ public partial class App : System.Windows.Application
 
         _manager.ItemCompleted += item =>
         {
-            if (_settings?.NotificationsEnabled == true)
-                _tray?.ShowBalloonTip(3000, "DOWNLOAD COMPLETE", item.FileName, Forms.ToolTipIcon.Info);
+            if (_settings?.NotificationsEnabled == true && _tray != null)
+            {
+                _onBalloonClicked = () =>
+                {
+                    try
+                    {
+                        if (!string.IsNullOrEmpty(item.SavePath) && File.Exists(item.SavePath))
+                            System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{item.SavePath}\"");
+                        else
+                            Dispatcher.BeginInvoke(ShowWindow);
+                    }
+                    catch { }
+                };
+                _tray.ShowBalloonTip(3000, "DOWNLOAD COMPLETE", item.FileName, Forms.ToolTipIcon.Info);
+            }
         };
 
         var hooks = new BridgeHooks
@@ -379,7 +393,7 @@ public partial class App : System.Windows.Application
                     {
                         if (_settings?.NotificationsEnabled != false && _tray != null)
                         {
-                            _tray.BalloonTipClicked += (_, _) =>
+                            _onBalloonClicked = () =>
                             {
                                 try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(info.ReleaseUrl) { UseShellExecute = true }); } catch { }
                             };
@@ -496,6 +510,7 @@ public partial class App : System.Windows.Application
             ContextMenuStrip = menu,
         };
         _tray.DoubleClick += (_, _) => ShowWindow();
+        _tray.BalloonTipClicked += (_, _) => _onBalloonClicked?.Invoke();
     }
 
     private void StartTrayTooltipUpdater()
@@ -563,9 +578,30 @@ public partial class App : System.Windows.Application
                             var res = DarkMessageBox.Show(MainWindow, msg, Strings.DownloadPromptTitle, MessageBoxButton.YesNo, MessageBoxImage.Question);
                             if (res == MessageBoxResult.Yes)
                             {
-                                var kind = isVideo ? DownloadKind.Video : DownloadKind.File;
-                                _manager?.Add(new DownloadRequest { Url = text, Kind = kind });
-                                ShowWindow();
+                                if (isVideo)
+                                {
+                                    var qDlg = new VideoQualityDialog(text) { Topmost = true, WindowStartupLocation = WindowStartupLocation.CenterScreen };
+                                    if (qDlg.ShowDialog() == true)
+                                    {
+                                        _manager?.Add(new DownloadRequest
+                                        {
+                                            Url = text,
+                                            Kind = DownloadKind.Video,
+                                            CustomFormat = qDlg.SelectedFormat,
+                                            Container = qDlg.AudioOnly ? "mp3" : "mp4",
+                                            AudioOnly = qDlg.AudioOnly,
+                                            WriteSubtitles = qDlg.DownloadSubtitles,
+                                            SubtitleLangs = qDlg.SubtitleLangs,
+                                            SubtitleUrl = qDlg.SelectedSubtitleUrl
+                                        });
+                                        ShowWindow();
+                                    }
+                                }
+                                else
+                                {
+                                    _manager?.Add(new DownloadRequest { Url = text, Kind = DownloadKind.File });
+                                    ShowWindow();
+                                }
                             }
                         }
                     }
@@ -653,13 +689,13 @@ public partial class App : System.Windows.Application
         Shutdown();
     }
 
-    private static bool IsStartupEnabled()
+    public static bool IsStartupEnabled()
     {
         using var k = Registry.CurrentUser.OpenSubKey(RunKey);
         return k?.GetValue(RunValue) != null;
     }
 
-    private static void SetStartup(bool on)
+    public static void SetStartup(bool on)
     {
         using var k = Registry.CurrentUser.OpenSubKey(RunKey, writable: true);
         if (k == null) return;

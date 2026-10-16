@@ -292,7 +292,10 @@ public partial class MainWindow : Window
                     Kind = DownloadKind.Video,
                     CustomFormat = qDlg.SelectedFormat,
                     Container = qDlg.AudioOnly ? "mp3" : "mp4",
-                    AudioOnly = qDlg.AudioOnly
+                    AudioOnly = qDlg.AudioOnly,
+                    WriteSubtitles = qDlg.DownloadSubtitles,
+                    SubtitleLangs = qDlg.SubtitleLangs,
+                    SubtitleUrl = qDlg.SelectedSubtitleUrl
                 };
                 _manager.Add(req);
                 StatusText.Text = qDlg.AudioOnly ? "Ses indirmesi eklendi." : "Video indirmesi eklendi.";
@@ -345,8 +348,15 @@ public partial class MainWindow : Window
         {
             foreach (var u in dlg.ResultUrls)
             {
-                var kind = VideoDownloader.IsVideoUrl(u) ? DownloadKind.Video : DownloadKind.File;
-                _manager.Add(new DownloadRequest { Url = u, Kind = kind });
+                bool isVid = VideoDownloader.IsVideoUrl(u);
+                var kind = isVid ? DownloadKind.Video : DownloadKind.File;
+                _manager.Add(new DownloadRequest
+                {
+                    Url = u,
+                    Kind = kind,
+                    WriteSubtitles = isVid,
+                    SubtitleLangs = isVid ? "tr,en" : null
+                });
             }
             StatusText.Text = $"Added {dlg.ResultUrls.Count} URL(s)";
         }
@@ -357,15 +367,34 @@ public partial class MainWindow : Window
     private void Cancel_Click(object s, RoutedEventArgs e) { foreach (var i in Selected) _manager.Cancel(i.Id); }
     private void Remove_Click(object s, RoutedEventArgs e) { foreach (var i in Selected) _manager.Remove(i.Id); }
 
-    private void RemoveAndDelete_Click(object s, RoutedEventArgs e)
+    private async void RemoveAndDelete_Click(object s, RoutedEventArgs e)
     {
-        foreach (var i in Selected)
+        var itemsToDelete = Selected.ToList();
+        foreach (var i in itemsToDelete)
         {
-            _manager.Remove(i.Id);
-            try { if (File.Exists(i.SavePath)) File.Delete(i.SavePath); } catch { }
-            try { if (File.Exists(i.SavePath + ".mcdm-part")) File.Delete(i.SavePath + ".mcdm-part"); } catch { }
-            try { if (File.Exists(i.SavePath + ".mcdm")) File.Delete(i.SavePath + ".mcdm"); } catch { }
+            _manager.Remove(i.Id, deleteFile: true);
         }
+
+        // Wait briefly and retry deletion in case active file handles were still releasing
+        await Task.Run(async () =>
+        {
+            for (int attempt = 0; attempt < 5; attempt++)
+            {
+                bool anyRemaining = false;
+                foreach (var i in itemsToDelete)
+                {
+                    if (string.IsNullOrEmpty(i.SavePath)) continue;
+                    SegmentedDownloader.TryDelete(i.SavePath);
+                    SegmentedDownloader.TryDelete(i.SavePath + ".mcdm-part");
+                    SegmentedDownloader.TryDelete(i.SavePath + ".mcdm");
+                    SegmentedDownloader.TryDelete(i.SavePath + ".mcdm.tmp");
+                    if (File.Exists(i.SavePath) || File.Exists(i.SavePath + ".mcdm-part"))
+                        anyRemaining = true;
+                }
+                if (!anyRemaining) break;
+                await Task.Delay(120);
+            }
+        });
     }
 
     private void Open_Click(object s, RoutedEventArgs e)
@@ -410,6 +439,7 @@ public partial class MainWindow : Window
             _manager.DefaultDownloadDirectory = updated.DownloadDirectory;
             _manager.DefaultConnections = updated.ConnectionsPerDownload;
             _manager.MaxConcurrentDownloads = updated.MaxConcurrentDownloads;
+            _manager.AutoCategorizeSubfolders = updated.AutoCategorizeSubfolders;
             _manager.SpeedLimiter.BytesPerSecond = (long)updated.SpeedLimitKbps * 1024;
             SldSpeedLimit.Value = Math.Round((double)updated.SpeedLimitKbps / 1024);
             TxtSpeedLimitVal.Text = updated.SpeedLimitKbps > 0 ? $"{updated.SpeedLimitKbps / 1024} MB/s" : "Sınırsız";
@@ -451,9 +481,20 @@ public partial class MainWindow : Window
             using var p = Process.Start(psi);
             if (p != null)
             {
+                var errTask = p.StandardError.ReadToEndAsync();
                 await p.WaitForExitAsync();
-                StatusText.Text = Strings.YtDlpUpdated;
-                DarkMessageBox.Show(this, Strings.YtDlpUpdated, Strings.AppTitle, MessageBoxButton.OK, MessageBoxImage.Information);
+                var errText = await errTask;
+                if (p.ExitCode == 0)
+                {
+                    StatusText.Text = Strings.YtDlpUpdated;
+                    DarkMessageBox.Show(this, Strings.YtDlpUpdated, Strings.AppTitle, MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    var msg = string.IsNullOrWhiteSpace(errText) ? $"Exit code {p.ExitCode}" : errText.Trim();
+                    StatusText.Text = string.Format(Strings.YtDlpUpdateFailed, msg);
+                    DarkMessageBox.Show(this, string.Format(Strings.YtDlpUpdateFailed, msg), Strings.AppTitle, MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
             }
         }
         catch (Exception ex)

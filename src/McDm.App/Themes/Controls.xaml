@@ -74,7 +74,7 @@
 
     <!-- PrimaryButton Style -->
     <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-        <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+        <Setter Property="Background" Value="{DynamicResource AccentGradientBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource OnAccentBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
         <Setter Property="FontWeight" Value="Bold" />
@@ -92,7 +92,7 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentHoverBrush}" />
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentHoverGradientBrush}" />
                             <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource AccentHoverBrush}" />
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
@@ -615,20 +615,20 @@
 
     <!-- ProgressBar Style: flat, 7px high, fully rounded pill track & fill -->
     <Style TargetType="ProgressBar">
-        <Setter Property="Height" Value="7" />
-        <Setter Property="Background" Value="#20222D" />
-        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+        <Setter Property="Height" Value="6" />
+        <Setter Property="Background" Value="#171A2E" />
+        <Setter Property="Foreground" Value="{DynamicResource ProgressGradient}" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ProgressBar">
-                    <Border Background="{TemplateBinding Background}" CornerRadius="3.5" SnapsToDevicePixels="True">
+                    <Border Background="{TemplateBinding Background}" CornerRadius="3" SnapsToDevicePixels="True">
                         <Grid>
                             <Border x:Name="PART_Track" />
                             <Border x:Name="PART_Indicator"
                                     HorizontalAlignment="Left"
                                     Background="{TemplateBinding Foreground}"
-                                    CornerRadius="3.5" />
+                                    CornerRadius="3" />
                         </Grid>
                     </Border>
                 </ControlTemplate>
@@ -636,18 +636,17 @@
         </Setter>
     </Style>
 
-    <!-- DataGrid Styles -->
+    <!-- DataGrid Styles: Modern Elevated Cards Layout -->
     <Style TargetType="DataGrid">
-        <Setter Property="Background" Value="{DynamicResource Bg0Brush}" />
+        <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="RowBackground" Value="{DynamicResource Bg0Brush}" />
-        <Setter Property="AlternatingRowBackground" Value="{DynamicResource AltRowBrush}" />
-        <Setter Property="GridLinesVisibility" Value="Horizontal" />
-        <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource LineBrush}" />
+        <Setter Property="RowBackground" Value="Transparent" />
+        <Setter Property="AlternatingRowBackground" Value="Transparent" />
+        <Setter Property="GridLinesVisibility" Value="None" />
         <Setter Property="HeadersVisibility" Value="Column" />
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
         <Setter Property="FontSize" Value="12.5" />
-        <Setter Property="RowHeight" Value="40" />
+        <Setter Property="RowHeight" Value="52" />
         <Setter Property="AutoGenerateColumns" Value="False" />
         <Setter Property="CanUserAddRows" Value="False" />
         <Setter Property="CanUserDeleteRows" Value="False" />
@@ -657,11 +656,11 @@
     </Style>
 
     <Style TargetType="DataGridColumnHeader">
-        <Setter Property="Background" Value="{DynamicResource Bg1Brush}" />
-        <Setter Property="Foreground" Value="{DynamicResource TextDimBrush}" />
+        <Setter Property="Background" Value="{DynamicResource Bg0Brush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextMuteBrush}" />
         <Setter Property="FontFamily" Value="{DynamicResource UiFont}" />
         <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="FontSize" Value="11.5" />
+        <Setter Property="FontSize" Value="11" />
         <Setter Property="Padding" Value="14,10" />
         <Setter Property="BorderThickness" Value="0,0,0,1" />
         <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
@@ -700,11 +699,12 @@
             <Setter.Value>
                 <ControlTemplate TargetType="DataGridRow">
                     <Border x:Name="DgrBd"
-                            Background="{TemplateBinding Background}"
-                            BorderThickness="3,0,0,0"
-                            BorderBrush="Transparent"
-                            CornerRadius="6"
-                            Margin="2,1"
+                            Background="{DynamicResource CardBgBrush}"
+                            BorderThickness="1"
+                            BorderBrush="{DynamicResource CardBorderBrush}"
+                            CornerRadius="9"
+                            Margin="10,3"
+                            Padding="2,0"
                             SnapsToDevicePixels="True">
                         <SelectiveScrollingGrid>
                             <SelectiveScrollingGrid.ColumnDefinitions>
@@ -716,10 +716,11 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="DgrBd" Property="Background" Value="{DynamicResource Bg3Brush}" />
+                            <Setter TargetName="DgrBd" Property="Background" Value="{DynamicResource Bg2Brush}" />
+                            <Setter TargetName="DgrBd" Property="BorderBrush" Value="{DynamicResource LineStrongBrush}" />
                         </Trigger>
                         <Trigger Property="IsSelected" Value="True">
-                            <Setter TargetName="DgrBd" Property="Background" Value="{DynamicResource Bg4Brush}" />
+                            <Setter TargetName="DgrBd" Property="Background" Value="{DynamicResource Bg3Brush}" />
                             <Setter TargetName="DgrBd" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
                         </Trigger>
                     </ControlTemplate.Triggers>

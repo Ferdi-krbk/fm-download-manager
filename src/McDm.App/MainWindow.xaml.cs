@@ -147,6 +147,7 @@ public partial class MainWindow : Window
         ColHeaderConn.Header = Strings.ColConnections;
         ColHeaderStatus.Header = Strings.ColStatus;
         ColHeaderError.Header = Strings.ColError;
+        if (ColHeaderEta != null) ColHeaderEta.Header = (Strings.Culture ?? System.Globalization.CultureInfo.CurrentUICulture).TwoLetterISOLanguageName.StartsWith("en", StringComparison.OrdinalIgnoreCase) ? "Time Left" : "Kalan Süre";
 
         TxtBtnAdd.Text = Strings.AddFromClipboard;
         TxtBtnAddMulti.Text = Strings.AddUrls;

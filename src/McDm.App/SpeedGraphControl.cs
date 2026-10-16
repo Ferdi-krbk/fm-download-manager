@@ -14,12 +14,22 @@ public sealed class SpeedGraphControl : FrameworkElement
 
     public static readonly DependencyProperty LineBrushProperty =
         DependencyProperty.Register(nameof(LineBrush), typeof(Brush), typeof(SpeedGraphControl),
-            new FrameworkPropertyMetadata(new SolidColorBrush(Color.FromRgb(0xC9, 0x2A, 0x3E)), FrameworkPropertyMetadataOptions.AffectsRender));
+            new FrameworkPropertyMetadata(new SolidColorBrush(Color.FromRgb(0xC9, 0x1D, 0x3A)), FrameworkPropertyMetadataOptions.AffectsRender));
+
+    public static readonly DependencyProperty FillBrushProperty =
+        DependencyProperty.Register(nameof(FillBrush), typeof(Brush), typeof(SpeedGraphControl),
+            new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
 
     public Brush LineBrush
     {
         get => (Brush)GetValue(LineBrushProperty);
         set => SetValue(LineBrushProperty, value);
+    }
+
+    public Brush? FillBrush
+    {
+        get => (Brush?)GetValue(FillBrushProperty);
+        set => SetValue(FillBrushProperty, value);
     }
 
     public SpeedGraphControl()
@@ -122,14 +132,19 @@ public sealed class SpeedGraphControl : FrameworkElement
         var fillGeo = new PathGeometry();
         fillGeo.Figures.Add(fillFigure);
 
-        // Burgundy gradient fill under the line
-        var fillBrush = new LinearGradientBrush(
-            Color.FromArgb(0x55, 0xC9, 0x2A, 0x3E),
-            Color.FromArgb(0x05, 0x1E, 0x10, 0x15),
-            new Point(0, 0),
-            new Point(0, 1));
-        fillBrush.Freeze();
-        dc.DrawGeometry(fillBrush, null, fillGeo);
+        // Dark Crimson gradient fill under the line
+        var effectiveFill = FillBrush;
+        if (effectiveFill == null)
+        {
+            var gb = new LinearGradientBrush(
+                Color.FromArgb(0x45, 0xC9, 0x1D, 0x3A),
+                Color.FromArgb(0x02, 0x0C, 0x0D, 0x12),
+                new Point(0, 0),
+                new Point(0, 1));
+            gb.Freeze();
+            effectiveFill = gb;
+        }
+        dc.DrawGeometry(effectiveFill, null, fillGeo);
 
         // Line Geometry
         var lineGeo = new PathGeometry();

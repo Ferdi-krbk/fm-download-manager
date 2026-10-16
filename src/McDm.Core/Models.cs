@@ -150,20 +150,90 @@ public sealed class DownloadItem : ObservableBase
     public long TotalBytes
     {
         get => _total;
-        set { if (Set(ref _total, value)) Raise(nameof(Progress)); }
+        set
+        {
+            if (Set(ref _total, value))
+            {
+                Raise(nameof(Progress));
+                Raise(nameof(EtaFormatted));
+            }
+        }
     }
     public long DownloadedBytes
     {
         get => _downloaded;
-        set { if (Set(ref _downloaded, value)) Raise(nameof(Progress)); }
+        set
+        {
+            if (Set(ref _downloaded, value))
+            {
+                Raise(nameof(Progress));
+                Raise(nameof(EtaFormatted));
+            }
+        }
     }
-    public DownloadStatus Status { get => _status; set => Set(ref _status, value); }
+    public DownloadStatus Status
+    {
+        get => _status;
+        set
+        {
+            if (Set(ref _status, value))
+            {
+                Raise(nameof(EtaFormatted));
+            }
+        }
+    }
     public string? Error { get => _error; set => Set(ref _error, value); }
 
     /// <summary>Free-form phase text for video downloads ("Merging…"); null for plain files.</summary>
     [JsonIgnore] public string? Stage { get => _stage; set => Set(ref _stage, value); }
-    [JsonIgnore] public double Speed { get => _speed; set => Set(ref _speed, value); }
+    [JsonIgnore]
+    public double Speed
+    {
+        get => _speed;
+        set
+        {
+            if (Set(ref _speed, value))
+            {
+                Raise(nameof(EtaFormatted));
+            }
+        }
+    }
     [JsonIgnore] public int ActiveConnections { get => _connections; set => Set(ref _connections, value); }
     [JsonIgnore] public double Progress => _total > 0 ? Math.Clamp((double)_downloaded / _total, 0, 1) : 0;
+
+    [JsonIgnore]
+    public TimeSpan? Eta
+    {
+        get
+        {
+            if (_status != DownloadStatus.Downloading || _speed <= 1024 || _total <= 0 || _downloaded >= _total)
+                return null;
+            long remaining = _total - _downloaded;
+            double secs = remaining / _speed;
+            if (secs > 86400 * 30 || double.IsInfinity(secs) || double.IsNaN(secs))
+                return null;
+            return TimeSpan.FromSeconds(secs);
+        }
+    }
+
+    [JsonIgnore]
+    public string EtaFormatted
+    {
+        get
+        {
+            if (_status == DownloadStatus.Completed) return "Tamamlandı";
+            if (_status != DownloadStatus.Downloading) return "—";
+            var eta = Eta;
+            if (!eta.HasValue) return "—";
+            var ts = eta.Value;
+            if (ts.TotalDays >= 1)
+                return $"{(int)ts.TotalDays}g {ts.Hours}sa";
+            if (ts.TotalHours >= 1)
+                return $"{(int)ts.TotalHours}sa {ts.Minutes}dk";
+            if (ts.TotalMinutes >= 1)
+                return $"{ts.Minutes}dk {ts.Seconds}sn";
+            return $"{Math.Max(1, ts.Seconds)}sn";
+        }
+    }
     [JsonIgnore] internal CancellationTokenSource? Cts { get; set; }
 }

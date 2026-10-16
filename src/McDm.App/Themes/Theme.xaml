@@ -2,25 +2,32 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
 
-    <!-- Color Palette: Sleek Modern Dark + Dark Burgundy / Wine Red -->
-    <Color x:Key="ColorBg0">#0F1014</Color>
-    <Color x:Key="ColorBg1">#16171E</Color>
-    <Color x:Key="ColorBg2">#1E202A</Color>
-    <Color x:Key="ColorBg3">#272A38</Color>
-    <Color x:Key="ColorBg4">#351D26</Color>
-    <Color x:Key="ColorLine">#252733</Color>
-    <Color x:Key="ColorLineStrong">#383C4E</Color>
-    <Color x:Key="ColorText">#F4F5F7</Color>
+    <!-- Color Palette: Dark Crimson & Matte Graphite (Deep Racing Red) -->
+    <Color x:Key="ColorBg0">#0C0D12</Color>
+    <Color x:Key="ColorBg1">#12141B</Color>
+    <Color x:Key="ColorBg2">#181A24</Color>
+    <Color x:Key="ColorBg3">#232635</Color>
+    <Color x:Key="ColorBg4">#2C1116</Color>
+    <Color x:Key="ColorLine">#1F222F</Color>
+    <Color x:Key="ColorLineStrong">#32374B</Color>
+    <Color x:Key="ColorText">#F8FAFC</Color>
     <Color x:Key="ColorTextDim">#9CA3AF</Color>
     <Color x:Key="ColorTextMute">#6B7280</Color>
-    <Color x:Key="ColorAccent">#C92A3E</Color>
-    <Color x:Key="ColorAccentHover">#E11D48</Color>
-    <Color x:Key="ColorAccentPress">#9F1239</Color>
-    <Color x:Key="ColorAccentDim">#2E1018</Color>
+    <Color x:Key="ColorAccent">#C91D3A</Color>
+    <Color x:Key="ColorAccentHover">#E02444</Color>
+    <Color x:Key="ColorAccentPress">#991026</Color>
+    <Color x:Key="ColorAccentDim">#240A10</Color>
     <Color x:Key="ColorOnAccent">#FFFFFF</Color>
+    <Color x:Key="ColorFlame">#E02444</Color>
+    <Color x:Key="ColorCyan">#00E5FF</Color>
+    <Color x:Key="ColorCyanHover">#33ECFF</Color>
+    <Color x:Key="ColorCyanDim">#0B2830</Color>
+    <Color x:Key="ColorIndigo">#8B5CF6</Color>
     <Color x:Key="ColorDanger">#EF4444</Color>
     <Color x:Key="ColorSuccess">#10B981</Color>
-    <Color x:Key="ColorAltRow">#13141A</Color>
+    <Color x:Key="ColorAltRow">#0E0F15</Color>
+    <Color x:Key="ColorCardBg">#151722</Color>
+    <Color x:Key="ColorCardBorder">#232636</Color>
 
     <!-- SolidColorBrushes -->
     <SolidColorBrush x:Key="Bg0Brush" Color="{StaticResource ColorBg0}" />
@@ -33,14 +40,50 @@
     <SolidColorBrush x:Key="TextBrush" Color="{StaticResource ColorText}" />
     <SolidColorBrush x:Key="TextDimBrush" Color="{StaticResource ColorTextDim}" />
     <SolidColorBrush x:Key="TextMuteBrush" Color="{StaticResource ColorTextMute}" />
+    <SolidColorBrush x:Key="TextStrongBrush" Color="#FFFFFF" />
     <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource ColorAccent}" />
     <SolidColorBrush x:Key="AccentHoverBrush" Color="{StaticResource ColorAccentHover}" />
     <SolidColorBrush x:Key="AccentPressBrush" Color="{StaticResource ColorAccentPress}" />
     <SolidColorBrush x:Key="AccentDimBrush" Color="{StaticResource ColorAccentDim}" />
     <SolidColorBrush x:Key="OnAccentBrush" Color="{StaticResource ColorOnAccent}" />
+    <SolidColorBrush x:Key="FlameBrush" Color="{StaticResource ColorFlame}" />
+    <SolidColorBrush x:Key="CyanBrush" Color="{StaticResource ColorCyan}" />
+    <SolidColorBrush x:Key="CyanHoverBrush" Color="{StaticResource ColorCyanHover}" />
+    <SolidColorBrush x:Key="CyanDimBrush" Color="{StaticResource ColorCyanDim}" />
+    <SolidColorBrush x:Key="IndigoBrush" Color="{StaticResource ColorIndigo}" />
     <SolidColorBrush x:Key="DangerBrush" Color="{StaticResource ColorDanger}" />
     <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource ColorSuccess}" />
     <SolidColorBrush x:Key="AltRowBrush" Color="{StaticResource ColorAltRow}" />
+    <SolidColorBrush x:Key="CardBgBrush" Color="{StaticResource ColorCardBg}" />
+    <SolidColorBrush x:Key="CardBorderBrush" Color="{StaticResource ColorCardBorder}" />
+
+    <!-- Gradient Brushes: Deep Crimson & Red-to-Green Progress -->
+    <LinearGradientBrush x:Key="AccentGradientBrush" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#C91D3A" Offset="0" />
+        <GradientStop Color="#9E1228" Offset="1" />
+    </LinearGradientBrush>
+
+    <LinearGradientBrush x:Key="AccentHoverGradientBrush" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#E02444" Offset="0" />
+        <GradientStop Color="#B3142E" Offset="1" />
+    </LinearGradientBrush>
+
+    <LinearGradientBrush x:Key="CyanGradientBrush" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#00E5FF" Offset="0" />
+        <GradientStop Color="#0099FF" Offset="1" />
+    </LinearGradientBrush>
+
+    <LinearGradientBrush x:Key="HeroCardGradient" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#181A25" Offset="0" />
+        <GradientStop Color="#13141E" Offset="1" />
+    </LinearGradientBrush>
+
+    <!-- Progress Bar Gradient: Red to Warm Amber to Emerald Green -->
+    <LinearGradientBrush x:Key="ProgressGradient" StartPoint="0,0" EndPoint="1,0">
+        <GradientStop Color="#D9163D" Offset="0" />
+        <GradientStop Color="#EAB308" Offset="0.55" />
+        <GradientStop Color="#10B981" Offset="1" />
+    </LinearGradientBrush>
 
     <!-- Corner Radii: Modern oval / rounded contours -->
     <CornerRadius x:Key="SharpCorner">10</CornerRadius>

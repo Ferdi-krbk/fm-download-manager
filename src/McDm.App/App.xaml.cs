@@ -144,23 +144,14 @@ public partial class App : System.Windows.Application
             win.Height = 680;
             win.Show();
 
-            var sparkline = win.FindName("SpeedSparkline") as System.Windows.Shapes.Polyline;
-            if (sparkline != null)
+            var graph = win.FindName("SidebarSpeedGraph") as SpeedGraphControl;
+            if (graph != null)
             {
-                sparkline.Points = new System.Windows.Media.PointCollection(new[]
+                for (int i = 0; i < 55; i++)
                 {
-                    new System.Windows.Point(0, 30),
-                    new System.Windows.Point(18, 28),
-                    new System.Windows.Point(36, 25),
-                    new System.Windows.Point(54, 18),
-                    new System.Windows.Point(72, 20),
-                    new System.Windows.Point(90, 15),
-                    new System.Windows.Point(108, 12),
-                    new System.Windows.Point(126, 14),
-                    new System.Windows.Point(144, 9),
-                    new System.Windows.Point(162, 7),
-                    new System.Windows.Point(180, 5)
-                });
+                    double s = 15_000_000 + Math.Sin(i * 0.28) * 7_500_000 + Math.Cos(i * 0.45) * 3_000_000;
+                    graph.PushSample(Math.Max(2_000_000, s));
+                }
             }
 
             var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };

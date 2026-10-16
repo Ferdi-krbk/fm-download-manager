@@ -133,6 +133,22 @@ async function refresh() {
   }
 }
 
+function isGenericMediaName(raw) {
+  if (!raw) return true;
+  const s = raw.trim().toLowerCase().replace(/\.[a-z0-9]{2,5}$/i, '');
+  return /^(?:master|index|playlist|manifest|stream|video|audio|media|iframe|player|chunk|output|blob|embed)(?:[_-]?\d+)?$/i.test(s);
+}
+
+function cleanMediaTitle(raw) {
+  if (!raw) return '';
+  let s = raw.replace(/[\\/:*?"<>|]/g, '').trim();
+  s = s.replace(/^(?:youtube\s*(?:video\s*player|frame)?|iframe)\s*[-–|•]?\s*/i, '');
+  s = s.replace(/\s*[-–|•]\s*(?:hdfilmcehennemi|filmmodu|dizipal|fullhdfilmizlesene|dizibox|sezonlukdizi|filmevreni|youtube|netflix|blutv|gain|disney\+?).*$/i, '');
+  s = s.replace(/\s+(?:izle|full izle|1080p|720p|türkçe dublaj|türkçe altyazılı|dublaj|altyazılı).*$/i, '');
+  s = s.replace(/\s*[-–|•]\s*$/, '').trim();
+  return s.slice(0, 60);
+}
+
 function formatReferer(raw, fallbackUrl) {
   if (!raw || raw.startsWith('chrome-extension://')) return fallbackUrl || '';
   try {
@@ -152,8 +168,8 @@ async function getActiveMediaFromTab(tabId) {
   try {
     const fromBg = await send({ type: 'getActiveMedia', tabId });
     if (fromBg && fromBg.url && !/^https?:\/\/[^/]+\/?$/i.test(fromBg.url) && !/\.html?(\?|$)/i.test(fromBg.url)) {
-      if (!fromBg.name || /^(?:youtube\s*(?:video\s*player|frame)?|iframe|video|media)$/i.test(fromBg.name.trim())) {
-        fromBg.name = (tab?.title || 'Video').replace(/\s*-\s*YouTube$/i, '').trim();
+      if (isGenericMediaName(fromBg.name)) {
+        fromBg.name = cleanMediaTitle(tab?.title) || (tab?.title || 'Video').replace(/\s*-\s*YouTube$/i, '').trim();
       }
       return fromBg;
     }
@@ -163,8 +179,8 @@ async function getActiveMediaFromTab(tabId) {
   try {
     const fromAny = await sendTabMessageWithTimeout(tabId, { type: 'getActiveMedia' }, 1200);
     if (fromAny && fromAny.url && !/^https?:\/\/[^/]+\/?$/i.test(fromAny.url) && !/\.html?(\?|$)/i.test(fromAny.url)) {
-      if (!fromAny.name || /^(?:youtube\s*(?:video\s*player|frame)?|iframe|video|media)$/i.test(fromAny.name.trim())) {
-        fromAny.name = (tab?.title || 'Video').replace(/\s*-\s*YouTube$/i, '').trim();
+      if (isGenericMediaName(fromAny.name)) {
+        fromAny.name = cleanMediaTitle(tab?.title) || (tab?.title || 'Video').replace(/\s*-\s*YouTube$/i, '').trim();
       }
       return fromAny;
     }
@@ -195,7 +211,9 @@ async function loadMedia() {
       if (canonicalUrl) {
         let cleanName = (active && active.name) || tab.title || '';
         cleanName = cleanName.replace(/^(?:youtube\s*(?:video\s*player|frame)?|iframe)\s*[-–|•]?\s*/i, '').trim();
-        if (!cleanName || cleanName.toLowerCase() === 'youtube') cleanName = (tab.title || 'Video').replace(/\s*-\s*YouTube$/i, '').trim();
+        if (isGenericMediaName(cleanName) || cleanName.toLowerCase() === 'youtube') {
+          cleanName = cleanMediaTitle(tab?.title) || (tab?.title || 'Video').replace(/\s*-\s*YouTube$/i, '').trim();
+        }
 
         const richItem = {
           url: canonicalUrl,
@@ -238,8 +256,8 @@ async function loadMedia() {
     const info = document.createElement('div'); info.className = 'info';
     let cleanItemName = m.name || m.url;
     cleanItemName = cleanItemName.replace(/^(?:youtube\s*(?:video\s*player|frame)?|iframe)\s*[-–|•]?\s*/i, '').trim();
-    if (!cleanItemName || /^(?:youtube|video|iframe)$/i.test(cleanItemName.toLowerCase())) {
-      cleanItemName = (tab?.title || 'Video').replace(/\s*-\s*YouTube$/i, '').trim();
+    if (isGenericMediaName(cleanItemName) || /^(?:youtube|video|iframe)$/i.test(cleanItemName.toLowerCase())) {
+      cleanItemName = cleanMediaTitle(tab?.title) || (tab?.title || 'Video').replace(/\s*-\s*YouTube$/i, '').trim();
     }
     const name = document.createElement('div'); name.className = 'name'; name.textContent = cleanItemName; name.title = cleanItemName;
     const meta = document.createElement('div'); meta.className = 'meta';
@@ -462,8 +480,8 @@ $('pageVideo').onclick = async () => {
   }
 
   filename = filename.replace(/^(?:youtube\s*(?:video\s*player|frame)?|iframe)\s*[-–|•]?\s*/i, '').trim();
-  if (!filename || /^(?:youtube|video|iframe)$/i.test(filename.toLowerCase())) {
-    filename = (tab.title || 'Video').replace(/\s*-\s*YouTube$/i, '').trim();
+  if (isGenericMediaName(filename) || /^(?:youtube|video|iframe)$/i.test(filename.toLowerCase())) {
+    filename = cleanMediaTitle(tab?.title) || (tab?.title || 'Video').replace(/\s*-\s*YouTube$/i, '').trim();
   }
 
   $('pageVideo').textContent = t('popupSending');

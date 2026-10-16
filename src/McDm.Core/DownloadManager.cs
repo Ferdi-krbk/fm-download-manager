@@ -126,7 +126,7 @@ public sealed class DownloadManager : IDisposable
                 : DefaultDownloadDirectory);
 
         string initialFileName = "";
-        if (!string.IsNullOrWhiteSpace(request.FileName))
+        if (!string.IsNullOrWhiteSpace(request.FileName) && (!FileNames.IsGenericVideoName(request.FileName) || request.Kind != DownloadKind.Video))
         {
             initialFileName = FileNames.Sanitize(request.FileName);
         }
@@ -138,7 +138,7 @@ public sealed class DownloadManager : IDisposable
         else if (Uri.TryCreate(request.Url, UriKind.Absolute, out var parsedUri))
         {
             var seg = Path.GetFileName(parsedUri.AbsolutePath);
-            if (request.Kind == DownloadKind.Video && (string.IsNullOrWhiteSpace(seg) || seg.Equals("watch", StringComparison.OrdinalIgnoreCase) || seg.Equals("shorts", StringComparison.OrdinalIgnoreCase) || seg.Equals("video", StringComparison.OrdinalIgnoreCase)))
+            if (request.Kind == DownloadKind.Video && (string.IsNullOrWhiteSpace(seg) || FileNames.IsGenericVideoName(seg)))
             {
                 initialFileName = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("en", StringComparison.OrdinalIgnoreCase)
                     ? "Video Download"

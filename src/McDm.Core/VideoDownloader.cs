@@ -339,17 +339,20 @@ public sealed class VideoDownloader
         string safeName = !string.IsNullOrWhiteSpace(fileName)
             ? FileNames.Sanitize(Path.GetFileNameWithoutExtension(fileName))
             : "";
-        if (!string.IsNullOrWhiteSpace(safeName) &&
-            !safeName.StartsWith("index-", StringComparison.OrdinalIgnoreCase) &&
-            !safeName.StartsWith("master", StringComparison.OrdinalIgnoreCase) &&
-            !safeName.Equals("watch", StringComparison.OrdinalIgnoreCase) &&
-            !safeName.Equals("video", StringComparison.OrdinalIgnoreCase) &&
-            !safeName.Equals("shorts", StringComparison.OrdinalIgnoreCase) &&
-            !safeName.Equals("Video İndirmesi", StringComparison.OrdinalIgnoreCase) &&
-            !safeName.Equals("Video Download", StringComparison.OrdinalIgnoreCase))
+        if (!string.IsNullOrWhiteSpace(safeName) && !FileNames.IsGenericVideoName(safeName))
         {
             if (safeName.Length > 60) safeName = safeName[..60].Trim();
-            a.Add("-o"); a.Add(safeName + ".%(ext)s");
+            string uniqueSafeName = safeName;
+            int counter = 1;
+            while (File.Exists(Path.Combine(outputDir, uniqueSafeName + ".mp4")) ||
+                   File.Exists(Path.Combine(outputDir, uniqueSafeName + ".mkv")) ||
+                   File.Exists(Path.Combine(outputDir, uniqueSafeName + ".webm")) ||
+                   File.Exists(Path.Combine(outputDir, uniqueSafeName + ".mp3")) ||
+                   File.Exists(Path.Combine(outputDir, uniqueSafeName + ".srt")))
+            {
+                uniqueSafeName = $"{safeName} ({counter++})";
+            }
+            a.Add("-o"); a.Add(uniqueSafeName + ".%(ext)s");
         }
         else
         {
@@ -822,14 +825,15 @@ public sealed class VideoDownloader
                 var title = FileNames.Sanitize(line[(TitlePrefix.Length + 1)..].Trim());
                 if (string.IsNullOrEmpty(item.SavePath))
                 {
-                    bool hasCleanCurrent = !string.IsNullOrWhiteSpace(item.FileName) &&
-                                           !item.FileName.StartsWith("index-", StringComparison.OrdinalIgnoreCase) &&
-                                           !item.FileName.StartsWith("master", StringComparison.OrdinalIgnoreCase);
-                    bool isGenericNew = title.StartsWith("index-", StringComparison.OrdinalIgnoreCase) ||
-                                        title.StartsWith("master", StringComparison.OrdinalIgnoreCase);
-                    if (!hasCleanCurrent || !isGenericNew)
+                    bool isGenericNew = FileNames.IsGenericVideoName(title);
+                    bool hasCleanCurrent = !FileNames.IsGenericVideoName(item.FileName);
+                    if (!isGenericNew)
                     {
                         item.FileName = title;
+                    }
+                    else if (!hasCleanCurrent && !FileNames.IsGenericVideoName(item.Request.FileName))
+                    {
+                        item.FileName = FileNames.Sanitize(item.Request.FileName);
                     }
                 }
             }
@@ -964,6 +968,48 @@ public sealed class VideoDownloader
         var root = Path.GetFullPath(outDir).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
         if (!full.StartsWith(root, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
             throw new FatalDownloadException("yt-dlp reported a file outside the download folder");
+
+        var currentStem = Path.GetFileNameWithoutExtension(full);
+        var ext = Path.GetExtension(full);
+
+        if (FileNames.IsGenericVideoName(currentStem))
+        {
+            string desiredStem = !string.IsNullOrWhiteSpace(item.Request.FileName) && !FileNames.IsGenericVideoName(item.Request.FileName)
+                ? Path.GetFileNameWithoutExtension(item.Request.FileName)
+                : (!string.IsNullOrWhiteSpace(item.FileName) && !FileNames.IsGenericVideoName(item.FileName)
+                    ? Path.GetFileNameWithoutExtension(item.FileName)
+                    : (IsTurkish ? "Video" : "Video"));
+
+            desiredStem = FileNames.Sanitize(desiredStem);
+            var newPath = FileNames.Unique(outDir, desiredStem + ext);
+            if (!string.Equals(full, newPath, StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    File.Move(full, newPath, overwrite: false);
+
+                    var dir = Path.GetDirectoryName(full);
+                    if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
+                    {
+                        var oldStem = currentStem;
+                        var newStem = Path.GetFileNameWithoutExtension(newPath);
+                        foreach (var companion in Directory.EnumerateFiles(dir, $"{oldStem}.*"))
+                        {
+                            if (string.Equals(companion, full, StringComparison.OrdinalIgnoreCase)) continue;
+                            var cExt = companion.Substring(Path.Combine(dir, oldStem).Length);
+                            var newCompanion = Path.Combine(dir, newStem + cExt);
+                            if (!File.Exists(newCompanion))
+                            {
+                                File.Move(companion, newCompanion);
+                            }
+                        }
+                    }
+
+                    full = newPath;
+                }
+                catch { }
+            }
+        }
 
         item.SavePath = full;
         item.FileName = Path.GetFileName(full);

@@ -39,4 +39,18 @@ public static class FileNames
                 return path;
         }
     }
+
+    /// <summary>Checks if a file name or slug is generic (e.g. master, index, playlist, video, iframe) and unsuitable as a persistent movie name.</summary>
+    public static bool IsGenericVideoName(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return true;
+        var clean = Path.GetFileNameWithoutExtension(name.Replace('\\', '/')).Trim();
+        return System.Text.RegularExpressions.Regex.IsMatch(clean,
+            @"^(?:master|index|playlist|manifest|stream|video|audio|media|iframe|player|chunk|output|blob|embed)(?:[_-]?\d+)?$",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase)
+            || clean.Equals("watch", StringComparison.OrdinalIgnoreCase)
+            || clean.Equals("shorts", StringComparison.OrdinalIgnoreCase)
+            || clean.Equals("Video İndirmesi", StringComparison.OrdinalIgnoreCase)
+            || clean.Equals("Video Download", StringComparison.OrdinalIgnoreCase);
+    }
 }

@@ -214,8 +214,20 @@ async function sendToApp({ url, filename, referer, kind, format, audioOnly, subt
     } catch {}
   }
 
+  let cleanName = (filename || '').trim();
+  if (isGenericMediaName(cleanName)) {
+    try {
+      const tabs = await api.tabs.query({ active: true, currentWindow: true });
+      if (tabs[0]?.title) {
+        const cleaned = cleanMediaTitle(tabs[0].title);
+        if (cleaned) cleanName = cleaned;
+      }
+    } catch {}
+  }
+  if (!cleanName || isGenericMediaName(cleanName)) cleanName = 'Video';
+
   const payload = {
-    url, filename: filename || '', referer: referer || '', kind: kind || 'file',
+    url, filename: cleanName, referer: referer || '', kind: kind || 'file',
     audioOnly: isAudio,
     subtitlesOnly: isSubs,
     subtitleLangs: subtitleLangs || 'tr,en',
@@ -494,20 +506,11 @@ function normalizeKey(url) {
   }
 }
 
-async function addMedia(tabId, info) {
-  if (tabId < 0) return;
-  const settings = await getSettings();
-  if (!settings.sniff) return;
-  const list = await readMedia(tabId);
-
-  // Upgrade fragment streams to master.m3u8 so yt-dlp gets the highest quality video and audio
-  let targetUrl = info.url;
-  const ytEmbed = targetUrl.match(/(?:youtube\.com|youtube-nocookie\.com)\/embed\/([a-zA-Z0-9_-]{11})/i);
-  if (ytEmbed) {
-    targetUrl = `https://www.youtube.com/watch?v=${ytEmbed[1]}`;
-  }
-
-
+function isGenericMediaName(raw) {
+  if (!raw) return true;
+  const s = raw.trim().toLowerCase().replace(/\.[a-z0-9]{2,5}$/i, '');
+  return /^(?:master|index|playlist|manifest|stream|video|audio|media|iframe|player|chunk|output|blob|embed)(?:[_-]?\d+)?$/i.test(s);
+}
 
 function cleanMediaTitle(raw) {
   if (!raw) return '';
@@ -532,13 +535,26 @@ function detectQualityLabel(url) {
   return '';
 }
 
+async function addMedia(tabId, info) {
+  if (tabId < 0) return;
+  const settings = await getSettings();
+  if (!settings.sniff) return;
+  const list = await readMedia(tabId);
+
+  // Upgrade fragment streams to master.m3u8 so yt-dlp gets the highest quality video and audio
+  let targetUrl = info.url;
+  const ytEmbed = targetUrl.match(/(?:youtube\.com|youtube-nocookie\.com)\/embed\/([a-zA-Z0-9_-]{11})/i);
+  if (ytEmbed) {
+    targetUrl = `https://www.youtube.com/watch?v=${ytEmbed[1]}`;
+  }
+
   const key = normalizeKey(targetUrl);
   const idx = list.findIndex((m) => m.key === key);
   let name = info.name || guessName(targetUrl, info.type);
   if (name) {
     name = name.replace(/^(?:youtube\s*(?:video\s*player|frame)?|iframe)\s*[-–|•]?\s*/i, '').trim();
   }
-  if (!name || /^(master|index|playlist|video|audio|stream)\.(m3u8|mp4|mpd|ts)$/i.test(name) || /^youtube$/i.test(name)) {
+  if (!name || isGenericMediaName(name) || /^youtube$/i.test(name)) {
     try {
       const tab = await api.tabs.get(tabId);
       if (tab?.title) {
@@ -550,7 +566,7 @@ function detectQualityLabel(url) {
       }
     } catch {}
   }
-  if (!name) name = 'Video';
+  if (!name || isGenericMediaName(name)) name = 'Video';
   const quality = detectQualityLabel(targetUrl);
   const entry = { ...info, url: targetUrl, key, name, quality };
   if (idx >= 0) {
@@ -1002,6 +1018,15 @@ api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
               sendResponse({ ok: false });
               break;
             }
+            let mediaName = msg.media.name;
+            if (isGenericMediaName(mediaName)) {
+              const tabTitle = sender.tab?.title;
+              if (tabTitle) {
+                const cleaned = cleanMediaTitle(tabTitle);
+                if (cleaned) mediaName = cleaned;
+              }
+            }
+            if (mediaName) msg.media.name = mediaName;
             await setActiveMedia(tabId, msg.media);
             try {
               const currentList = await readMedia(tabId);
@@ -1044,7 +1069,18 @@ api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         case 'getMedia': sendResponse(await readMedia(msg.tabId)); break;
         case 'downloads': sendResponse(await getDownloads()); break;
         case 'action': sendResponse(await downloadAction(msg.id, msg.action)); break;
-        case 'download': sendResponse(await sendToApp(msg)); break;
+        case 'download': {
+          const downloadMsg = { ...msg };
+          if (isGenericMediaName(downloadMsg.filename)) {
+            const tabTitle = sender.tab?.title;
+            if (tabTitle) {
+              const cleaned = cleanMediaTitle(tabTitle);
+              if (cleaned) downloadMsg.filename = cleaned;
+            }
+          }
+          sendResponse(await sendToApp(downloadMsg));
+          break;
+        }
         case 'setSettings': await setSettings(msg.settings || {}); sendResponse({ ok: true }); break;
         case 'launchApp': sendResponse({ ok: await launchApp() }); break;
         case 'pageMedia': {

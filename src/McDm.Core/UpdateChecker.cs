@@ -14,7 +14,8 @@ public sealed class UpdateInfo
 
 public static class UpdateChecker
 {
-    public const string CurrentVersion = "3.5.0";
+    public static string CurrentVersion =>
+        typeof(UpdateChecker).Assembly.GetName().Version?.ToString(3) ?? "3.6.0";
     public const string RepoOwner = "Ferdi-krbk";
     public const string RepoName = "fm-download-manager";
 

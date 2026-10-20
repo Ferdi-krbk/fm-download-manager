@@ -45,6 +45,27 @@ public sealed class DownloadManager : IDisposable
         DefaultDownloadDirectory = downloadDirectory
             ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
         Load();
+
+        try
+        {
+            System.Net.NetworkInformation.NetworkChange.NetworkAvailabilityChanged += (_, e) =>
+            {
+                if (e.IsAvailable)
+                {
+                    lock (_gate)
+                    {
+                        foreach (var item in _all.Where(i => i.Status == DownloadStatus.Failed && IsTransientNetworkError(i.Error)))
+                        {
+                            item.Status = DownloadStatus.Queued;
+                            item.Error = null;
+                            item.AutoRetryCount = 0;
+                        }
+                    }
+                    Pump();
+                }
+            };
+        }
+        catch { }
     }
 
     // ───────────────────────── queue reordering ─────────────────────────
@@ -172,8 +193,12 @@ public sealed class DownloadManager : IDisposable
     {
         lock (_gate)
         {
-            foreach (var item in _all.Where(i => i.Status == DownloadStatus.Paused))
+            foreach (var item in _all.Where(i => i.Status is DownloadStatus.Paused or DownloadStatus.Failed))
+            {
                 item.Status = DownloadStatus.Queued;
+                item.Error = null;
+                item.AutoRetryCount = 0;
+            }
         }
         Save();
         Pump();
@@ -222,6 +247,7 @@ public sealed class DownloadManager : IDisposable
         var item = Find(id);
         if (item == null || item.Status is not (DownloadStatus.Paused or DownloadStatus.Failed)) return false;
         item.Error = null;
+        item.AutoRetryCount = 0;
         item.Status = DownloadStatus.Queued;
         Save();
         Pump();
@@ -309,6 +335,7 @@ public sealed class DownloadManager : IDisposable
             }
             item.Status = DownloadStatus.Completed;
             item.Error = null;
+            item.AutoRetryCount = 0;
             if (!string.IsNullOrEmpty(item.WorkDir))
             {
                 try { if (Directory.Exists(item.WorkDir)) Directory.Delete(item.WorkDir, recursive: true); } catch { }
@@ -324,8 +351,30 @@ public sealed class DownloadManager : IDisposable
         {
             if (item.Status == DownloadStatus.Downloading)
             {
-                item.Status = DownloadStatus.Failed;
-                item.Error = ex.Message;
+                if (IsTransientNetworkError(ex) && !cts.IsCancellationRequested && item.AutoRetryCount < 10)
+                {
+                    item.AutoRetryCount++;
+                    int delaySec = Math.Min(30, item.AutoRetryCount * 3 + 2);
+                    bool isTr = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("tr", StringComparison.OrdinalIgnoreCase);
+                    item.Stage = isTr
+                        ? $"Ağ kesintisi! {delaySec} sn içinde tekrar denenecek ({item.AutoRetryCount}/10)..."
+                        : $"Network drop! Reconnecting in {delaySec}s ({item.AutoRetryCount}/10)...";
+                    item.Status = DownloadStatus.Queued;
+                    _ = Task.Run(async () =>
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(delaySec));
+                        lock (_gate)
+                        {
+                            if (item.Status == DownloadStatus.Queued)
+                                Pump();
+                        }
+                    });
+                }
+                else
+                {
+                    item.Status = DownloadStatus.Failed;
+                    item.Error = ex.Message;
+                }
             }
         }
         finally
@@ -411,6 +460,29 @@ public sealed class DownloadManager : IDisposable
         var path = uri.AbsolutePath.ToLowerInvariant();
         return (path.EndsWith(".mp4") || path.EndsWith(".mkv") || path.EndsWith(".webm") || path.EndsWith(".avi") || path.EndsWith(".mov"))
                && !path.EndsWith(".m3u8") && !path.EndsWith(".mpd");
+    }
+
+    public static bool IsTransientNetworkError(Exception? ex)
+    {
+        if (ex == null) return false;
+        if (ex is System.Net.Http.HttpRequestException ||
+            ex is System.Net.Sockets.SocketException ||
+            ex is IOException ||
+            ex is TimeoutException)
+            return true;
+        if (ex.InnerException != null && IsTransientNetworkError(ex.InnerException))
+            return true;
+        return IsTransientNetworkError(ex.Message);
+    }
+
+    public static bool IsTransientNetworkError(string? message)
+    {
+        if (string.IsNullOrWhiteSpace(message)) return false;
+        var msg = message.ToLowerInvariant();
+        return msg.Contains("network") || msg.Contains("socket") || msg.Contains("connection") ||
+               msg.Contains("timed out") || msg.Contains("timeout") || msg.Contains("host") ||
+               msg.Contains("reset by peer") || msg.Contains("eof") || msg.Contains("handshake") ||
+               msg.Contains("ağ") || msg.Contains("bağlantı");
     }
 
     public void Dispose()

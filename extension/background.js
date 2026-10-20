@@ -64,8 +64,12 @@ async function pingRaw(settings) {
     clearTimeout(t);
     if (!r.ok) return null;
     const resData = await r.json();
-    if (resData && resData.token) {
-      api.storage.local.set({ token: resData.token });
+    if (resData) {
+      const updates = {};
+      if (resData.token) updates.token = resData.token;
+      if (resData.accentColor) updates.accentColor = resData.accentColor;
+      if (resData.language) updates.language = resData.language;
+      if (Object.keys(updates).length) api.storage.local.set(updates);
     }
     return resData;
   } catch {
@@ -995,11 +999,30 @@ api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           const raw = await pingRaw(settings);
           const app = raw && raw.paired ? await ping(settings) : null;
           const cached = app ? null : (await api.storage.local.get('captureExtensions')).captureExtensions;
+          const sTheme = await api.storage.local.get(['accentColor', 'language']);
           sendResponse({
             online: !!app, reachable: !!raw, paired: !!(raw && raw.paired), rawApp: raw,
             app, settings, clickIntercept: !api.downloads?.onDeterminingFilename, isSafari: IS_SAFARI,
             canLaunch: !!api.runtime.sendNativeMessage, captureExtensions: (app && app.captureExtensions) || cached || [],
+            accentColor: (raw && raw.accentColor) || sTheme.accentColor || '#E50914',
+            language: (raw && raw.language) || sTheme.language || 'tr',
           });
+          break;
+        }
+        case 'getAppConfig': {
+          const s = await api.storage.local.get(['accentColor', 'language']);
+          sendResponse({
+            accentColor: s.accentColor || '#E50914',
+            language: s.language || 'tr'
+          });
+          break;
+        }
+        case 'setAppConfig': {
+          const updates = {};
+          if (msg.accentColor) updates.accentColor = msg.accentColor;
+          if (msg.language) updates.language = msg.language;
+          if (Object.keys(updates).length) await api.storage.local.set(updates);
+          sendResponse({ ok: true });
           break;
         }
         case 'setToken': {

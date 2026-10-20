@@ -623,12 +623,24 @@
             <Setter.Value>
                 <ControlTemplate TargetType="ProgressBar">
                     <Border Background="{TemplateBinding Background}" CornerRadius="3" SnapsToDevicePixels="True">
-                        <Grid>
+                        <Grid ClipToBounds="True">
                             <Border x:Name="PART_Track" />
                             <Border x:Name="PART_Indicator"
                                     HorizontalAlignment="Left"
                                     Background="{TemplateBinding Foreground}"
-                                    CornerRadius="3" />
+                                    CornerRadius="3">
+                                <Border.Triggers>
+                                    <EventTrigger RoutedEvent="Loaded">
+                                        <BeginStoryboard>
+                                            <Storyboard RepeatBehavior="Forever">
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                 From="0.85" To="1.0" Duration="0:0:0.9"
+                                                                 AutoReverse="True" />
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </Border.Triggers>
+                            </Border>
                         </Grid>
                     </Border>
                 </ControlTemplate>
@@ -702,10 +714,14 @@
                             Background="{DynamicResource CardBgBrush}"
                             BorderThickness="1"
                             BorderBrush="{DynamicResource CardBorderBrush}"
-                            CornerRadius="3"
+                            CornerRadius="6"
                             Margin="8,2.5"
                             Padding="2,0"
+                            RenderTransformOrigin="0.5,0.5"
                             SnapsToDevicePixels="True">
+                        <Border.RenderTransform>
+                            <TranslateTransform X="0" Y="0" />
+                        </Border.RenderTransform>
                         <SelectiveScrollingGrid>
                             <SelectiveScrollingGrid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
@@ -716,8 +732,34 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="DgrBd"
+                                                         Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                                                         To="-1.5" Duration="0:0:0.12">
+                                            <DoubleAnimation.EasingFunction>
+                                                <QuadraticEase EasingMode="EaseOut" />
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="DgrBd"
+                                                         Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                                                         To="0" Duration="0:0:0.15">
+                                            <DoubleAnimation.EasingFunction>
+                                                <QuadraticEase EasingMode="EaseOut" />
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
                             <Setter TargetName="DgrBd" Property="Background" Value="{DynamicResource Bg2Brush}" />
-                            <Setter TargetName="DgrBd" Property="BorderBrush" Value="{DynamicResource LineStrongBrush}" />
+                            <Setter TargetName="DgrBd" Property="BorderBrush" Value="{DynamicResource AccentDimBrush}" />
                         </Trigger>
                         <Trigger Property="IsSelected" Value="True">
                             <Setter TargetName="DgrBd" Property="Background" Value="{DynamicResource Bg3Brush}" />

@@ -274,6 +274,8 @@ public partial class App : System.Windows.Application
             YtDlpAvailable = () => toolPaths.YtDlpAvailable,
             CaptureExtensions = () => (_settings?.CapturedExtensions ?? "").Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
             MinCaptureSizeMB = () => (int)((_settings?.MinCaptureSizeBytes ?? 0) / (1024 * 1024)),
+            AccentColor = () => ThemeManager.CurrentAccentHex ?? "#E50914",
+            Language = () => Strings.IsTurkish ? "tr" : "en",
             ConfirmDownloadAsync = async (req) =>
             {
                 var tcs = new TaskCompletionSource<bool>();

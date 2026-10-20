@@ -1,11 +1,144 @@
 'use strict';
 const api = typeof browser !== 'undefined' ? browser : chrome;
 const $ = (id) => document.getElementById(id);
-const t = (k, subs) => { try { return api.i18n.getMessage(k, subs) || k; } catch { return k; } };
 
-document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
-document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => { el.placeholder = t(el.dataset.i18nPlaceholder); });
-document.documentElement.lang = (() => { try { return api.i18n.getUILanguage(); } catch { return 'en'; } })();
+const I18N_DICTS = {
+  tr: {
+    popupConnecting: "Bağlanıyor…",
+    popupConnected: "Bağlı (v$1)",
+    popupActive: "$1 aktif",
+    popupOffline: "Uygulama kapalı",
+    popupNotPaired: "Eşleşme Gerekli",
+    popupOfflineBox: "Uygulama çalışmıyor. FM Download Manager uygulamasını açın.",
+    popupLaunch: "Uygulamayı Aç",
+    popupPairBox: "FM Download Manager'ı açın, 'Eşleşme kodunu kopyala' seçeneğini seçin ve kodu buraya yapıştırın.",
+    popupPairPlaceholder: "Eşleşme kodu",
+    popupPairButton: "Eşle",
+    popupPairOk: "Eşleşme başarılı!",
+    popupPairBad: "Geçersiz kod",
+    popupIntercept: "İndirmeleri FM'e gönder",
+    popupSniff: "Sayfalardaki videoları yakala",
+    popupAutoLaunch: "İndirme geldiğinde uygulamayı aç",
+    popupPageVideo: "Bu sayfadaki videoyu indir (yt-dlp)",
+    popupPageLink: "Sayfa URL'sini dosya olarak indir",
+    popupDownloadsTitle: "İndirmeler",
+    popupNoDownloads: "Aktif indirme yok. Başlatılan indirmeler burada görünür.",
+    popupMediaTitle: "Yakalanan Medya",
+    popupNoMedia: "Bu sekmede henüz yakalanan medya yok. Bir video oynatın.",
+    popupSettings: "Ayarlar",
+    popupPort: "Uygulama portu",
+    popupMinSize: "Yalnızca şundan büyük indirmeleri yakala (MB, 0 = tümü)",
+    popupTheme: "Tema:",
+    popupSent: "Gönderildi!",
+    popupStarted: "Başlatıldı!"
+  },
+  en: {
+    popupConnecting: "Connecting…",
+    popupConnected: "Connected (v$1)",
+    popupActive: "$1 active",
+    popupOffline: "App is offline",
+    popupNotPaired: "Pairing Required",
+    popupOfflineBox: "The app is not running. Open FM Download Manager.",
+    popupLaunch: "Open App",
+    popupPairBox: "Open FM Download Manager, choose 'Copy pairing code', then paste the code here.",
+    popupPairPlaceholder: "Pairing code",
+    popupPairButton: "Pair",
+    popupPairOk: "Pairing successful!",
+    popupPairBad: "Invalid code",
+    popupIntercept: "Send downloads to FM",
+    popupSniff: "Capture videos on pages",
+    popupAutoLaunch: "Open the app when a download arrives",
+    popupPageVideo: "Download video from this page (yt-dlp)",
+    popupPageLink: "Download page URL as a file",
+    popupDownloadsTitle: "Downloads",
+    popupNoDownloads: "No active downloads. Started downloads show here.",
+    popupMediaTitle: "Captured media",
+    popupNoMedia: "No media captured in this tab yet. Start playing a video.",
+    popupSettings: "Settings",
+    popupPort: "App port",
+    popupMinSize: "Only capture downloads larger than (MB, 0 = all)",
+    popupTheme: "Theme:",
+    popupSent: "Sent!",
+    popupStarted: "Started!"
+  }
+};
+
+let currentLang = 'tr';
+let currentAccent = '#E50914';
+let userToggledLang = false;
+
+const PALETTE = [
+  { name: 'Crimson', hex: '#E50914' },
+  { name: 'Cyan', hex: '#00E5FF' },
+  { name: 'Emerald', hex: '#10B981' },
+  { name: 'Violet', hex: '#8B5CF6' },
+  { name: 'Orange', hex: '#FF6B00' },
+  { name: 'Gold', hex: '#F59E0B' },
+  { name: 'Pink', hex: '#EC4899' },
+  { name: 'Silver', hex: '#94A3B8' },
+];
+
+function t(k, subs) {
+  const dict = I18N_DICTS[currentLang] || I18N_DICTS.tr;
+  let text = dict[k] || (typeof api.i18n !== 'undefined' ? api.i18n.getMessage(k, subs) : '') || k;
+  if (subs) {
+    if (Array.isArray(subs)) {
+      subs.forEach((val, i) => { text = text.replace(new RegExp(`\\$${i+1}`, 'g'), val); });
+    } else {
+      text = text.replace(/\$1/g, subs);
+    }
+  }
+  return text;
+}
+
+function updateUiTexts() {
+  document.querySelectorAll('[data-i18n]').forEach((el) => {
+    el.textContent = t(el.dataset.i18n);
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
+    el.placeholder = t(el.dataset.i18nPlaceholder);
+  });
+  const langBtn = $('langToggle');
+  if (langBtn) langBtn.textContent = currentLang.toUpperCase();
+  document.documentElement.lang = currentLang;
+}
+
+function applyAccentColor(hex) {
+  if (!hex) return;
+  currentAccent = hex;
+  const num = parseInt(hex.replace('#', ''), 16) || 0xE50914;
+  const r = (num >> 16) & 255;
+  const g = (num >> 8) & 255;
+  const b = num & 255;
+  const root = document.documentElement.style;
+  root.setProperty('--accent', hex);
+  root.setProperty('--accent-hover', `rgb(${Math.min(255, r + 25)}, ${Math.min(255, g + 25)}, ${Math.min(255, b + 25)})`);
+  root.setProperty('--accent-press', `rgb(${Math.max(0, r - 30)}, ${Math.max(0, g - 30)}, ${Math.max(0, b - 30)})`);
+  root.setProperty('--accent-dim', `rgba(${r}, ${g}, ${b}, 0.18)`);
+
+  document.querySelectorAll('.swatch').forEach(sw => {
+    sw.classList.toggle('active', sw.dataset.hex.toLowerCase() === hex.toLowerCase());
+  });
+}
+
+function initPalette() {
+  const container = $('swatches');
+  if (!container) return;
+  container.innerHTML = '';
+  PALETTE.forEach(p => {
+    const sw = document.createElement('div');
+    sw.className = 'swatch';
+    sw.dataset.hex = p.hex;
+    sw.title = p.name;
+    sw.style.backgroundColor = p.hex;
+    sw.addEventListener('click', async () => {
+      applyAccentColor(p.hex);
+      await api.storage.local.set({ accentColor: p.hex });
+      send({ type: 'setAppConfig', accentColor: p.hex });
+    });
+    container.appendChild(sw);
+  });
+}
 
 // Firefox's browser.runtime.sendMessage only returns a promise (a callback argument is rejected).
 const IS_FIREFOX = typeof browser !== 'undefined' && String(browser.runtime.getURL('')).startsWith('moz-extension:');
@@ -94,6 +227,11 @@ function chooseBestSubUrl(subs, targetLang = 'tr') {
 
 async function refresh() {
   const st = await send({ type: 'status' });
+  if (st && st.accentColor) applyAccentColor(st.accentColor);
+  if (st && st.language && !userToggledLang) {
+    currentLang = st.language;
+    updateUiTexts();
+  }
   const online = !!(st && st.online);
   const reachable = !!(st && st.reachable);
   const paired = !!(st && st.paired);
@@ -548,6 +686,23 @@ $('pairBtn').onclick = async () => {
   $('pairMsg').textContent = r && r.ok ? t('popupPairOk') : t('popupPairBad');
   if (r && r.ok) { $('pairCode').value = ''; refresh(); }
 };
+
+initPalette();
+$('langToggle').onclick = async () => {
+  userToggledLang = true;
+  currentLang = currentLang === 'tr' ? 'en' : 'tr';
+  updateUiTexts();
+  await api.storage.local.set({ language: currentLang });
+  send({ type: 'setAppConfig', language: currentLang });
+  refresh();
+};
+
+api.storage.local.get(['accentColor', 'language'], (res) => {
+  if (res) {
+    if (res.accentColor) applyAccentColor(res.accentColor);
+    if (res.language) { currentLang = res.language; updateUiTexts(); }
+  }
+});
 
 refresh();
 loadMedia();

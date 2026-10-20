@@ -19,6 +19,8 @@ public sealed class BridgeHooks
     public Func<int> MinCaptureSizeMB { get; set; } = () => 0;
     public Func<bool> YtDlpAvailable { get; set; } = () => false;
     public Func<DownloadRequest, Task<bool>>? ConfirmDownloadAsync { get; set; }
+    public Func<string>? AccentColor { get; set; }
+    public Func<string>? Language { get; set; }
 }
 
 /// <summary>Raised whenever a browser extension reaches the bridge.</summary>
@@ -139,6 +141,9 @@ public sealed class BridgeServer : IAsyncDisposable
         app.MapGet("/ping", (HttpContext ctx) =>
         {
             bool paired = (bool)(ctx.Items["paired"] ?? false);
+            string accent = _hooks.AccentColor?.Invoke() ?? "#E50914";
+            string lang = _hooks.Language?.Invoke() ?? "tr";
+
             if (!paired)
             {
                 return Results.Json(new
@@ -147,6 +152,8 @@ public sealed class BridgeServer : IAsyncDisposable
                     platform = "windows",
                     version = Version,
                     paired = false,
+                    accentColor = accent,
+                    language = lang,
                 });
             }
             return Results.Json(new
@@ -160,8 +167,16 @@ public sealed class BridgeServer : IAsyncDisposable
                 active = _manager.ActiveCount,
                 captureExtensions = _hooks.CaptureExtensions(),
                 minSizeMB = _hooks.MinCaptureSizeMB(),
+                accentColor = accent,
+                language = lang,
             });
         });
+
+        app.MapGet("/config", () => Results.Json(new
+        {
+            accentColor = _hooks.AccentColor?.Invoke() ?? "#E50914",
+            language = _hooks.Language?.Invoke() ?? "tr",
+        }));
 
         app.MapGet("/downloads", () => Results.Json(new { items = _manager.Snapshot(50).Select(ToDto) }));
 

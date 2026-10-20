@@ -6,7 +6,12 @@
         Icon="pack://application:,,,/Resources/app.ico"
         WindowStartupLocation="CenterScreen"
         FontFamily="{DynamicResource UiFont}"
-        Background="{DynamicResource Bg0Brush}">
+        Background="{DynamicResource Bg0Brush}"
+        AllowDrop="True"
+        DragEnter="Window_DragEnter"
+        DragOver="Window_DragOver"
+        DragLeave="Window_DragLeave"
+        Drop="Window_Drop">
     <WindowChrome.WindowChrome>
         <WindowChrome CaptionHeight="38" ResizeBorderThickness="6" CornerRadius="0" GlassFrameThickness="0" />
     </WindowChrome.WindowChrome>
@@ -47,11 +52,11 @@
                     <!-- Left: App Icon + Clean Title -->
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0">
                         <Border Width="22" Height="22" CornerRadius="6" Background="{DynamicResource AccentDimBrush}" Margin="0,0,8,0">
-                            <Path Data="{StaticResource GeoAppLogo}" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <Image Source="pack://application:,,,/Resources/logo.png" Width="18" Height="18" HorizontalAlignment="Center" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality" />
                         </Border>
                         <TextBlock Text="FM Download Manager" FontFamily="{DynamicResource UiFont}" FontWeight="Bold" FontSize="12.5" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" />
                         <Border Background="{DynamicResource Bg3Brush}" CornerRadius="4" Padding="5,1" Margin="8,0,0,0" VerticalAlignment="Center">
-                            <TextBlock Text="v3.6" FontFamily="{DynamicResource UiFont}" FontSize="9.5" FontWeight="SemiBold" Foreground="{DynamicResource AccentHoverBrush}" />
+                            <TextBlock Text="v3.7" FontFamily="{DynamicResource UiFont}" FontSize="9.5" FontWeight="SemiBold" Foreground="{DynamicResource AccentHoverBrush}" />
                         </Border>
                     </StackPanel>
                 </DockPanel>
@@ -720,6 +725,27 @@
                         <TextBlock x:Name="StatusText" Text="Hazır" FontFamily="{DynamicResource UiFont}" FontSize="11.5" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" />
                     </StackPanel>
                 </DockPanel>
+            </Border>
+
+            <!-- Modern Drag & Drop Glassmorphic Overlay -->
+            <Border x:Name="DragDropOverlay" Grid.Row="1" Grid.RowSpan="2" Panel.ZIndex="999"
+                    Background="{DynamicResource Bg0Brush}" Opacity="0.96" Visibility="Collapsed" IsHitTestVisible="False">
+                <Grid Margin="24">
+                    <Rectangle Stroke="{DynamicResource AccentBrush}" StrokeThickness="2" StrokeDashArray="4 2"
+                               RadiusX="12" RadiusY="12" Fill="{DynamicResource AccentDimBrush}" />
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Border Width="64" Height="64" CornerRadius="32" Background="{DynamicResource Bg2Brush}"
+                                BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1.5"
+                                HorizontalAlignment="Center" Margin="0,0,0,16">
+                            <Path Data="{StaticResource GeoAdd}" Width="26" Height="26" Stretch="Uniform" Fill="{DynamicResource AccentBrush}"
+                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <TextBlock x:Name="TxtDragDropTitle" Text="İndirmeyi Başlatmak İçin Buraya Bırakın" FontFamily="{DynamicResource UiFont}"
+                                   FontWeight="Bold" FontSize="16" Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Center" Margin="0,0,0,6" />
+                        <TextBlock x:Name="TxtDragDropSubtitle" Text="URL bağlantıları, web linkleri veya .torrent dosyaları desteklenir"
+                                   FontFamily="{DynamicResource UiFont}" FontSize="12" Foreground="{DynamicResource TextDimBrush}" HorizontalAlignment="Center" />
+                    </StackPanel>
+                </Grid>
             </Border>
         </Grid>
     </Border>

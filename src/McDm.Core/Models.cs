@@ -243,5 +243,6 @@ public sealed class DownloadItem : ObservableBase
             }
         }
     }
+    [JsonIgnore] public int AutoRetryCount { get; set; } = 0;
     [JsonIgnore] internal CancellationTokenSource? Cts { get; set; }
 }

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><defs>
+<clipPath id="cp"><rect x="16" y="16" width="480" height="480" rx="112"/></clipPath>
+<filter id="bl" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="46"/></filter>
+<filter id="gw" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="9" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#14091f"/><stop offset="1" stop-color="#05030a"/></linearGradient>
+<linearGradient id="rim" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff8a3d"/><stop offset=".35" stop-color="#ff2d75"/><stop offset=".7" stop-color="#8b5cf6"/><stop offset="1" stop-color="#22d3ee"/></linearGradient>
+<linearGradient id="s1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd23f"/><stop offset=".5" stop-color="#ff2d75"/><stop offset="1" stop-color="#8b5cf6"/></linearGradient>
+<linearGradient id="s2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff8a3d"/><stop offset=".6" stop-color="#ff2d75"/><stop offset="1" stop-color="#6d3df0"/></linearGradient>
+<linearGradient id="s3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff2d75"/><stop offset=".6" stop-color="#8b5cf6"/><stop offset="1" stop-color="#22d3ee"/></linearGradient>
+<linearGradient id="tr" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ff8a3d"/><stop offset=".35" stop-color="#ff2d75"/><stop offset=".7" stop-color="#8b5cf6"/><stop offset="1" stop-color="#22d3ee"/></linearGradient>
+<linearGradient id="tx" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ff8a3d"/><stop offset=".45" stop-color="#ff2d75"/><stop offset="1" stop-color="#8b5cf6"/></linearGradient>
+</defs><g transform="translate(0 0) scale(1)">
+<rect x="16" y="16" width="480" height="480" rx="112" fill="url(#bg)"/>
+<g clip-path="url(#cp)"><g filter="url(#bl)" opacity=".75"><circle cx="120" cy="90" r="120" fill="#ff8a3d"/><circle cx="400" cy="110" r="120" fill="#ff2d75"/><circle cx="110" cy="420" r="110" fill="#22d3ee" opacity=".7"/><circle cx="410" cy="410" r="130" fill="#8b5cf6"/></g></g>
+<rect x="16" y="16" width="480" height="480" rx="112" fill="#05030a" opacity=".38"/>
+<rect x="21" y="21" width="470" height="470" rx="107" fill="none" stroke="url(#rim)" stroke-width="9"/>
+<g filter="url(#gw)">
+<rect x="146" y="120" width="44" height="130" rx="22" fill="url(#s1)"/>
+<rect x="322" y="120" width="44" height="130" rx="22" fill="url(#s3)"/>
+<rect x="234" y="86" width="44" height="260" rx="22" fill="url(#s2)"/>
+<path d="M150 270 L256 376 L362 270" fill="none" stroke="#fff" stroke-width="46" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="146" y="410" width="220" height="30" rx="15" fill="url(#tr)"/></g>
+</g></svg>

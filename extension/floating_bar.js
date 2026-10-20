@@ -40,6 +40,146 @@
   let mainMenuEl = null;
   let subsPanelEl = null;
   let subsListEl = null;
+  // Bilingual dictionary & dynamic theme support
+  let currentLang = 'tr';
+  let currentAccent = '#E50914';
+
+  const I18N = {
+    tr: {
+      mainBtnTitle: 'FM Download Manager ile İndir',
+      downloadVideo: 'Videoyu İndir',
+      downloadOptions: 'İndirme Seçenekleri',
+      close: 'Kapat',
+      optVideoText: 'Video Olarak İndir',
+      optVideoSub: 'En Yüksek',
+      optAudioText: 'Sadece Ses İndir',
+      optAudioSub: 'MP3',
+      optSubsText: 'Altyazı İndir',
+      optSubsSub: 'SRT ›',
+      subsBack: '‹ Geri',
+      subsTitle: 'Altyazı Dili Seçin',
+      searchingSubs: 'Altyazılar aranıyor...',
+      noSubsFound: 'Harici altyazı akışı bulunamadı.',
+      subsHint: '(Oynatıcıda altyazıyı açıp tekrar deneyin)',
+      noSubsAlert: 'Altyazı Yok!',
+      fetchingSubs: 'Altyazı Alınıyor! 🚀',
+      sentToApp: 'Gönderildi! 🚀'
+    },
+    en: {
+      mainBtnTitle: 'Download with FM Download Manager',
+      downloadVideo: 'Download Video',
+      downloadOptions: 'Download Options',
+      close: 'Close',
+      optVideoText: 'Download Video',
+      optVideoSub: 'Highest',
+      optAudioText: 'Download Audio Only',
+      optAudioSub: 'MP3',
+      optSubsText: 'Download Subtitles',
+      optSubsSub: 'SRT ›',
+      subsBack: '‹ Back',
+      subsTitle: 'Select Subtitle Language',
+      searchingSubs: 'Searching subtitles...',
+      noSubsFound: 'No external subtitle streams found.',
+      subsHint: '(Turn on captions in player and retry)',
+      noSubsAlert: 'No Subtitles!',
+      fetchingSubs: 'Fetching Subtitles! 🚀',
+      sentToApp: 'Sent to FM! 🚀'
+    }
+  };
+
+  function t(k) {
+    const d = I18N[currentLang] || I18N.tr;
+    return d[k] || I18N.tr[k] || k;
+  }
+
+  function hexToRgba(hex, alpha) {
+    hex = (hex || '#E50914').replace('#', '');
+    if (hex.length === 3) hex = hex.split('').map(ch => ch + ch).join('');
+    const num = parseInt(hex, 16) || 0xE50914;
+    const r = (num >> 16) & 255;
+    const g = (num >> 8) & 255;
+    const b = num & 255;
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+
+  function lightenHex(hex, amt = 25) {
+    hex = (hex || '#E50914').replace('#', '');
+    if (hex.length === 3) hex = hex.split('').map(ch => ch + ch).join('');
+    const num = parseInt(hex, 16) || 0xE50914;
+    const r = Math.min(255, ((num >> 16) & 255) + amt);
+    const g = Math.min(255, ((num >> 8) & 255) + amt);
+    const b = Math.min(255, (num & 255) + amt);
+    return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+  }
+
+  function applyTheme(accentHex, lang) {
+    if (accentHex) currentAccent = accentHex;
+    if (lang) currentLang = lang;
+    if (shadowRoot && shadowRoot.host) {
+      shadowRoot.host.style.setProperty('--fm-accent', currentAccent);
+      shadowRoot.host.style.setProperty('--fm-accent-glow', hexToRgba(currentAccent, 0.45));
+      shadowRoot.host.style.setProperty('--fm-accent-dim', hexToRgba(currentAccent, 0.15));
+      shadowRoot.host.style.setProperty('--fm-accent-hover', lightenHex(currentAccent, 25));
+    }
+    updateBarTexts();
+  }
+
+  function updateBarTexts() {
+    if (!mainBtn) return;
+    mainBtn.title = t('mainBtnTitle');
+    if (statusText && !mainBtn.classList.contains('fm-success')) {
+      statusText.textContent = t('downloadVideo');
+    }
+    const arrow = shadowRoot?.getElementById('fm-arrow-btn');
+    if (arrow) arrow.title = t('downloadOptions');
+    const closeB = shadowRoot?.getElementById('fm-close-btn');
+    if (closeB) closeB.title = t('close');
+
+    const vItem = shadowRoot?.getElementById('fm-opt-video');
+    if (vItem) {
+      const spans = vItem.querySelectorAll('span');
+      if (spans[1]) spans[1].textContent = t('optVideoText');
+      if (spans[2]) spans[2].textContent = t('optVideoSub');
+    }
+    const aItem = shadowRoot?.getElementById('fm-opt-audio');
+    if (aItem) {
+      const spans = aItem.querySelectorAll('span');
+      if (spans[1]) spans[1].textContent = t('optAudioText');
+      if (spans[2]) spans[2].textContent = t('optAudioSub');
+    }
+    const sItem = shadowRoot?.getElementById('fm-opt-subs');
+    if (sItem) {
+      const spans = sItem.querySelectorAll('span');
+      if (spans[1]) spans[1].textContent = t('optSubsText');
+      if (spans[2]) spans[2].textContent = t('optSubsSub');
+    }
+    const sbBack = shadowRoot?.getElementById('fm-subs-back');
+    if (sbBack) sbBack.textContent = t('subsBack');
+    const sbTitle = shadowRoot?.querySelector('.fm-subs-title');
+    if (sbTitle) sbTitle.textContent = t('subsTitle');
+  }
+
+  // Load and listen to theme / language from storage
+  try {
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.get(['accentColor', 'language'], (res) => {
+        if (res) {
+          if (res.accentColor) currentAccent = res.accentColor;
+          if (res.language) currentLang = res.language;
+          applyTheme(currentAccent, currentLang);
+        }
+      });
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local') {
+          let ch = false;
+          if (changes.accentColor) { currentAccent = changes.accentColor.newValue; ch = true; }
+          if (changes.language) { currentLang = changes.language.newValue; ch = true; }
+          if (ch) applyTheme(currentAccent, currentLang);
+        }
+      });
+    }
+  } catch {}
+
 
   // Dismissal tracking state (per-view in-memory, resets on new video/navigation/reload)
   let isDismissedForPage = false;
@@ -57,6 +197,13 @@
   } catch {}
 
   const barStyles = `
+    :host {
+      --fm-accent: #E50914;
+      --fm-accent-glow: rgba(229, 9, 20, 0.45);
+      --fm-accent-dim: rgba(229, 9, 20, 0.15);
+      --fm-accent-hover: #ff2d46;
+    }
+
     *, *::before, *::after {
       box-sizing: border-box;
       margin: 0;
@@ -91,17 +238,17 @@
       background: rgba(15, 17, 23, 0.90);
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
-      border: 1px solid rgba(201, 42, 62, 0.50);
+      border: 1px solid var(--fm-accent, #E50914);
       border-radius: 20px;
       padding: 3px 5px 3px 4px;
-      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45), 0 0 12px rgba(201, 42, 62, 0.25);
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45), 0 0 12px var(--fm-accent-glow, rgba(229, 9, 20, 0.25));
       transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     .fm-bar:hover {
       background: rgba(22, 25, 35, 0.96);
-      border-color: rgba(229, 62, 62, 0.85);
-      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6), 0 0 18px rgba(201, 42, 62, 0.45);
+      border-color: var(--fm-accent-hover, #ff2d46);
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6), 0 0 18px var(--fm-accent-glow, rgba(229, 9, 20, 0.45));
     }
 
     .fm-btn-action {
@@ -122,7 +269,7 @@
       width: 20px;
       height: 20px;
       border-radius: 6px;
-      background: #C92A3E;
+      background: var(--fm-accent, #E50914);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -130,7 +277,7 @@
       font-weight: 800;
       font-size: 10px;
       letter-spacing: -0.5px;
-      box-shadow: 0 2px 6px rgba(201, 42, 62, 0.5);
+      box-shadow: 0 2px 6px var(--fm-accent-glow, rgba(229, 9, 20, 0.5));
     }
 
     .fm-title {
@@ -206,7 +353,7 @@
       border-radius: 12px;
       padding: 5px;
       min-width: 195px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.65), 0 0 15px rgba(201, 42, 62, 0.15);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.65), 0 0 15px var(--fm-accent-dim, rgba(229, 9, 20, 0.15));
       display: none;
       flex-direction: column;
       gap: 3px;
@@ -236,7 +383,7 @@
     }
 
     .fm-item:hover {
-      background: rgba(201, 42, 62, 0.25);
+      background: var(--fm-accent-dim, rgba(229, 9, 20, 0.25));
       color: #ffffff;
     }
 
@@ -267,7 +414,7 @@
 
     .fm-subs-back {
       font-size: 11px;
-      color: #C92A3E;
+      color: var(--fm-accent, #E50914);
       cursor: pointer;
       font-weight: 700;
       padding: 2px 4px;
@@ -275,8 +422,8 @@
     }
 
     .fm-subs-back:hover {
-      color: #ff4d6d;
-      background: rgba(201, 42, 62, 0.15);
+      color: var(--fm-accent-hover, #ff2d46);
+      background: var(--fm-accent-dim, rgba(229, 9, 20, 0.15));
     }
 
     .fm-subs-title {
@@ -306,7 +453,7 @@
     }
 
     .fm-sub-item:hover {
-      background: rgba(201, 42, 62, 0.25);
+      background: var(--fm-accent-dim, rgba(229, 9, 20, 0.25));
       color: #ffffff;
     }
 
@@ -681,7 +828,7 @@
       mainBtn = document.createElement('div');
       mainBtn.className = 'fm-bar';
       mainBtn.id = 'fm-main-btn';
-      mainBtn.title = 'FM Download Manager ile İndir';
+      mainBtn.title = t('mainBtnTitle');
 
       const btnAction = document.createElement('div');
       btnAction.className = 'fm-btn-action';
@@ -694,7 +841,7 @@
       statusText = document.createElement('span');
       statusText.className = 'fm-title';
       statusText.id = 'fm-title';
-      statusText.textContent = 'Videoyu İndir';
+      statusText.textContent = t('downloadVideo');
 
       btnAction.appendChild(logoBadge);
       btnAction.appendChild(statusText);
@@ -702,7 +849,7 @@
       const arrowBtn = document.createElement('div');
       arrowBtn.className = 'fm-arrow-btn';
       arrowBtn.id = 'fm-arrow-btn';
-      arrowBtn.title = 'İndirme Seçenekleri';
+      arrowBtn.title = t('downloadOptions');
 
       const svgArrow = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       svgArrow.setAttribute('class', 'fm-arrow');
@@ -720,7 +867,7 @@
       const closeBtn = document.createElement('div');
       closeBtn.className = 'fm-close-btn';
       closeBtn.id = 'fm-close-btn';
-      closeBtn.title = 'Kapat';
+      closeBtn.title = t('close');
       closeBtn.textContent = '✕';
 
       mainBtn.appendChild(btnAction);
@@ -753,9 +900,9 @@
         return item;
       }
 
-      const optVideo = createMenuItem('fm-opt-video', '🎬', 'Video Olarak İndir', 'En Yüksek');
-      const optAudio = createMenuItem('fm-opt-audio', '🎵', 'Sadece Ses İndir', 'MP3');
-      const optSubs = createMenuItem('fm-opt-subs', '💬', 'Altyazı İndir', 'SRT ›');
+      const optVideo = createMenuItem('fm-opt-video', '🎬', t('optVideoText'), t('optVideoSub'));
+      const optAudio = createMenuItem('fm-opt-audio', '🎵', t('optAudioText'), t('optAudioSub'));
+      const optSubs = createMenuItem('fm-opt-subs', '💬', t('optSubsText'), t('optSubsSub'));
 
       mainMenuEl.appendChild(optVideo);
       mainMenuEl.appendChild(optAudio);
@@ -773,11 +920,11 @@
       const subsBack = document.createElement('span');
       subsBack.className = 'fm-subs-back';
       subsBack.id = 'fm-subs-back';
-      subsBack.textContent = '‹ Geri';
+      subsBack.textContent = t('subsBack');
 
       const subsTitle = document.createElement('span');
       subsTitle.className = 'fm-subs-title';
-      subsTitle.textContent = 'Altyazı Dili Seçin';
+      subsTitle.textContent = t('subsTitle');
 
       subsHeader.appendChild(subsBack);
       subsHeader.appendChild(subsTitle);
@@ -789,6 +936,7 @@
       subsPanelEl.appendChild(subsListEl);
 
       dropdownMenu.appendChild(subsPanelEl);
+            applyTheme(currentAccent, currentLang);
       barContainer.appendChild(dropdownMenu);
       shadowRoot.appendChild(barContainer);
 
@@ -872,7 +1020,7 @@
     subsListEl.textContent = '';
     const loadingDiv = document.createElement('div');
     loadingDiv.style.cssText = 'padding:10px;font-size:11px;color:#94a3b8;text-align:center;';
-    loadingDiv.textContent = 'Altyazılar aranıyor...';
+    loadingDiv.textContent = t('searchingSubs');
     subsListEl.appendChild(loadingDiv);
 
     const choices = await detectSubtitleTracks();
@@ -880,10 +1028,10 @@
     if (!choices || choices.length === 0) {
       const noSubDiv = document.createElement('div');
       noSubDiv.style.cssText = 'padding:14px 8px;font-size:11px;color:#f87171;text-align:center;line-height:1.4;';
-      noSubDiv.textContent = 'Harici altyazı akışı bulunamadı.';
+      noSubDiv.textContent = t('noSubsFound');
       const hint = document.createElement('div');
       hint.style.cssText = 'font-size:9.5px;color:#94a3b8;margin-top:4px;';
-      hint.textContent = '(Oynatıcıda altyazıyı açıp tekrar deneyin)';
+      hint.textContent = t('subsHint');
       noSubDiv.appendChild(hint);
       subsListEl.appendChild(noSubDiv);
       return;
@@ -1062,9 +1210,9 @@
     // Safety: prevent downloading video when user asked for subtitles only and none exist
     if (format === 'subtitles' && !chosenSubUrl && !isYouTube) {
       mainBtn.classList.remove('fm-success');
-      statusText.textContent = 'Altyazı Yok!';
+      statusText.textContent = t('noSubsAlert');
       setTimeout(() => {
-        statusText.textContent = 'Videoyu İndir';
+        statusText.textContent = t('downloadVideo');
       }, 2000);
       return;
     }
@@ -1135,14 +1283,14 @@
         // Reset after 1.8 seconds
         setTimeout(() => {
           mainBtn.classList.remove('fm-success');
-          statusText.textContent = 'Videoyu İndir';
+          statusText.textContent = t('downloadVideo');
           scheduleHide(1000);
         }, 1800);
       });
     } catch (err) {
       setTimeout(() => {
         mainBtn.classList.remove('fm-success');
-        statusText.textContent = 'Videoyu İndir';
+        statusText.textContent = t('downloadVideo');
       }, 1800);
     }
   }

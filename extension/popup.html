@@ -11,8 +11,16 @@
       <img src="icons/icon48.png" alt="" width="20" height="20">
       <span>FM Download Manager</span>
     </div>
-    <div class="status"><span id="dot" class="dot"></span><span id="statusText" data-i18n="popupConnecting">Connecting…</span></div>
+    <div class="header-actions">
+      <button id="langToggle" class="pill-btn" title="Dili Değiştir / Switch Language">TR</button>
+      <div class="status"><span id="dot" class="dot"></span><span id="statusText" data-i18n="popupConnecting">Connecting…</span></div>
+    </div>
   </header>
+
+  <div class="palette-bar" id="paletteBar">
+    <span class="palette-label" data-i18n="popupTheme">Tema:</span>
+    <div class="swatches" id="swatches"></div>
+  </div>
 
   <div id="offline" class="box hidden">
     <span data-i18n="popupOfflineBox">The app is not running. Open FM Download Manager.</span>

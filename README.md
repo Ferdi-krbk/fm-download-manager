@@ -12,7 +12,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Ferdi-krbk/fm-download-manager/releases/latest"><img src="https://img.shields.io/badge/Release-v3.5.0-crimson.svg?style=for-the-badge&logo=windows&logoColor=white" alt="Release v3.5.0"></a>
+  <a href="https://github.com/Ferdi-krbk/fm-download-manager/releases/latest"><img src="https://img.shields.io/badge/Release-v3.7.0-crimson.svg?style=for-the-badge&logo=windows&logoColor=white" alt="Release v3.7.0"></a>
   <a href="https://dotnet.microsoft.com/download/dotnet/8.0"><img src="https://img.shields.io/badge/.NET-8.0%20LTS-purple.svg?style=for-the-badge&logo=dotnet&logoColor=white" alt=".NET 8 LTS"></a>
   <a href="https://github.com/Ferdi-krbk/fm-download-manager"><img src="https://img.shields.io/badge/Engine-MonoTorrent%203.0-blue.svg?style=for-the-badge&logo=bittorrent&logoColor=white" alt="BitTorrent"></a>
   <a href="https://github.com/Ferdi-krbk/fm-download-manager"><img src="https://img.shields.io/badge/Media-yt--dlp%20%2B%20FFmpeg-red.svg?style=for-the-badge&logo=youtube&logoColor=white" alt="yt-dlp"></a>

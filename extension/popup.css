@@ -47,6 +47,70 @@ header {
   letter-spacing: .02em;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pill-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--line-strong);
+  color: var(--fg);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+
+.pill-btn:hover {
+  border-color: var(--accent);
+  background: var(--bg-card-hover);
+  color: #fff;
+}
+
+.palette-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 16px;
+  background: #14151b;
+  border-bottom: 1px solid var(--line);
+}
+
+.palette-label {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.swatches {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+}
+
+.swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: transform .15s ease, border-color .15s ease;
+}
+
+.swatch:hover {
+  transform: scale(1.25);
+}
+
+.swatch.active {
+  border-color: #fff;
+  transform: scale(1.15);
+  box-shadow: 0 0 6px var(--accent);
+}
+
 .status {
   display: flex;
   align-items: center;

@@ -186,6 +186,8 @@ public partial class MainWindow : Window
         if (BtnEmptyAddUrl != null) BtnEmptyAddUrl.Content = isTr ? "URL Ekle" : "Add URL";
         TxtEmptyTitle.Text = Strings.NoDownloadsTitle;
         TxtEmptySubtitle.Text = Strings.NoDownloadsSub;
+        if (TxtDragDropTitle != null) TxtDragDropTitle.Text = Strings.DragDropTitle;
+        if (TxtDragDropSubtitle != null) TxtDragDropSubtitle.Text = Strings.DragDropSubtitle;
 
         if (DiskSpaceText != null)
         {
@@ -326,7 +328,7 @@ public partial class MainWindow : Window
         var text = Clipboard.ContainsText() ? Clipboard.GetText().Trim() : "";
         if (string.IsNullOrWhiteSpace(text))
         {
-            StatusText.Text = isTr ? "Panoda bağlantı bulunamadı." : "No download URL found in clipboard.";
+            AddUrls_Click(sender, e);
             return;
         }
 
@@ -339,7 +341,7 @@ public partial class MainWindow : Window
 
         if (!Uri.TryCreate(text, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https"))
         {
-            StatusText.Text = isTr ? "Geçersiz indirme bağlantısı." : "Invalid download URL.";
+            AddUrls_Click(sender, e);
             return;
         }
 
@@ -703,4 +705,224 @@ public partial class MainWindow : Window
             try { Process.Start(new ProcessStartInfo(_latestUpdate.ReleaseUrl) { UseShellExecute = true }); } catch { }
         }
     }
+
+    #region Drag and Drop
+    private void Window_DragEnter(object sender, DragEventArgs e)
+    {
+        if (IsSupportedDropData(e.Data))
+        {
+            e.Effects = DragDropEffects.Copy;
+            DragDropOverlay.Visibility = Visibility.Visible;
+            e.Handled = true;
+        }
+        else
+        {
+            e.Effects = DragDropEffects.None;
+        }
+    }
+
+    private void Window_DragOver(object sender, DragEventArgs e)
+    {
+        if (IsSupportedDropData(e.Data))
+        {
+            e.Effects = DragDropEffects.Copy;
+            if (DragDropOverlay.Visibility != Visibility.Visible)
+                DragDropOverlay.Visibility = Visibility.Visible;
+            e.Handled = true;
+        }
+        else
+        {
+            e.Effects = DragDropEffects.None;
+            DragDropOverlay.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private void Window_DragLeave(object sender, DragEventArgs e)
+    {
+        DragDropOverlay.Visibility = Visibility.Collapsed;
+    }
+
+    private void Window_Drop(object sender, DragEventArgs e)
+    {
+        DragDropOverlay.Visibility = Visibility.Collapsed;
+        try
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                if (e.Data.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0)
+                {
+                    foreach (var file in files)
+                    {
+                        ProcessDroppedFile(file);
+                    }
+                    return;
+                }
+            }
+
+            if (e.Data.GetDataPresent(DataFormats.UnicodeText))
+            {
+                var text = e.Data.GetData(DataFormats.UnicodeText) as string;
+                if (!string.IsNullOrWhiteSpace(text))
+                {
+                    ProcessDroppedText(text);
+                    return;
+                }
+            }
+
+            if (e.Data.GetDataPresent(DataFormats.Text))
+            {
+                var text = e.Data.GetData(DataFormats.Text) as string;
+                if (!string.IsNullOrWhiteSpace(text))
+                {
+                    ProcessDroppedText(text);
+                    return;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error processing dropped item: {ex.Message}");
+        }
+    }
+
+    private static bool IsSupportedDropData(IDataObject data)
+    {
+        return data.GetDataPresent(DataFormats.FileDrop) ||
+               data.GetDataPresent(DataFormats.UnicodeText) ||
+               data.GetDataPresent(DataFormats.Text) ||
+               data.GetDataPresent("UniformResourceLocator");
+    }
+
+    private void ProcessDroppedFile(string filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath)) return;
+
+        string ext = Path.GetExtension(filePath).ToLowerInvariant();
+        if (ext == ".torrent")
+        {
+            _manager.Add(new DownloadRequest { Url = filePath, Kind = DownloadKind.Torrent });
+            StatusText.Text = Strings.IsTurkish ? Strings.TorrentAdded : "Torrent download added.";
+            return;
+        }
+
+        if (ext == ".url")
+        {
+            try
+            {
+                var lines = File.ReadAllLines(filePath);
+                foreach (var line in lines)
+                {
+                    if (line.StartsWith("URL=", StringComparison.OrdinalIgnoreCase))
+                    {
+                        string targetUrl = line.Substring(4).Trim();
+                        ProcessDroppedUrl(targetUrl);
+                        return;
+                    }
+                }
+            }
+            catch { }
+        }
+
+        if (ext == ".txt")
+        {
+            try
+            {
+                var lines = File.ReadAllLines(filePath);
+                int count = 0;
+                foreach (var line in lines)
+                {
+                    var trimmed = line.Trim();
+                    if (string.IsNullOrWhiteSpace(trimmed) || trimmed.StartsWith("#")) continue;
+                    ProcessDroppedUrl(trimmed, showDialogForVideo: false);
+                    count++;
+                }
+                if (count > 0)
+                {
+                    StatusText.Text = Strings.IsTurkish ? $"{count} bağlantı eklendi." : $"{count} link(s) added.";
+                }
+                return;
+            }
+            catch { }
+        }
+    }
+
+    private void ProcessDroppedText(string text)
+    {
+        var lines = text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+        if (lines.Length == 1)
+        {
+            ProcessDroppedUrl(lines[0].Trim(), showDialogForVideo: true);
+        }
+        else
+        {
+            int count = 0;
+            foreach (var line in lines)
+            {
+                var trimmed = line.Trim();
+                if (string.IsNullOrWhiteSpace(trimmed)) continue;
+                ProcessDroppedUrl(trimmed, showDialogForVideo: false);
+                count++;
+            }
+            if (count > 0)
+            {
+                StatusText.Text = Strings.IsTurkish ? $"{count} bağlantı eklendi." : $"{count} link(s) added.";
+            }
+        }
+    }
+
+    private void ProcessDroppedUrl(string url, bool showDialogForVideo = true)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return;
+
+        bool isTr = Strings.IsTurkish;
+        if (url.StartsWith("magnet:?", StringComparison.OrdinalIgnoreCase) || url.EndsWith(".torrent", StringComparison.OrdinalIgnoreCase))
+        {
+            _manager.Add(new DownloadRequest { Url = url, Kind = DownloadKind.Torrent });
+            StatusText.Text = isTr ? Strings.TorrentAdded : "Torrent download added.";
+            return;
+        }
+
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || (uri.Scheme != "http" && uri.Scheme != "https"))
+        {
+            return;
+        }
+
+        if (VideoDownloader.IsVideoUrl(url))
+        {
+            if (showDialogForVideo)
+            {
+                var qDlg = new VideoQualityDialog(url) { Owner = this };
+                if (qDlg.ShowDialog() == true)
+                {
+                    _manager.Add(new DownloadRequest
+                    {
+                        Url = url,
+                        Kind = DownloadKind.Video,
+                        CustomFormat = qDlg.SelectedFormat,
+                        Container = qDlg.AudioOnly ? "mp3" : "mp4",
+                        AudioOnly = qDlg.AudioOnly,
+                        WriteSubtitles = qDlg.DownloadSubtitles,
+                        SubtitleLangs = qDlg.SubtitleLangs,
+                        SubtitleUrl = qDlg.SelectedSubtitleUrl
+                    });
+                    StatusText.Text = isTr ? (qDlg.AudioOnly ? "Ses indirmesi eklendi." : "Video indirmesi eklendi.") : (qDlg.AudioOnly ? "Audio download added." : "Video download added.");
+                }
+            }
+            else
+            {
+                _manager.Add(new DownloadRequest
+                {
+                    Url = url,
+                    Kind = DownloadKind.Video,
+                    WriteSubtitles = true,
+                    SubtitleLangs = "tr,en"
+                });
+            }
+            return;
+        }
+
+        _manager.Add(new DownloadRequest { Url = url, Kind = DownloadKind.File });
+        StatusText.Text = isTr ? "İndirme eklendi." : "Download added.";
+    }
+    #endregion
 }

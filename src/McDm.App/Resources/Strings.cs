@@ -235,4 +235,8 @@ public static class Strings
     public static string SchedulerTitle => IsTurkish ? "Zamanlayıcı" : "Scheduler";
     public static string SchedulerStarted => IsTurkish ? "Planlanan indirme saatine girildi. İndirmeler başlatıldı." : "Scheduled download hours started. Downloads resumed.";
     public static string SchedulerStopped => IsTurkish ? "Planlanan indirme saati sona erdi. İndirmeler duraklatıldı." : "Scheduled download hours ended. Downloads paused.";
+    public static string DragDropTitle => IsTurkish ? "İndirmeyi Başlatmak İçin Buraya Bırakın" : "Drop Here to Start Download";
+    public static string DragDropSubtitle => IsTurkish ? "URL bağlantıları, web linkleri veya .torrent dosyaları desteklenir" : "Supports URL links, web addresses or .torrent files";
+    public static string TorrentAdded => IsTurkish ? "Torrent indirmesi eklendi." : "Torrent download added.";
+    public static string InvalidUrl => IsTurkish ? "Geçersiz indirme bağlantısı." : "Invalid download URL.";
 }

@@ -197,6 +197,33 @@ public partial class App : System.Windows.Application
                     SavePng(visual, 1160, 700, @"C:\Users\Ferdi\Downloads\mc-dm-windows\docs\ui\dashboard_dark.png");
                     SavePng(visual, 1160, 700, @"C:\Users\Ferdi\Downloads\mc-dm-windows\docs\ui\dashboard_pro.png");
 
+                    // Render animated frames for demo_turbo.gif directly from WPF
+                    var framesDir = @"C:\Users\Ferdi\Downloads\mc-dm-windows\dist\wpf_hero_frames";
+                    Directory.CreateDirectory(framesDir);
+                    var speedTxt = win.FindName("TotalSpeedText") as System.Windows.Controls.TextBlock;
+                    var interstellarItem = mockManager.Items.Count > 1 ? mockManager.Items[1] : null;
+                    long baseBytes = interstellarItem?.DownloadedBytes ?? 8_200_000_000L;
+                    for (int f = 0; f < 36; f++)
+                    {
+                        double s = 43_500_000 + Math.Sin(f * (2 * Math.PI / 36.0)) * 7_500_000 + Math.Cos(f * (4 * Math.PI / 36.0)) * 3_500_000;
+                        if (graph != null)
+                        {
+                            graph.PushSample(s);
+                            graph.PushSample(s + 400_000);
+                        }
+                        if (speedTxt != null)
+                        {
+                            speedTxt.Text = BytesConverter.Format(s) + "/s";
+                        }
+                        if (interstellarItem != null)
+                        {
+                            interstellarItem.Speed = s * 0.72;
+                            interstellarItem.DownloadedBytes = baseBytes + (long)(f * 48_000_000L);
+                        }
+                        win.UpdateLayout();
+                        SavePng(visual, 1160, 700, Path.Combine(framesDir, $"frame_{f:D3}.png"));
+                    }
+
                     // Render VideoQualityDialog
                     var qDlg = new VideoQualityDialog(
                         "https://www.youtube.com/watch?v=dQw4w9WgXcQ",

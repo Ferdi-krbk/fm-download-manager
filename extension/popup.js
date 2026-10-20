@@ -274,7 +274,7 @@ async function refresh() {
 function isGenericMediaName(raw) {
   if (!raw) return true;
   const s = raw.trim().toLowerCase().replace(/\.[a-z0-9]{2,5}$/i, '');
-  return /^(?:master|index|playlist|manifest|stream|video|audio|media|iframe|player|chunk|output|blob|embed)(?:[_-]?\d+)?$/i.test(s);
+  return /^(?:master|index|playlist|manifest|stream|video|audio|media|iframe|player|chunk|output|blob|embed|download|file|view|document)(?:[_-]?\d+)?$/i.test(s);
 }
 
 function cleanMediaTitle(raw) {

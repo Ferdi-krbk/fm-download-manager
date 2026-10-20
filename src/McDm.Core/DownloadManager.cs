@@ -147,9 +147,22 @@ public sealed class DownloadManager : IDisposable
                 : DefaultDownloadDirectory);
 
         string initialFileName = "";
-        if (!string.IsNullOrWhiteSpace(request.FileName) && (!FileNames.IsGenericVideoName(request.FileName) || request.Kind != DownloadKind.Video))
+        bool hasMeaningfulReqName = !string.IsNullOrWhiteSpace(request.FileName) &&
+            (request.Kind == DownloadKind.Video ? !FileNames.IsGenericVideoName(request.FileName) : !FileNames.IsGenericFileName(request.FileName));
+
+        if (hasMeaningfulReqName)
         {
             initialFileName = FileNames.Sanitize(request.FileName);
+            // If request filename has no extension, but URL has one, preserve the URL's extension
+            if (string.IsNullOrEmpty(Path.GetExtension(initialFileName)) &&
+                Uri.TryCreate(request.Url, UriKind.Absolute, out var uriWithExt))
+            {
+                var urlExt = Path.GetExtension(uriWithExt.AbsolutePath);
+                if (!string.IsNullOrEmpty(urlExt) && urlExt.Length <= 8)
+                {
+                    initialFileName += urlExt;
+                }
+            }
         }
         else if (request.Url.StartsWith("magnet:?", StringComparison.OrdinalIgnoreCase))
         {

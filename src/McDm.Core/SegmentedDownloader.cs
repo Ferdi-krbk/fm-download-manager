@@ -658,7 +658,38 @@ public sealed class SegmentedDownloader
     {
         lock (PathLock)
         {
-            var name = FileNames.Sanitize(string.IsNullOrWhiteSpace(item.Request.FileName) ? probedName : item.Request.FileName);
+            string chosenName;
+            var reqName = item.Request.FileName?.Trim();
+
+            // Only use request filename if it is non-empty and NOT a generic meaningless placeholder
+            if (!string.IsNullOrWhiteSpace(reqName) && !FileNames.IsGenericFileName(reqName))
+            {
+                chosenName = reqName;
+            }
+            else if (!string.IsNullOrWhiteSpace(probedName) && !FileNames.IsGenericFileName(probedName))
+            {
+                chosenName = probedName;
+            }
+            else
+            {
+                chosenName = !string.IsNullOrWhiteSpace(probedName) ? probedName : (!string.IsNullOrWhiteSpace(reqName) ? reqName : "download");
+            }
+
+            if (string.IsNullOrWhiteSpace(chosenName))
+            {
+                chosenName = !string.IsNullOrWhiteSpace(probedName) ? probedName : "download";
+            }
+
+            // CRITICAL: NEVER strip or lose the file extension!
+            // If chosenName lacks an extension, but probedName has a valid extension, preserve it!
+            var chosenExt = Path.GetExtension(chosenName);
+            var probedExt = Path.GetExtension(probedName);
+            if (string.IsNullOrEmpty(chosenExt) && !string.IsNullOrEmpty(probedExt))
+            {
+                chosenName += probedExt;
+            }
+
+            var name = FileNames.Sanitize(chosenName);
             var dir = string.IsNullOrEmpty(item.Directory) ? Directory.GetCurrentDirectory() : item.Directory;
             Directory.CreateDirectory(dir);
             item.Directory = dir;

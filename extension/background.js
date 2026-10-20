@@ -219,16 +219,24 @@ async function sendToApp({ url, filename, referer, kind, format, audioOnly, subt
   }
 
   let cleanName = (filename || '').trim();
-  if (isGenericMediaName(cleanName)) {
-    try {
-      const tabs = await api.tabs.query({ active: true, currentWindow: true });
-      if (tabs[0]?.title) {
-        const cleaned = cleanMediaTitle(tabs[0].title);
-        if (cleaned) cleanName = cleaned;
-      }
-    } catch {}
+  if (kind === 'video') {
+    if (isGenericMediaName(cleanName)) {
+      try {
+        const tabs = await api.tabs.query({ active: true, currentWindow: true });
+        if (tabs[0]?.title) {
+          const cleaned = cleanMediaTitle(tabs[0].title);
+          if (cleaned) cleanName = cleaned;
+        }
+      } catch {}
+    }
+    if (!cleanName || isGenericMediaName(cleanName)) cleanName = 'Video';
+  } else {
+    // Normal file: NEVER overwrite real filename with browser tab title!
+    // If filename is generic or meaningless, clear it so desktop app probes real Content-Disposition/URL
+    if (isGenericMediaName(cleanName)) {
+      cleanName = '';
+    }
   }
-  if (!cleanName || isGenericMediaName(cleanName)) cleanName = 'Video';
 
   const payload = {
     url, filename: cleanName, referer: referer || '', kind: kind || 'file',
@@ -381,7 +389,16 @@ async function interceptDownload(item) {
   const minMB = Math.max(settings.minSizeMB || 0, app.minSizeMB || 0);
   if (minMB > 0 && item.totalBytes > 0 && item.totalBytes < minMB * 1024 * 1024) return false;
 
-  const filename = item.filename ? item.filename.split(/[\\/]/).pop() : '';
+  let filename = item.filename ? item.filename.split(/[\\/]/).pop() : '';
+  if (!filename && url) {
+    try {
+      const u = new URL(url);
+      const seg = u.pathname.split('/').filter(Boolean).pop();
+      if (seg && !isGenericMediaName(seg)) {
+        filename = decodeURIComponent(seg);
+      }
+    } catch {}
+  }
   const result = await sendToApp({ url, filename, referer: item.referrer, kind: 'file' });
 
   if (result.ok) {
@@ -513,7 +530,7 @@ function normalizeKey(url) {
 function isGenericMediaName(raw) {
   if (!raw) return true;
   const s = raw.trim().toLowerCase().replace(/\.[a-z0-9]{2,5}$/i, '');
-  return /^(?:master|index|playlist|manifest|stream|video|audio|media|iframe|player|chunk|output|blob|embed)(?:[_-]?\d+)?$/i.test(s);
+  return /^(?:master|index|playlist|manifest|stream|video|audio|media|iframe|player|chunk|output|blob|embed|download|file|view|document)(?:[_-]?\d+)?$/i.test(s);
 }
 
 function cleanMediaTitle(raw) {
@@ -960,7 +977,15 @@ api.runtime.onStartup?.addListener(() => { createMenus(); ping(); });
 menus?.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId === 'dm-link') {
     const url = info.linkUrl || info.srcUrl;
-    if (url) sendToApp({ url, referer: info.pageUrl || tab?.url, kind: 'file' });
+    if (url) {
+      let filename = '';
+      try {
+        const u = new URL(url);
+        const seg = u.pathname.split('/').filter(Boolean).pop();
+        if (seg && !isGenericMediaName(seg)) filename = decodeURIComponent(seg);
+      } catch {}
+      sendToApp({ url, filename, referer: info.pageUrl || tab?.url, kind: 'file' });
+    }
   } else if (info.menuItemId === 'dm-page-video') {
     let url = info.pageUrl || tab?.url;
     let kind = 'video';
@@ -1094,7 +1119,7 @@ api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         case 'action': sendResponse(await downloadAction(msg.id, msg.action)); break;
         case 'download': {
           const downloadMsg = { ...msg };
-          if (isGenericMediaName(downloadMsg.filename)) {
+          if (downloadMsg.kind === 'video' && isGenericMediaName(downloadMsg.filename)) {
             const tabTitle = sender.tab?.title;
             if (tabTitle) {
               const cleaned = cleanMediaTitle(tabTitle);

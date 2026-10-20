@@ -53,4 +53,19 @@ public static class FileNames
             || clean.Equals("Video İndirmesi", StringComparison.OrdinalIgnoreCase)
             || clean.Equals("Video Download", StringComparison.OrdinalIgnoreCase);
     }
+
+    /// <summary>Checks if a file name or slug is generic or meaningless for general downloads (e.g. download, file, index, get, blob, stream).</summary>
+    public static bool IsGenericFileName(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return true;
+        var clean = Path.GetFileNameWithoutExtension(name.Replace('\\', '/')).Trim();
+        if (string.IsNullOrWhiteSpace(clean)) return true;
+        return System.Text.RegularExpressions.Regex.IsMatch(clean,
+            @"^(?:download|file|index|output|stream|blob|default|untitled|attachment|get|view|document|master|playlist|manifest|video|audio|media|iframe|player|chunk)(?:[_-]?\d+)?$",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase)
+            || clean.Equals("watch", StringComparison.OrdinalIgnoreCase)
+            || clean.Equals("shorts", StringComparison.OrdinalIgnoreCase)
+            || clean.Equals("Video İndirmesi", StringComparison.OrdinalIgnoreCase)
+            || clean.Equals("Video Download", StringComparison.OrdinalIgnoreCase);
+    }
 }

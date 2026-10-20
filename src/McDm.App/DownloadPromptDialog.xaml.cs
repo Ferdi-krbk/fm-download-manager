@@ -14,7 +14,7 @@ public partial class DownloadPromptDialog : Window
         InitializeComponent();
         _request = request;
 
-        string name = !string.IsNullOrWhiteSpace(request.FileName) 
+        string name = !string.IsNullOrWhiteSpace(request.FileName) && !FileNames.IsGenericFileName(request.FileName)
             ? request.FileName 
             : ResolveInitialName(request.Url);
 
@@ -55,7 +55,7 @@ public partial class DownloadPromptDialog : Window
         if (Uri.TryCreate(url, UriKind.Absolute, out var uri))
         {
             var seg = Path.GetFileName(uri.AbsolutePath);
-            if (!string.IsNullOrWhiteSpace(seg)) return Uri.UnescapeDataString(seg);
+            if (!string.IsNullOrWhiteSpace(seg) && !FileNames.IsGenericFileName(seg)) return Uri.UnescapeDataString(seg);
         }
         return "download";
     }
@@ -77,7 +77,17 @@ public partial class DownloadPromptDialog : Window
     {
         if (!string.IsNullOrWhiteSpace(TxtFileName.Text))
         {
-            _request.FileName = TxtFileName.Text.Trim();
+            var editedName = TxtFileName.Text.Trim();
+            // If user input has no extension, but URL has a known extension, preserve it!
+            if (string.IsNullOrEmpty(Path.GetExtension(editedName)) && Uri.TryCreate(_request.Url, UriKind.Absolute, out var u))
+            {
+                var ext = Path.GetExtension(u.AbsolutePath);
+                if (!string.IsNullOrEmpty(ext) && ext.Length <= 8)
+                {
+                    editedName += ext;
+                }
+            }
+            _request.FileName = editedName;
         }
         if (!string.IsNullOrWhiteSpace(TxtFolder.Text))
         {

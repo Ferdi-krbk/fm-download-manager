@@ -56,7 +56,7 @@
                         </Border>
                         <TextBlock Text="FM Download Manager" FontFamily="{DynamicResource UiFont}" FontWeight="Bold" FontSize="12.5" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" />
                         <Border Background="{DynamicResource Bg3Brush}" CornerRadius="4" Padding="5,1" Margin="8,0,0,0" VerticalAlignment="Center">
-                            <TextBlock Text="v3.7" FontFamily="{DynamicResource UiFont}" FontSize="9.5" FontWeight="SemiBold" Foreground="{DynamicResource AccentHoverBrush}" />
+                            <TextBlock Text="v3.7.1" FontFamily="{DynamicResource UiFont}" FontSize="9.5" FontWeight="SemiBold" Foreground="{DynamicResource AccentHoverBrush}" />
                         </Border>
                     </StackPanel>
                 </DockPanel>

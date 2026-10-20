@@ -14,8 +14,17 @@ public sealed class UpdateInfo
 
 public static class UpdateChecker
 {
-    public static string CurrentVersion =>
-        typeof(UpdateChecker).Assembly.GetName().Version?.ToString(3) ?? "3.6.0";
+    public static string CurrentVersion
+    {
+        get
+        {
+            var entryVer = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3);
+            if (!string.IsNullOrWhiteSpace(entryVer) && entryVer != "0.0.0") return entryVer;
+            var coreVer = typeof(UpdateChecker).Assembly.GetName().Version?.ToString(3);
+            if (!string.IsNullOrWhiteSpace(coreVer) && coreVer != "0.0.0") return coreVer;
+            return "3.7.1";
+        }
+    }
     public const string RepoOwner = "Ferdi-krbk";
     public const string RepoName = "fm-download-manager";
 
@@ -73,10 +82,33 @@ public static class UpdateChecker
     public static bool IsNewer(string latest, string current)
     {
         if (string.IsNullOrWhiteSpace(latest)) return false;
-        if (Version.TryParse(latest, out var lVer) && Version.TryParse(current, out var cVer))
+        if (string.IsNullOrWhiteSpace(current)) return true;
+
+        static string Clean(string v) => v.Trim().TrimStart('v', 'V').Split('-')[0];
+        string lClean = Clean(latest);
+        string cClean = Clean(current);
+
+        if (Version.TryParse(lClean, out var lVer) && Version.TryParse(cClean, out var cVer))
         {
             return lVer > cVer;
         }
-        return string.Compare(latest, current, StringComparison.OrdinalIgnoreCase) > 0;
+
+        try
+        {
+            var lParts = lClean.Split('.').Select(p => int.TryParse(p, out var n) ? n : 0).ToArray();
+            var cParts = cClean.Split('.').Select(p => int.TryParse(p, out var n) ? n : 0).ToArray();
+            int maxLen = Math.Max(lParts.Length, cParts.Length);
+            for (int i = 0; i < maxLen; i++)
+            {
+                int l = i < lParts.Length ? lParts[i] : 0;
+                int c = i < cParts.Length ? cParts[i] : 0;
+                if (l != c) return l > c;
+            }
+            return false;
+        }
+        catch
+        {
+            return string.Compare(lClean, cClean, StringComparison.OrdinalIgnoreCase) > 0;
+        }
     }
 }

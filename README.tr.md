@@ -111,14 +111,14 @@ Günümüzde kullanılan çoğu masaüstü indirme yöneticisi 2000'lerin başı
       </ul>
     </td>
     <td width="50%" valign="top">
-      <h3 align="center">🚀 IDM Tarzı Yüzen Video Çubuğu</h3>
+      <h3 align="center">⚡ 16 Kanallı Segment ve Parça Denetleyicisi</h3>
       <p align="center">
-        <img src="docs/ui/card_floating_bar.jpg" width="100%" style="border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);" alt="Tarayıcı İçi Yüzen İndirme Çubuğu" />
+        <img src="docs/ui/download_details_pro.png" width="100%" style="border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);" alt="16 Kanallı Canlı Segment Denetleyicisi" />
       </p>
       <ul>
-        <li><b>İzole Shadow DOM:</b> Web sitelerinin stillerinden ve kodlarından asla etkilenmez.</li>
-        <li><b>Katı CSP &amp; Güvenli Düğüm Yapısı:</b> Modern web platformlarında sıfır hata ve kusursuz uyum.</li>
-        <li><b>Sıfır Tık Eşleşme:</b> 256-bit yerel döngü anahtarıyla masaüstü uygulamasını otomatik tanır.</li>
+        <li><b>Ayrıntılı Kanal Telemetrisi:</b> Her bir HTTP parçasının bayt aralığını, indirilen miktarını ve yüzdesini canlı izleyin.</li>
+        <li><b>IDM Tarzı Görsel Segmentleme:</b> Büyük dosyaların 16 paralel TCP soketine nasıl bölündüğünü görsel olarak inceleyin.</li>
+        <li><b>Dinamik Yeniden Parçalama:</b> Yavaş kalan soket parçalarını tespit edip otomatik olarak yeniden bölerek maksimum hıza ulaşır.</li>
       </ul>
     </td>
   </tr>

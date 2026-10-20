@@ -715,7 +715,7 @@
                 <DockPanel LastChildFill="True" VerticalAlignment="Center">
                     <!-- Right: Info -->
                     <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
-                        <TextBlock Text="Cyber-Fluent v3.6" FontFamily="{DynamicResource UiFont}" FontSize="10.5" Foreground="{DynamicResource TextMuteBrush}" VerticalAlignment="Center" />
+                        <TextBlock Text="Cyber-Fluent v3.7.1 PRO" FontFamily="{DynamicResource UiFont}" FontSize="10.5" Foreground="{DynamicResource TextMuteBrush}" VerticalAlignment="Center" />
                     </StackPanel>
 
                     <!-- Left: Status Summary -->

@@ -140,9 +140,30 @@ public partial class App : System.Windows.Application
                 Stage = "Kuyrukta"
             });
 
+            mockManager.Items.Insert(0, new DownloadItem
+            {
+                FileName = "FMDownloadManager-Setup-3.7.1.exe",
+                TotalBytes = 124_216_814L,
+                DownloadedBytes = 124_216_814L,
+                Status = DownloadStatus.Completed,
+                Speed = 0,
+                ActiveConnections = 0,
+                Stage = "Tamamlandı"
+            });
+            mockManager.Items.Insert(1, new DownloadItem
+            {
+                FileName = "Interstellar.2014.IMAX.2160p.UHD.Remux.mkv",
+                TotalBytes = 28_400_000_000L,
+                DownloadedBytes = 8_200_000_000L,
+                Status = DownloadStatus.Downloading,
+                Speed = 18_900_000,
+                ActiveConnections = 16,
+                Stage = "İndiriliyor · 16 segment"
+            });
+
             var win = new MainWindow(mockManager, mockTokens, mockSettings);
-            win.Width = 1140;
-            win.Height = 680;
+            win.Width = 1160;
+            win.Height = 700;
             win.Show();
 
             var graph = win.FindName("SidebarSpeedGraph") as SpeedGraphControl;
@@ -150,29 +171,114 @@ public partial class App : System.Windows.Application
             {
                 for (int i = 0; i < 55; i++)
                 {
-                    double s = 15_000_000 + Math.Sin(i * 0.28) * 7_500_000 + Math.Cos(i * 0.45) * 3_000_000;
-                    graph.PushSample(Math.Max(2_000_000, s));
+                    double s = 22_000_000 + Math.Sin(i * 0.28) * 12_500_000 + Math.Cos(i * 0.45) * 5_000_000;
+                    graph.PushSample(Math.Max(5_000_000, s));
                 }
             }
 
-            var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+            var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(600) };
             timer.Tick += (_, _) =>
             {
                 timer.Stop();
                 try
                 {
+                    void SavePng(System.Windows.Media.Visual v, int w, int h, string outPath)
+                    {
+                        var r = new System.Windows.Media.Imaging.RenderTargetBitmap(w, h, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
+                        r.Render(v);
+                        var e = new System.Windows.Media.Imaging.PngBitmapEncoder();
+                        e.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(r));
+                        using var fs = File.Create(outPath);
+                        e.Save(fs);
+                    }
+
                     win.UpdateLayout();
                     var visual = (win.Content as System.Windows.Media.Visual) ?? win;
-                    var rtb = new System.Windows.Media.Imaging.RenderTargetBitmap(1140, 680, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
-                    rtb.Render(visual);
-                    var enc = new System.Windows.Media.Imaging.PngBitmapEncoder();
-                    enc.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(rtb));
-                    
-                    var rootDocs = @"C:\Users\Ferdi\Downloads\mc-dm-windows\docs\ui\dashboard_dark.png";
-                    using (var fs = File.Create(rootDocs))
+                    SavePng(visual, 1160, 700, @"C:\Users\Ferdi\Downloads\mc-dm-windows\docs\ui\dashboard_dark.png");
+                    SavePng(visual, 1160, 700, @"C:\Users\Ferdi\Downloads\mc-dm-windows\docs\ui\dashboard_pro.png");
+
+                    // Render VideoQualityDialog
+                    var qDlg = new VideoQualityDialog(
+                        "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                        "Interstellar - Main Theme (Official 4K UHD Remastered)",
+                        true,
+                        "tr,en",
+                        new List<SubtitleTrackInfo>
+                        {
+                            new SubtitleTrackInfo { Lang = "tr", Label = "Türkçe (TR Altyazı)" },
+                            new SubtitleTrackInfo { Lang = "en", Label = "English (Original CC)" }
+                        },
+                        new List<VideoQualityInfo>
+                        {
+                            new VideoQualityInfo { Height = 2160, Label = "4K UHD (2160p60)", FormatId = "bestvideo[height=2160]" },
+                            new VideoQualityInfo { Height = 1440, Label = "2K QHD (1440p60)", FormatId = "bestvideo[height=1440]" },
+                            new VideoQualityInfo { Height = 1080, Label = "1080p FHD (1080p60)", FormatId = "bestvideo[height=1080]" },
+                            new VideoQualityInfo { Height = 720, Label = "720p HD", FormatId = "bestvideo[height=720]" }
+                        },
+                        new List<AudioTrackInfo>
+                        {
+                            new AudioTrackInfo { TrackId = "1", Lang = "tr", Label = "Türkçe Dublaj (5.1 Surround)" },
+                            new AudioTrackInfo { TrackId = "2", Lang = "en", Label = "English (Original Dolby Atmos)" }
+                        }
+                    );
+                    qDlg.Width = 620;
+                    qDlg.Height = 520;
+                    qDlg.Show();
+                    qDlg.UpdateLayout();
+                    var qVis = (qDlg.Content as System.Windows.Media.Visual) ?? qDlg;
+                    SavePng(qVis, 620, 520, @"C:\Users\Ferdi\Downloads\mc-dm-windows\docs\ui\video_dialog_pro.png");
+                    qDlg.Close();
+
+                    // Render DownloadDetailWindow (16-thread segment inspection)
+                    try
                     {
-                        enc.Save(fs);
+                        var statePath = Path.Combine(Path.GetTempPath(), "interstellar_test.mkv.mcdm");
+                        var fakeChunks = new List<object>();
+                        long chunkSize = 28_400_000_000L / 16;
+                        for (int i = 0; i < 16; i++)
+                        {
+                            long cStart = i * chunkSize;
+                            long cEnd = (i == 15) ? 28_400_000_000L - 1 : cStart + chunkSize - 1;
+                            long cDone = (long)(chunkSize * (0.28 + (i % 5) * 0.14));
+                            if (cDone > (cEnd - cStart + 1)) cDone = cEnd - cStart + 1;
+                            fakeChunks.Add(new { Start = cStart, End = cEnd, Done = cDone });
+                        }
+                        var fakeState = System.Text.Json.JsonSerializer.Serialize(new { Chunks = fakeChunks });
+                        File.WriteAllText(statePath, fakeState);
+
+                        var detailItem = new DownloadItem
+                        {
+                            FileName = "Interstellar.2014.IMAX.2160p.UHD.Remux.mkv",
+                            Request = new DownloadRequest { Url = "https://cdn.hyperstream.io/releases/interstellar_4k_remux.mkv" },
+                            TotalBytes = 28_400_000_000L,
+                            DownloadedBytes = 8_200_000_000L,
+                            Status = DownloadStatus.Downloading,
+                            Speed = 18_900_000,
+                            ActiveConnections = 16,
+                            SavePath = statePath.Replace(".mcdm", "")
+                        };
+                        var detailWin = new DownloadDetailWindow(detailItem);
+                        detailWin.Width = 620;
+                        detailWin.Height = 520;
+                        detailWin.Show();
+                        detailWin.UpdateLayout();
+                        var detVis = (detailWin.Content as System.Windows.Media.Visual) ?? detailWin;
+                        SavePng(detVis, 620, 520, @"C:\Users\Ferdi\Downloads\mc-dm-windows\docs\ui\download_details_pro.png");
+                        detailWin.Close();
                     }
+                    catch { }
+
+                    // Render Palette Sync preview (Emerald Green theme)
+                    ThemeManager.ApplyAccentColor("#00D26A");
+                    var winEmerald = new MainWindow(mockManager, mockTokens, mockSettings);
+                    winEmerald.Width = 1160;
+                    winEmerald.Height = 700;
+                    winEmerald.Show();
+                    winEmerald.UpdateLayout();
+                    var emVis = (winEmerald.Content as System.Windows.Media.Visual) ?? winEmerald;
+                    SavePng(emVis, 1160, 700, @"C:\Users\Ferdi\Downloads\mc-dm-windows\docs\ui\palette_sync_pro.png");
+                    winEmerald.Close();
+
                     File.WriteAllText(@"C:\Users\Ferdi\Downloads\mc-dm-windows\dist\screenshot.log", "SUCCESS: " + DateTime.UtcNow);
                 }
                 catch (Exception ex)

@@ -111,14 +111,14 @@ Most desktop download managers available today are stuck in the mid-2000s:
       </ul>
     </td>
     <td width="50%" valign="top">
-      <h3 align="center">🚀 IDM-Style Floating Video Bar</h3>
+      <h3 align="center">⚡ 16-Segment Multi-Thread Inspector</h3>
       <p align="center">
-        <img src="docs/ui/card_floating_bar_en.jpg" width="100%" style="border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);" alt="Browser Floating Download Bar" />
+        <img src="docs/ui/download_details_pro.png" width="100%" style="border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);" alt="16-Thread Live Segment Inspector" />
       </p>
       <ul>
-        <li><b>Isolated Shadow DOM:</b> Zero CSS pollution or layout interference on host websites.</li>
-        <li><b>Strict CSP &amp; Trusted Types Compliant:</b> Built with 100% pure DOM node construction (zero <code>innerHTML</code>).</li>
-        <li><b>Zero-Click Pairing:</b> Automatically discovers the local desktop app with 256-bit loopback token authorization.</li>
+        <li><b>Granular Thread Telemetry:</b> Monitor every active HTTP chunk, byte range, and completion percentage in real time.</li>
+        <li><b>IDM-Style Visual Chunking:</b> Inspect how large files are partitioned across up to 16 parallel TCP sockets.</li>
+        <li><b>Dynamic Resegmentation:</b> Automatically splits and reassigns lagging connections to saturate bandwidth.</li>
       </ul>
     </td>
   </tr>

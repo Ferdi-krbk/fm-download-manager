@@ -68,7 +68,7 @@ def main():
     draw.text((sx, sy), sub, fill=(160, 165, 185, 255), font=font_sub)
 
     # Minimal Badges Row
-    badges = ["Windows 10 / 11", "Çok Parçalı Motor", "BitTorrent & Magnet", "Medya & Altyazı (.srt)", "v3.4.3"]
+    badges = ["Windows 10 / 11", "Çok Parçalı Motor", "BitTorrent & Magnet", "Medya & Altyazı (.srt)", "v3.7.1 PRO"]
     badge_y = sy + 38
     total_badge_w = 0
     badge_widths = []

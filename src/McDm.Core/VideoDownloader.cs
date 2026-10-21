@@ -655,6 +655,18 @@ public sealed class VideoDownloader
             }
 
             bool isYt = IsYouTubeUrl(item.Request.Url);
+            if (!isYt && !opt.SubtitlesOnly && StreamProbeService.UpgradeToMasterHlsUrl(item.Request.Url) != item.Request.Url)
+            {
+                item.Stage = IsTurkish ? "Ana Akış (Master HLS) Çözülüyor..." : "Resolving Master HLS Stream...";
+                item.Request.Url = await StreamProbeService.ResolveMasterHlsUrlAsync(
+                    item.Request.Url,
+                    item.Request.Referer,
+                    item.Request.UserAgent,
+                    item.Request.Cookies,
+                    item.Request.CookieHeader,
+                    ct);
+            }
+
             var tp = new ToolPaths();
             var jsRuntime = tp.GetPreferredJsRuntime();
 
@@ -677,6 +689,37 @@ public sealed class VideoDownloader
             {
                 // Retry with alternate cookie mode (with cookies for age-restricted YouTube, or without cookies if cookies caused Video unavailable/reload)
                 await ExecuteYtDlpOnceAsync(item, opt, outDir, fallbackCookies, tool, jsRuntime, ct);
+            }
+
+            // 2b. If the downloaded video is silent (video-only stream) and a separate audio stream URL was captured on the page, download & mux it
+            if (!string.IsNullOrEmpty(item.SavePath) && File.Exists(item.SavePath) && !opt.SubtitlesOnly && !opt.AudioOnly
+                && !string.IsNullOrWhiteSpace(item.Request.AudioStreamUrl)
+                && !string.Equals(item.Request.AudioStreamUrl, item.Request.Url, StringComparison.OrdinalIgnoreCase)
+                && _ffmpeg() is { } extMuxFfmpeg && File.Exists(extMuxFfmpeg))
+            {
+                try
+                {
+                    if (!HasAudioStream(extMuxFfmpeg, item.SavePath))
+                    {
+                        item.Stage = IsTurkish ? "Harici Ses Akışı İndiriliyor ve Birleştiriliyor..." : "Downloading & Merging External Audio...";
+                        string? extAudioFile = await DownloadExternalAudioStreamAsync(item, tool, firstAttemptCookies, jsRuntime, ct);
+                        if (!string.IsNullOrEmpty(extAudioFile) && File.Exists(extAudioFile))
+                        {
+                            if (MergeVideoAndAudioWithFfmpeg(extMuxFfmpeg, item.SavePath, extAudioFile, item.SavePath))
+                            {
+                                long mergedLen = new FileInfo(item.SavePath).Length;
+                                item.TotalBytes = mergedLen;
+                                item.DownloadedBytes = mergedLen;
+                            }
+                            SegmentedDownloader.TryDelete(extAudioFile);
+                        }
+                    }
+                }
+                catch { }
+                finally
+                {
+                    item.Stage = null;
+                }
             }
 
             // 3. Post-process video with subtitle (save .srt alongside and embed with ffmpeg)
@@ -755,6 +798,8 @@ public sealed class VideoDownloader
 
         using var proc = new Process { StartInfo = psi };
         string? finalPath = null;
+        string? mergerTarget = null;
+        var downloadedDestinations = new List<string>();
         string? lastError = null;
         var acc = new ProgressAccumulator();
         if (Directory.Exists(item.WorkDir))
@@ -808,6 +853,8 @@ public sealed class VideoDownloader
                 if (m.Success)
                 {
                     var path = m.Groups[1].Value.Trim().Trim('"', '\'');
+                    if (!string.IsNullOrEmpty(path) && !downloadedDestinations.Contains(path, StringComparer.OrdinalIgnoreCase))
+                        downloadedDestinations.Add(path);
                     if (File.Exists(path))
                     {
                         try
@@ -847,13 +894,22 @@ public sealed class VideoDownloader
                 item.Stage = IsTurkish ? "Dosyalar Birleştiriliyor (FFmpeg)..." : "Merging Streams (FFmpeg)...";
                 item.Speed = 0;
                 var fp = line.Substring("[Merger] Merging formats into \"".Length).TrimEnd('"').Trim();
-                if (!string.IsNullOrEmpty(fp)) finalPath = fp;
+                if (!string.IsNullOrEmpty(fp))
+                {
+                    mergerTarget = fp;
+                    finalPath = fp;
+                }
             }
             else if (line.StartsWith("[download] Destination: ", StringComparison.Ordinal))
             {
                 item.Stage = IsTurkish ? "İndirme Başlatılıyor..." : "Starting Download...";
                 var fp = line.Substring("[download] Destination: ".Length).Trim();
-                if (!string.IsNullOrEmpty(fp) && string.IsNullOrEmpty(finalPath)) finalPath = fp;
+                if (!string.IsNullOrEmpty(fp))
+                {
+                    if (!downloadedDestinations.Contains(fp, StringComparer.OrdinalIgnoreCase))
+                        downloadedDestinations.Add(fp);
+                    if (string.IsNullOrEmpty(finalPath)) finalPath = fp;
+                }
             }
             else if (line.StartsWith("[Merger]", StringComparison.Ordinal) || line.StartsWith("[VideoConvertor]", StringComparison.Ordinal)
                      || line.StartsWith("[ExtractAudio]", StringComparison.Ordinal) || line.StartsWith("[FixupM3u8]", StringComparison.Ordinal))
@@ -929,6 +985,11 @@ public sealed class VideoDownloader
 
         if (proc.ExitCode != 0)
             throw new FatalDownloadException("yt-dlp failed" + (lastError != null ? ": " + Trim(lastError) : $" (exit code {proc.ExitCode})"));
+
+        if (!opt.SubtitlesOnly && !opt.AudioOnly && _ffmpeg() is { } muxFfmpeg && File.Exists(muxFfmpeg))
+        {
+            TryMergeLeftoverStreamsWithFfmpeg(muxFfmpeg, outDir, item.WorkDir, downloadedDestinations, mergerTarget, startUtc, ref finalPath, item);
+        }
 
         if ((finalPath == null || !File.Exists(finalPath)) && Directory.Exists(outDir))
         {
@@ -1336,6 +1397,334 @@ public sealed class VideoDownloader
             }
 
             return content;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private void TryMergeLeftoverStreamsWithFfmpeg(
+        string ffmpeg,
+        string outDir,
+        string? workDir,
+        List<string> downloadedDestinations,
+        string? mergerTarget,
+        DateTime startUtc,
+        ref string? finalPath,
+        DownloadItem item)
+    {
+        try
+        {
+            // If yt-dlp already created the merged output and it contains both video & audio, just clean up any leftover .f<id> component files
+            if (!string.IsNullOrEmpty(mergerTarget) && File.Exists(mergerTarget) && new FileInfo(mergerTarget).Length > 1024
+                && HasVideoStream(ffmpeg, mergerTarget) && HasAudioStream(ffmpeg, mergerTarget))
+            {
+                foreach (var d in downloadedDestinations)
+                {
+                    string inOut = Path.Combine(outDir, Path.GetFileName(d));
+                    if (!string.Equals(inOut, mergerTarget, StringComparison.OrdinalIgnoreCase) && File.Exists(inOut))
+                        SegmentedDownloader.TryDelete(inOut);
+                    if (!string.Equals(d, mergerTarget, StringComparison.OrdinalIgnoreCase) && File.Exists(d))
+                        SegmentedDownloader.TryDelete(d);
+                }
+                finalPath = mergerTarget;
+                return;
+            }
+
+            // Collect candidate unmerged stream files from downloadedDestinations, outDir, and workDir
+            var candidatePaths = new List<string>();
+            void AddCandidate(string? p)
+            {
+                if (string.IsNullOrWhiteSpace(p) || !File.Exists(p)) return;
+                string ext = Path.GetExtension(p).ToLowerInvariant();
+                if (ext is ".srt" or ".vtt" or ".ass" or ".ttml" or ".part" or ".ytdl" or ".tmp" or ".mcdm-part" or ".json" or ".jpg" or ".png" or ".webp")
+                    return;
+                try
+                {
+                    if (new FileInfo(p).Length <= 512) return;
+                }
+                catch { return; }
+                if (!candidatePaths.Contains(p, StringComparer.OrdinalIgnoreCase))
+                    candidatePaths.Add(p);
+            }
+
+            foreach (var d in downloadedDestinations)
+            {
+                AddCandidate(Path.Combine(outDir, Path.GetFileName(d)));
+                AddCandidate(d);
+            }
+
+            if (Directory.Exists(outDir))
+            {
+                foreach (var f in Directory.GetFiles(outDir))
+                {
+                    try
+                    {
+                        var fi = new FileInfo(f);
+                        if (fi.LastWriteTimeUtc >= startUtc)
+                            AddCandidate(f);
+                    }
+                    catch { }
+                }
+            }
+
+            if (!string.IsNullOrEmpty(workDir) && Directory.Exists(workDir))
+            {
+                foreach (var f in Directory.GetFiles(workDir))
+                {
+                    try
+                    {
+                        var fi = new FileInfo(f);
+                        if (fi.LastWriteTimeUtc >= startUtc)
+                            AddCandidate(f);
+                    }
+                    catch { }
+                }
+            }
+
+            if (candidatePaths.Count < 2) return;
+
+            string? videoStreamPath = null;
+            string? audioStreamPath = null;
+
+            foreach (var c in candidatePaths)
+            {
+                bool hasV = HasVideoStream(ffmpeg, c);
+                bool hasA = HasAudioStream(ffmpeg, c);
+                if (hasV && !hasA && videoStreamPath == null)
+                    videoStreamPath = c;
+                else if (hasA && !hasV && audioStreamPath == null)
+                    audioStreamPath = c;
+            }
+
+            // Fallback heuristic if stream probing was inconclusive on one of the streams
+            if (videoStreamPath == null || audioStreamPath == null)
+            {
+                foreach (var c in candidatePaths)
+                {
+                    string ext = Path.GetExtension(c).ToLowerInvariant();
+                    string name = Path.GetFileNameWithoutExtension(c);
+                    bool looksLikeAudio = ext is ".m4a" or ".aac" or ".mp3" or ".opus" or ".ogg" or ".wav" or ".flac"
+                                          || Regex.IsMatch(name, @"(\.f\d*a\d*|-a\d+|audio|dublaj)", RegexOptions.IgnoreCase);
+                    if (looksLikeAudio && audioStreamPath == null && !string.Equals(c, videoStreamPath, StringComparison.OrdinalIgnoreCase))
+                        audioStreamPath = c;
+                    else if (!looksLikeAudio && videoStreamPath == null && !string.Equals(c, audioStreamPath, StringComparison.OrdinalIgnoreCase))
+                        videoStreamPath = c;
+                }
+            }
+
+            if (videoStreamPath == null || audioStreamPath == null || string.Equals(videoStreamPath, audioStreamPath, StringComparison.OrdinalIgnoreCase))
+                return;
+
+            string targetMergedPath;
+            if (!string.IsNullOrWhiteSpace(mergerTarget))
+            {
+                targetMergedPath = Path.IsPathRooted(mergerTarget) ? mergerTarget : Path.Combine(outDir, mergerTarget);
+            }
+            else
+            {
+                string rawStem = Path.GetFileNameWithoutExtension(videoStreamPath);
+                string cleanStem = Regex.Replace(rawStem, @"\.f[0-9a-zA-Z_\-]+$", "");
+                if (string.IsNullOrWhiteSpace(cleanStem)) cleanStem = rawStem;
+                targetMergedPath = Path.Combine(outDir, cleanStem + ".mp4");
+            }
+
+            item.Stage = IsTurkish ? "Ses ve Görüntü Birleştiriliyor (FFmpeg)..." : "Merging Video & Audio (FFmpeg)...";
+            item.Speed = 0;
+
+            if (MergeVideoAndAudioWithFfmpeg(ffmpeg, videoStreamPath, audioStreamPath, targetMergedPath))
+            {
+                if (!string.Equals(videoStreamPath, targetMergedPath, StringComparison.OrdinalIgnoreCase))
+                    SegmentedDownloader.TryDelete(videoStreamPath);
+                if (!string.Equals(audioStreamPath, targetMergedPath, StringComparison.OrdinalIgnoreCase))
+                    SegmentedDownloader.TryDelete(audioStreamPath);
+
+                finalPath = targetMergedPath;
+            }
+        }
+        catch { }
+    }
+
+    public static bool MergeVideoAndAudioWithFfmpeg(string ffmpeg, string videoPath, string audioPath, string outputPath)
+    {
+        if (!File.Exists(ffmpeg) || !File.Exists(videoPath) || !File.Exists(audioPath))
+            return false;
+
+        string? tempOut = null;
+        try
+        {
+            string outDir = Path.GetDirectoryName(outputPath) ?? Path.GetDirectoryName(videoPath)!;
+            string ext = Path.GetExtension(outputPath);
+            if (string.IsNullOrWhiteSpace(ext)) ext = ".mp4";
+            tempOut = Path.Combine(outDir, "temp_mux_" + Guid.NewGuid().ToString("N")[..8] + ext);
+
+            // Tier 1: Fast lossless stream copy + aac_adtstoasc bitstream filter (fixes HLS MPEG-TS raw ADTS AAC -> MP4 container mux errors)
+            // Tier 2: Standard lossless stream copy (for non-AAC codecs like Opus/MP3/AC3)
+            // Tier 3: Video stream copy + AAC audio transcode fallback (guarantees MP4 compatibility when audio codec is incompatible with MP4)
+            string[][] attempts =
+            [
+                ["-c:v", "copy", "-c:a", "copy", "-bsf:a", "aac_adtstoasc", "-movflags", "+faststart"],
+                ["-c:v", "copy", "-c:a", "copy", "-movflags", "+faststart"],
+                ["-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart"]
+            ];
+
+            foreach (var codecArgs in attempts)
+            {
+                SegmentedDownloader.TryDelete(tempOut);
+                var psi = new ProcessStartInfo(ffmpeg)
+                {
+                    CreateNoWindow = true,
+                    UseShellExecute = false,
+                    RedirectStandardInput = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true
+                };
+                psi.ArgumentList.Add("-nostdin");
+                psi.ArgumentList.Add("-y");
+                psi.ArgumentList.Add("-loglevel");
+                psi.ArgumentList.Add("error");
+                psi.ArgumentList.Add("-i");
+                psi.ArgumentList.Add(videoPath);
+                psi.ArgumentList.Add("-i");
+                psi.ArgumentList.Add(audioPath);
+                psi.ArgumentList.Add("-map");
+                psi.ArgumentList.Add("0:v:0");
+                psi.ArgumentList.Add("-map");
+                psi.ArgumentList.Add("1:a:0");
+                foreach (var a in codecArgs)
+                    psi.ArgumentList.Add(a);
+                psi.ArgumentList.Add(tempOut);
+
+                using var proc = Process.Start(psi);
+                if (proc == null) continue;
+                if (!proc.WaitForExit(180000))
+                {
+                    try { proc.Kill(entireProcessTree: true); } catch { }
+                    continue;
+                }
+
+                if (proc.ExitCode == 0 && File.Exists(tempOut) && new FileInfo(tempOut).Length > 1024)
+                {
+                    File.Move(tempOut, outputPath, overwrite: true);
+                    return true;
+                }
+            }
+        }
+        catch { }
+        finally
+        {
+            if (tempOut != null) SegmentedDownloader.TryDelete(tempOut);
+        }
+        return false;
+    }
+
+    public static bool HasAudioStream(string ffmpeg, string mediaPath)
+        => ProbeMediaStreamType(ffmpeg, mediaPath, "Audio:");
+
+    public static bool HasVideoStream(string ffmpeg, string mediaPath)
+        => ProbeMediaStreamType(ffmpeg, mediaPath, "Video:");
+
+    private static bool ProbeMediaStreamType(string ffmpeg, string mediaPath, string marker)
+    {
+        if (!File.Exists(ffmpeg) || !File.Exists(mediaPath)) return false;
+        try
+        {
+            var psi = new ProcessStartInfo(ffmpeg)
+            {
+                CreateNoWindow = true,
+                UseShellExecute = false,
+                RedirectStandardInput = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+            psi.ArgumentList.Add("-nostdin");
+            psi.ArgumentList.Add("-hide_banner");
+            psi.ArgumentList.Add("-i");
+            psi.ArgumentList.Add(mediaPath);
+
+            using var proc = Process.Start(psi);
+            if (proc == null) return false;
+            string stderr = proc.StandardError.ReadToEnd();
+            proc.WaitForExit(10000);
+            return stderr.Contains(marker, StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private async Task<string?> DownloadExternalAudioStreamAsync(
+        DownloadItem item,
+        ToolLauncher tool,
+        string? cookieFile,
+        (string Name, string Path)? jsRuntime,
+        CancellationToken ct)
+    {
+        string? audioUrl = item.Request.AudioStreamUrl;
+        if (string.IsNullOrWhiteSpace(audioUrl)) return null;
+
+        try
+        {
+            string tempDir = !string.IsNullOrEmpty(item.WorkDir) && Directory.Exists(item.WorkDir)
+                ? item.WorkDir
+                : Path.GetTempPath();
+            string outTemplate = Path.Combine(tempDir, "ext_audio_" + Guid.NewGuid().ToString("N")[..8] + ".%(ext)s");
+
+            var psi = new ProcessStartInfo(tool.FileName)
+            {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                RedirectStandardInput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                StandardOutputEncoding = Encoding.UTF8,
+                StandardErrorEncoding = Encoding.UTF8
+            };
+            foreach (var l in tool.Lead) psi.ArgumentList.Add(l);
+            psi.ArgumentList.Add("--no-playlist");
+            psi.ArgumentList.Add("--no-warnings");
+            psi.ArgumentList.Add("-f");
+            psi.ArgumentList.Add("ba/b");
+            psi.ArgumentList.Add("-o");
+            psi.ArgumentList.Add(outTemplate);
+            if (!string.IsNullOrEmpty(cookieFile) && File.Exists(cookieFile))
+            {
+                psi.ArgumentList.Add("--cookies");
+                psi.ArgumentList.Add(cookieFile);
+            }
+            if (!string.IsNullOrWhiteSpace(item.Request.UserAgent))
+            {
+                psi.ArgumentList.Add("--user-agent");
+                psi.ArgumentList.Add(item.Request.UserAgent);
+            }
+            if (!string.IsNullOrWhiteSpace(item.Request.Referer))
+            {
+                psi.ArgumentList.Add("--referer");
+                psi.ArgumentList.Add(item.Request.Referer);
+            }
+            if (jsRuntime is { } js && !string.IsNullOrWhiteSpace(js.Name) && !string.IsNullOrWhiteSpace(js.Path))
+            {
+                psi.ArgumentList.Add("--js-runtimes");
+                psi.ArgumentList.Add($"{js.Name}:{js.Path}");
+            }
+            psi.ArgumentList.Add("--");
+            psi.ArgumentList.Add(audioUrl);
+
+            using var proc = Process.Start(psi);
+            if (proc == null) return null;
+            try { proc.StandardInput.Close(); } catch { }
+            proc.BeginOutputReadLine();
+            proc.BeginErrorReadLine();
+
+            await proc.WaitForExitAsync(ct);
+            proc.WaitForExit();
+
+            var prefix = Path.GetFileNameWithoutExtension(outTemplate).Replace(".%(ext)", "");
+            return Directory.GetFiles(tempDir, prefix + "*").FirstOrDefault(f =>
+                !f.EndsWith(".part", StringComparison.OrdinalIgnoreCase) &&
+                !f.EndsWith(".ytdl", StringComparison.OrdinalIgnoreCase));
         }
         catch
         {

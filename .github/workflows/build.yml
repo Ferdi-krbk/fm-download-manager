@@ -22,6 +22,10 @@ jobs:
       with:
         dotnet-version: '8.0.x'
 
+    - name: Fetch Bundled Tools (yt-dlp, ffmpeg, ffprobe)
+      shell: pwsh
+      run: ./scripts/fetch-tools.ps1
+
     - name: Restore dependencies
       run: dotnet restore
 

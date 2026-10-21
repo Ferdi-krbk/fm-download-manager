@@ -12,7 +12,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Ferdi-krbk/fm-download-manager/releases/latest"><img src="https://img.shields.io/badge/S%C3%BCr%C3%BCm-v3.7.1-crimson.svg?style=for-the-badge&logo=windows&logoColor=white" alt="Son Sürüm v3.7.1"></a>
+  <a href="https://github.com/Ferdi-krbk/fm-download-manager/releases/latest"><img src="https://img.shields.io/badge/S%C3%BCr%C3%BCm-v3.7.2-crimson.svg?style=for-the-badge&logo=windows&logoColor=white" alt="Son Sürüm v3.7.2"></a>
   <a href="https://dotnet.microsoft.com/download/dotnet/8.0"><img src="https://img.shields.io/badge/.NET-8.0%20LTS-purple.svg?style=for-the-badge&logo=dotnet&logoColor=white" alt=".NET 8 LTS"></a>
   <a href="https://github.com/Ferdi-krbk/fm-download-manager"><img src="https://img.shields.io/badge/Motor-MonoTorrent%203.0-blue.svg?style=for-the-badge&logo=bittorrent&logoColor=white" alt="BitTorrent"></a>
   <a href="https://github.com/Ferdi-krbk/fm-download-manager"><img src="https://img.shields.io/badge/Medya-yt--dlp%20%2B%20FFmpeg-red.svg?style=for-the-badge&logo=youtube&logoColor=white" alt="yt-dlp"></a>
@@ -21,8 +21,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Ferdi-krbk/fm-download-manager/releases/download/v3.7.1/FMDownloadManager-Setup-3.7.1.exe">
-    <img src="https://img.shields.io/badge/⚡_Kurulumu_İndir-v3.7.1_(Windows_x64)-E01A4F?style=for-the-badge&logo=windows&logoColor=white" alt="Windows Kurulumunu İndir">
+  <a href="https://github.com/Ferdi-krbk/fm-download-manager/releases/download/v3.7.2/FMDownloadManager-Setup-3.7.2.exe">
+    <img src="https://img.shields.io/badge/⚡_Kurulumu_İndir-v3.7.2_(Windows_x64)-E01A4F?style=for-the-badge&logo=windows&logoColor=white" alt="Windows Kurulumunu İndir">
   </a>
   <a href="https://ferdi-krbk.github.io/fm-download-manager/" target="_blank">
     <img src="https://img.shields.io/badge/🎬_Canlı_İnteraktif_Tanıtım-İncele-4B5563?style=for-the-badge" alt="İnteraktif Tanıtım">
@@ -237,7 +237,7 @@ flowchart TD
 ## 📦 Hızlı Kurulum
 
 ### Seçenek 1: Tek Tıkla Windows Kurulum Dosyası (Önerilen)
-1. En son kurulum programını indirin: [**FMDownloadManager-Setup-3.7.1.exe**](https://github.com/Ferdi-krbk/fm-download-manager/releases/download/v3.7.1/FMDownloadManager-Setup-3.7.1.exe).
+1. En son kurulum programını indirin: [**FMDownloadManager-Setup-3.7.2.exe**](https://github.com/Ferdi-krbk/fm-download-manager/releases/download/v3.7.2/FMDownloadManager-Setup-3.7.2.exe).
 2. Kurulumu çalıştırın (yönetici yetkisi gerektirmeden `%LOCALAPPDATA%\Programs\FM Download Manager` klasörüne kurulur).
 3. Kurulum tamamlandığında tarayıcı eklentisi otomatik hazırlanır ve hızlı kurulum rehberi açılır.
 

@@ -49,6 +49,7 @@ $ffmpegZipUrl = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zi
 $ffmpegShaUrl = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip.sha256"
 $ffmpegZipTarget = Join-Path $ToolsDir "ffmpeg.zip"
 $ffmpegTarget = Join-Path $ToolsDir "ffmpeg.exe"
+$ffprobeTarget = Join-Path $ToolsDir "ffprobe.exe"
 
 Write-Host "Fetching ffmpeg..."
 try {
@@ -67,13 +68,18 @@ try {
         throw "ffmpeg.zip SHA-256 mismatch! Expected $expectedFfmpegHash, got $actualZipHash"
     }
 
-    Write-Host "Extracting ffmpeg.exe from zip..."
+    Write-Host "Extracting ffmpeg.exe and ffprobe.exe from zip..."
     $extractDir = Join-Path $ToolsDir "ffmpeg-extract"
     Expand-Archive -Path $ffmpegZipTarget -DestinationPath $extractDir -Force
     $extractedExe = Get-ChildItem -Path $extractDir -Recurse -Filter "ffmpeg.exe" | Select-Object -First 1
     if ($extractedExe) {
         Move-Item $extractedExe.FullName $ffmpegTarget -Force
         Write-Host "ffmpeg.exe saved to $ffmpegTarget"
+    }
+    $extractedProbe = Get-ChildItem -Path $extractDir -Recurse -Filter "ffprobe.exe" | Select-Object -First 1
+    if ($extractedProbe) {
+        Move-Item $extractedProbe.FullName $ffprobeTarget -Force
+        Write-Host "ffprobe.exe saved to $ffprobeTarget"
     }
     Remove-Item $extractDir -Recurse -Force
     Remove-Item $ffmpegZipTarget -Force
@@ -84,3 +90,4 @@ try {
 Write-Host "Tools check:"
 Write-Host "yt-dlp: $(Test-Path $ytDlpTarget)"
 Write-Host "ffmpeg: $(Test-Path $ffmpegTarget)"
+Write-Host "ffprobe: $(Test-Path $ffprobeTarget)"

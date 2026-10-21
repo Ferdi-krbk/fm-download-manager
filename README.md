@@ -12,7 +12,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Ferdi-krbk/fm-download-manager/releases/latest"><img src="https://img.shields.io/badge/Release-v3.7.1-crimson.svg?style=for-the-badge&logo=windows&logoColor=white" alt="Latest Release v3.7.1"></a>
+  <a href="https://github.com/Ferdi-krbk/fm-download-manager/releases/latest"><img src="https://img.shields.io/badge/Release-v3.7.2-crimson.svg?style=for-the-badge&logo=windows&logoColor=white" alt="Latest Release v3.7.2"></a>
   <a href="https://dotnet.microsoft.com/download/dotnet/8.0"><img src="https://img.shields.io/badge/.NET-8.0%20LTS-purple.svg?style=for-the-badge&logo=dotnet&logoColor=white" alt=".NET 8 LTS"></a>
   <a href="https://github.com/Ferdi-krbk/fm-download-manager"><img src="https://img.shields.io/badge/Engine-MonoTorrent%203.0-blue.svg?style=for-the-badge&logo=bittorrent&logoColor=white" alt="BitTorrent"></a>
   <a href="https://github.com/Ferdi-krbk/fm-download-manager"><img src="https://img.shields.io/badge/Media-yt--dlp%20%2B%20FFmpeg-red.svg?style=for-the-badge&logo=youtube&logoColor=white" alt="yt-dlp"></a>
@@ -21,8 +21,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Ferdi-krbk/fm-download-manager/releases/download/v3.7.1/FMDownloadManager-Setup-3.7.1.exe">
-    <img src="https://img.shields.io/badge/⚡_Download_Installer-v3.7.1_(Windows_x64)-E01A4F?style=for-the-badge&logo=windows&logoColor=white" alt="Download Windows Installer">
+  <a href="https://github.com/Ferdi-krbk/fm-download-manager/releases/download/v3.7.2/FMDownloadManager-Setup-3.7.2.exe">
+    <img src="https://img.shields.io/badge/⚡_Download_Installer-v3.7.2_(Windows_x64)-E01A4F?style=for-the-badge&logo=windows&logoColor=white" alt="Download Windows Installer">
   </a>
   <a href="https://ferdi-krbk.github.io/fm-download-manager/" target="_blank">
     <img src="https://img.shields.io/badge/🎬_Live_Interactive_Showcase-Visit-4B5563?style=for-the-badge" alt="Live Showcase">
@@ -237,7 +237,7 @@ flowchart TD
 ## 📦 Quickstart & Installation
 
 ### Option 1: Standalone Windows Installer (Recommended)
-1. Download the latest installer: [**FMDownloadManager-Setup-3.7.1.exe**](https://github.com/Ferdi-krbk/fm-download-manager/releases/download/v3.7.1/FMDownloadManager-Setup-3.7.1.exe).
+1. Download the latest installer: [**FMDownloadManager-Setup-3.7.2.exe**](https://github.com/Ferdi-krbk/fm-download-manager/releases/download/v3.7.2/FMDownloadManager-Setup-3.7.2.exe).
 2. Run the setup (installs locally to `%LOCALAPPDATA%\Programs\FM Download Manager` without requiring administrator privileges).
 3. The setup automatically unpacks the companion browser extension and displays the quick setup guide.
 

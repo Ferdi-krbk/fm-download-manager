@@ -448,6 +448,7 @@ public partial class App : System.Windows.Application
                             {
                                 req.Kind = DownloadKind.Video;
                                 req.CustomFormat = qDlg.SelectedFormat;
+                                if (!string.IsNullOrWhiteSpace(qDlg.ResolvedUrl)) req.Url = qDlg.ResolvedUrl;
                                 req.WriteSubtitles = qDlg.DownloadSubtitles;
                                 req.SubtitleLangs = qDlg.SubtitleLangs;
                                 if (!string.IsNullOrEmpty(qDlg.SelectedSubtitleUrl))

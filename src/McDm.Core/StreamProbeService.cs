@@ -12,6 +12,7 @@ public sealed class StreamProbeResult
     public List<AudioTrackInfo> AudioTracks { get; set; } = new();
     public List<SubtitleTrackInfo> Subtitles { get; set; } = new();
     public string? Title { get; set; }
+    public string? ResolvedUrl { get; set; }
 }
 
 public static class StreamProbeService
@@ -512,14 +513,42 @@ public static class StreamProbeService
                u.Contains("playlist") || u.Contains("/manifest");
     }
 
-    private static string UpgradeToMasterHlsUrl(string url)
+    public static string UpgradeToMasterHlsUrl(string url)
     {
+        if (string.IsNullOrWhiteSpace(url)) return url;
         var upgraded = url;
-        if (Regex.IsMatch(upgraded, @"index-f\d+-[a-z0-9-]+\.m3u8", RegexOptions.IgnoreCase))
-            upgraded = Regex.Replace(upgraded, @"index-f\d+-[a-z0-9-]+\.m3u8", "master.m3u8", RegexOptions.IgnoreCase);
-        else if (Regex.IsMatch(upgraded, @"sublist_vid\d*\.m3u8", RegexOptions.IgnoreCase))
-            upgraded = Regex.Replace(upgraded, @"sublist_vid\d*\.m3u8", "master.m3u8", RegexOptions.IgnoreCase);
+        if (Regex.IsMatch(upgraded, @"index-(?:f\d+|v\d+|a\d+)[a-z0-9-]*\.m3u8", RegexOptions.IgnoreCase))
+            upgraded = Regex.Replace(upgraded, @"index-(?:f\d+|v\d+|a\d+)[a-z0-9-]*\.m3u8", "master.m3u8", RegexOptions.IgnoreCase);
+        else if (Regex.IsMatch(upgraded, @"sublist_(?:vid|aud)\d*\.m3u8", RegexOptions.IgnoreCase))
+            upgraded = Regex.Replace(upgraded, @"sublist_(?:vid|aud)\d*\.m3u8", "master.m3u8", RegexOptions.IgnoreCase);
+        else if (Regex.IsMatch(upgraded, @"chunklist[a-z0-9_-]*\.m3u8", RegexOptions.IgnoreCase))
+            upgraded = Regex.Replace(upgraded, @"chunklist[a-z0-9_-]*\.m3u8", "playlist.m3u8", RegexOptions.IgnoreCase);
+        else if (Regex.IsMatch(upgraded, @"/(?:2160|1440|1080|720|480|360)p?/index\.m3u8", RegexOptions.IgnoreCase))
+            upgraded = Regex.Replace(upgraded, @"/(?:2160|1440|1080|720|480|360)p?/index\.m3u8", "/master.m3u8", RegexOptions.IgnoreCase);
         return upgraded;
+    }
+
+    public static async Task<string> ResolveMasterHlsUrlAsync(
+        string url,
+        string? referer = null,
+        string? userAgent = null,
+        List<BrowserCookie>? cookies = null,
+        string? cookieHeader = null,
+        CancellationToken ct = default)
+    {
+        string candidate = UpgradeToMasterHlsUrl(url);
+        if (string.Equals(candidate, url, StringComparison.Ordinal)) return url;
+        try
+        {
+            var probed = await TryProbeHlsAsync(url, referer, userAgent, cookies, cookieHeader, ct, allowUpgrade: true);
+            if (probed != null && !string.IsNullOrWhiteSpace(probed.ResolvedUrl) &&
+                (probed.Qualities.Count > 0 || probed.AudioTracks.Count > 0))
+            {
+                return probed.ResolvedUrl;
+            }
+        }
+        catch { }
+        return url;
     }
 
     public static async Task<StreamProbeResult?> TryProbeHlsAsync(
@@ -528,9 +557,10 @@ public static class StreamProbeService
         string? userAgent,
         List<BrowserCookie>? cookies,
         string? cookieHeader,
-        CancellationToken ct)
+        CancellationToken ct,
+        bool allowUpgrade = true)
     {
-        string targetUrl = UpgradeToMasterHlsUrl(url);
+        string targetUrl = allowUpgrade ? UpgradeToMasterHlsUrl(url) : url;
 
         using var req = new HttpRequestMessage(HttpMethod.Get, targetUrl);
         if (!string.IsNullOrWhiteSpace(userAgent))
@@ -561,10 +591,10 @@ public static class StreamProbeService
         using var resp = await Http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
         if (!resp.IsSuccessStatusCode)
         {
-            // If upgraded master failed with 404, fallback to original url
-            if (targetUrl != url)
+            // If upgraded master failed with 404, fallback to original url without re-upgrading
+            if (allowUpgrade && targetUrl != url)
             {
-                return await TryProbeHlsAsync(url, referer, userAgent, cookies, cookieHeader, ct);
+                return await TryProbeHlsAsync(url, referer, userAgent, cookies, cookieHeader, ct, allowUpgrade: false);
             }
             return null;
         }
@@ -572,7 +602,12 @@ public static class StreamProbeService
         var text = await resp.Content.ReadAsStringAsync(ct);
         if (!text.Contains("#EXTM3U", StringComparison.OrdinalIgnoreCase)) return null;
 
-        return ParseHlsManifestText(text, targetUrl);
+        var parsed = ParseHlsManifestText(text, targetUrl);
+        if (targetUrl != url && (parsed.Qualities.Count > 0 || parsed.AudioTracks.Count > 0))
+        {
+            parsed.ResolvedUrl = targetUrl;
+        }
+        return parsed;
     }
 
     public static StreamProbeResult ParseHlsManifestText(string text, string baseManifestUrl)

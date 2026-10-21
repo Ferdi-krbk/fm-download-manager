@@ -173,11 +173,25 @@ function notify(title, message) {
   } catch {}
 }
 
-async function sendToApp({ url, filename, referer, kind, format, audioOnly, subtitlesOnly, subtitleLangs, writeSubtitles, subtitleUrl, subtitles, videoQualities, audioTracks }) {
+async function sendToApp({ url, filename, referer, kind, format, audioOnly, subtitlesOnly, subtitleLangs, writeSubtitles, subtitleUrl, subtitles, videoQualities, audioTracks, audioStreamUrl, tabId }) {
   const settings = await getSettings();
   const ck = await cookiesFor(url);
   const isAudio = audioOnly === true || format === 'audio';
   const isSubs = subtitlesOnly === true || format === 'subtitles';
+
+  let resolvedAudioStreamUrl = audioStreamUrl || '';
+  if (!resolvedAudioStreamUrl && kind === 'video' && !isAudio && !isSubs) {
+    try {
+      let targetTabId = tabId;
+      if (!targetTabId) {
+        const tabs = await api.tabs.query({ active: true, currentWindow: true });
+        targetTabId = tabs[0]?.id;
+      }
+      if (targetTabId) {
+        resolvedAudioStreamUrl = (await getAudioStream(targetTabId)) || '';
+      }
+    } catch {}
+  }
 
   let chosenSub = subtitleUrl || '';
   if (!chosenSub && subtitles && subtitles.length > 0) {
@@ -249,6 +263,7 @@ async function sendToApp({ url, filename, referer, kind, format, audioOnly, subt
     subtitleContent: subtitleContent || '',
     videoQualities: videoQualities || [],
     audioTracks: audioTracks || [],
+    audioStreamUrl: resolvedAudioStreamUrl || '',
     userAgent: navigator.userAgent, cookieHeader: mergedCookieHeader, cookies: mergedCookies,
   };
 
@@ -483,6 +498,29 @@ async function writeMedia(tabId, list) {
   } catch {}
 }
 const tabActiveMedia = new Map(); // tabId -> media object
+const tabAudioStreams = new Map(); // tabId -> audio stream URL
+
+async function recordAudioStream(tabId, url) {
+  if (!tabId || tabId < 0 || !url) return;
+  tabAudioStreams.set(tabId, url);
+  if (api.storage?.session) {
+    try { await api.storage.session.set({ ['audioStream:' + tabId]: url }); } catch {}
+  }
+}
+
+async function getAudioStream(tabId) {
+  if (!tabId || tabId < 0) return null;
+  let u = tabAudioStreams.get(tabId);
+  if (!u && api.storage?.session) {
+    try {
+      const key = 'audioStream:' + tabId;
+      const r = await api.storage.session.get(key);
+      u = r[key];
+      if (u) tabAudioStreams.set(tabId, u);
+    } catch {}
+  }
+  return u || null;
+}
 
 async function setActiveMedia(tabId, media) {
   if (!tabId || tabId < 0 || !media) return;
@@ -509,11 +547,12 @@ async function getActiveMedia(tabId) {
 async function clearMedia(tabId) {
   if (api.storage?.session) {
     try {
-      await api.storage.session.remove(['media:' + tabId, 'activeMedia:' + tabId]);
+      await api.storage.session.remove(['media:' + tabId, 'activeMedia:' + tabId, 'audioStream:' + tabId]);
     } catch {}
   }
   mem.delete(tabId);
   tabActiveMedia.delete(tabId);
+  tabAudioStreams.delete(tabId);
   try { await api.action.setBadgeText({ tabId, text: '' }); } catch {}
 }
 
@@ -556,17 +595,45 @@ function detectQualityLabel(url) {
   return '';
 }
 
+function isHlsSubPlaylist(url) {
+  return /(?:index|chunklist|playlist)-(?:f\d+|v\d+|a\d+).*\.m3u8|sublist_(?:vid|aud)\d*\.m3u8/i.test(url || '');
+}
+
+function getHlsBaseDir(url) {
+  try {
+    const u = new URL(url);
+    return u.origin + u.pathname.replace(/\/[^/]+$/, '/');
+  } catch {
+    return '';
+  }
+}
+
 async function addMedia(tabId, info) {
   if (tabId < 0) return;
   const settings = await getSettings();
   if (!settings.sniff) return;
-  const list = await readMedia(tabId);
+  let list = await readMedia(tabId);
 
   // Upgrade fragment streams to master.m3u8 so yt-dlp gets the highest quality video and audio
   let targetUrl = info.url;
   const ytEmbed = targetUrl.match(/(?:youtube\.com|youtube-nocookie\.com)\/embed\/([a-zA-Z0-9_-]{11})/i);
   if (ytEmbed) {
     targetUrl = `https://www.youtube.com/watch?v=${ytEmbed[1]}`;
+  }
+
+  // If this is an HLS sub-playlist (e.g. index-f1-v1.m3u8) and we already have master.m3u8 from the same folder, skip adding a duplicate sub-stream
+  if (info.kind === 'hls' && isHlsSubPlaylist(targetUrl)) {
+    const baseDir = getHlsBaseDir(targetUrl);
+    if (baseDir && list.some((m) => m.kind === 'hls' && /master\.m3u8/i.test(m.url) && getHlsBaseDir(m.url) === baseDir)) {
+      return;
+    }
+  }
+  // Conversely, if master.m3u8 arrives, remove redundant sub-playlists from the same HLS folder so the popup stays clean
+  if (info.kind === 'hls' && /master\.m3u8/i.test(targetUrl)) {
+    const baseDir = getHlsBaseDir(targetUrl);
+    if (baseDir) {
+      list = list.filter((m) => !(m.kind === 'hls' && isHlsSubPlaylist(m.url) && getHlsBaseDir(m.url) === baseDir));
+    }
   }
 
   const key = normalizeKey(targetUrl);
@@ -803,10 +870,18 @@ function headerVal(headers, name) {
   const h = (headers || []).find((x) => x.name.toLowerCase() === name);
   return h ? h.value : '';
 }
+function isAudioOnlyStreamUrl(url, ct) {
+  const u = (url || '').toLowerCase();
+  const c = (ct || '').toLowerCase();
+  if (/sublist_aud|audio[_-]?track|audio[_-]\d+\.m3u8|(?:index|chunklist)[_-]a\d+.*\.m3u8|-a\d+\.m3u8/i.test(u) && !/-v\d+/i.test(u)) return true;
+  if (/^audio\//.test(c) || /\.(m4a|aac|opus)(\?|#|$)/i.test(u)) return true;
+  return false;
+}
+
 function classify(url, ct) {
   ct = (ct || '').toLowerCase();
   if (/\.m3u8(\?|#|$)/i.test(url) || /mpegurl/.test(ct)) {
-    if (/sublist_aud|audio[_-]?track|audio[_-]\d+\.m3u8/i.test(url)) return null;
+    if (isAudioOnlyStreamUrl(url, ct)) return null;
     return 'hls';
   }
   if (/\.mpd(\?|#|$)/i.test(url) || /dash\+xml/.test(ct)) return 'dash';
@@ -903,6 +978,11 @@ if (api.webRequest?.onHeadersReceived) {
       }
 
       if (/googlevideo\.com\/videoplayback/i.test(d.url)) return;
+
+      if (isAudioOnlyStreamUrl(d.url, ct) && !FRAGMENT.test(d.url)) {
+        recordAudioStream(d.tabId, d.url).catch?.(() => {});
+        if (/\.m3u8(\?|#|$)/i.test(d.url) || /mpegurl/.test(ct)) return;
+      }
 
       const kind = classify(d.url, ct);
       if (!kind) return;

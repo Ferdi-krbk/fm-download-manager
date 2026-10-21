@@ -41,6 +41,7 @@ public sealed class DownloadRequest
     public List<VideoQualityInfo>? VideoQualities { get; set; }
     public List<AudioTrackInfo>? AudioTracks { get; set; }
     public string? SubtitleContent { get; set; }
+    public string? AudioStreamUrl { get; set; }
 }
 
 public sealed class VideoQualityInfo

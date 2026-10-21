@@ -13,6 +13,7 @@ public partial class VideoQualityDialog : Window
     public bool DownloadSubtitles { get; private set; } = true;
     public string SubtitleLangs { get; private set; } = "tr,en";
     public string? SelectedSubtitleUrl { get; private set; }
+    public string? ResolvedUrl { get; private set; }
 
     private readonly string _url;
     private readonly DownloadRequest? _request;
@@ -546,6 +547,7 @@ public partial class VideoQualityDialog : Window
             await Dispatcher.InvokeAsync(() =>
             {
                 bool updated = false;
+                if (!string.IsNullOrWhiteSpace(result.ResolvedUrl)) { ResolvedUrl = result.ResolvedUrl; TxtVideoUrl.Text = result.ResolvedUrl; }
                 if (result.Qualities.Count > 0)
                 {
                     _qualities = result.Qualities;

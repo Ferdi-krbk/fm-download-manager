@@ -38,7 +38,9 @@ sb.Logging.ClearProviders();
 sb.WebHost.UseKestrel(o => o.Listen(IPAddress.Loopback, 0));
 var origin = sb.Build();
 
-origin.MapGet("/file", ctx => Serve(ctx, Big, ranges: true, track: true));
+// Pace the fixture so a fast CI loopback cannot finish the entire file before
+// the downloader's staggered worker startup. Count only real transfer requests.
+origin.MapGet("/file", ctx => Serve(ctx, Big, ranges: true, delayMs: 2, track: true));
 origin.MapGet("/slow", ctx => Serve(ctx, Slow, ranges: true, delayMs: 100, countSlow: true));
 origin.MapGet("/norange", ctx => Serve(ctx, Small, ranges: false));
 origin.MapGet("/unknown", ctx => Serve(ctx, Small, ranges: false, chunked: true));
@@ -82,8 +84,9 @@ async Task Serve(HttpContext ctx, byte[] data, bool ranges, int delayMs = 0, boo
     ctx.Response.Headers.ETag = "\"v1\"";
     if (!chunked) ctx.Response.ContentLength = end - start + 1;
 
-    int now = Interlocked.Increment(ref cur);
-    if (track) { int m; while (now > (m = Volatile.Read(ref maxConc))) Interlocked.CompareExchange(ref maxConc, now, m); }
+    bool trackedTransfer = track && !(start == 0 && end == 0);
+    int now = trackedTransfer ? Interlocked.Increment(ref cur) : 0;
+    if (trackedTransfer) { int m; while (now > (m = Volatile.Read(ref maxConc))) Interlocked.CompareExchange(ref maxConc, now, m); }
     try
     {
         for (long p = start; p <= end; p += 32768)
@@ -95,7 +98,7 @@ async Task Serve(HttpContext ctx, byte[] data, bool ranges, int delayMs = 0, boo
         }
     }
     catch (OperationCanceledException) { }
-    finally { Interlocked.Decrement(ref cur); }
+    finally { if (trackedTransfer) Interlocked.Decrement(ref cur); }
 }
 
 // ───────────── tiny test harness ─────────────

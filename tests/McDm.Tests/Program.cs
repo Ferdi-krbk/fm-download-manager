@@ -12,6 +12,17 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 // ───────────── test origin server ─────────────
+if (args.Length >= 2 && args[0] == "--scanner-fixture")
+{
+    if (args[1] == "wait")
+    {
+        File.WriteAllText(args[2], Environment.ProcessId.ToString());
+        await Task.Delay(Timeout.Infinite);
+    }
+    string output = new('x', 8192);
+    for (int n = 0; n < 256; n++) { Console.Out.Write(output); Console.Error.Write(output); }
+    return 0;
+}
 var rnd = new Random(42);
 byte[] Big = new byte[12 * 1024 * 1024]; rnd.NextBytes(Big);
 byte[] Slow = new byte[6 * 1024 * 1024]; rnd.NextBytes(Slow);
@@ -480,6 +491,7 @@ await Test("extension: real background.js intercepts, cancels browser download a
 await McDm.Tests.VideoTests.RunAsync(Test, Check, Tmp);
 await McDm.Tests.HardeningTests.RunAsync(Test, Check, Tmp);
 await McDm.Tests.StressAndBoundaryTests.RunAsync(Test, Check, Tmp);
+await McDm.Tests.RepairRegressionTests.RunAsync(Test, Check, Tmp);
 
 Console.WriteLine($"\n{passed} passed, {failed} failed");
 await origin.StopAsync();

@@ -616,7 +616,7 @@
     <!-- ProgressBar Style: flat, 7px high, fully rounded pill track & fill -->
     <Style TargetType="ProgressBar">
         <Setter Property="Height" Value="6" />
-        <Setter Property="Background" Value="#171A2E" />
+        <Setter Property="Background" Value="{DynamicResource Bg2Brush}" />
         <Setter Property="Foreground" Value="{DynamicResource ProgressGradient}" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Template">

@@ -22,11 +22,15 @@ public sealed class AppSettings
     public int MaxVideoResolution { get; set; } = 0;
 
     public string Language { get; set; } = "auto"; // "auto", "en", "tr"
+    public string AppTheme { get; set; } = "dark"; // "dark", "light"
     public string AccentColor { get; set; } = "#E50914"; // Default High-Octane Crimson
     public bool StartWithWindows { get; set; } = false;
     public bool ClipboardWatcherEnabled { get; set; } = true;
     public bool NotificationsEnabled { get; set; } = true;
     public bool AutoCategorizeSubfolders { get; set; } = true;
+    public bool VirusScanEnabled { get; set; } = false;
+    public string CustomAntivirusPath { get; set; } = "";
+    public string CustomAntivirusArgs { get; set; } = "\"{file}\"";
 
     // Scheduler (Zamanlayıcı)
     public bool SchedulerEnabled { get; set; } = false;
@@ -36,7 +40,7 @@ public sealed class AppSettings
     public bool SchedulerAutoPause { get; set; } = true;
 
     public static string SettingsFilePath =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MC Download Manager", "settings.json");
+        McDm.Core.AppPaths.SettingsFile();
 
     public static AppSettings Load()
     {
@@ -52,6 +56,8 @@ public sealed class AppSettings
                     loaded.ConnectionsPerDownload = Math.Clamp(loaded.ConnectionsPerDownload <= 0 ? 16 : loaded.ConnectionsPerDownload, 1, 32);
                     loaded.MaxConcurrentDownloads = Math.Clamp(loaded.MaxConcurrentDownloads <= 0 ? 3 : loaded.MaxConcurrentDownloads, 1, 10);
                     if (string.IsNullOrWhiteSpace(loaded.AccentColor)) loaded.AccentColor = "#E50914";
+                    if (string.IsNullOrWhiteSpace(loaded.AppTheme)) loaded.AppTheme = "dark";
+                    if (string.IsNullOrWhiteSpace(loaded.CustomAntivirusArgs)) loaded.CustomAntivirusArgs = "\"{file}\"";
                     return loaded;
                 }
             }

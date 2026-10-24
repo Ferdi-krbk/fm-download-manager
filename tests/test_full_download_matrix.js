@@ -4,7 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 
 let passed = 0;
 let failed = 0;
@@ -94,7 +94,9 @@ function createMockEnvironment(url, hostname, videos = [], iframes = []) {
 
     getBoundingClientRect() { return this._rect; }
 
-    querySelector(sel) {
+    getElementById(id) { return this.querySelector('#' + id); }
+
+  querySelector(sel) {
       for (const c of this.children) {
         if (sel.startsWith('.') && c.classList.contains(sel.slice(1))) return c;
         if (sel.startsWith('#') && c.id === sel.slice(1)) return c;
@@ -227,6 +229,9 @@ const ytPlayer = {
 };
 
 const ytVideo = {
+  isConnected: true,
+  getAttribute: () => null,
+  currentSrc: 'blob:https://www.youtube.com/mock',
   tagName: 'VIDEO',
   id: '',
   className: 'video-stream html5-main-video',
@@ -299,35 +304,31 @@ assert(ytFormatRule.includes("b[ext=mp4]"), '3.2 YouTube Link Copy: Guarantees M
 console.log('\n--- 4. HDFILMCEHENNEMI & RAPIDRAME DUAL-AUDIO TEST MATRIX ---');
 
 // 4.1 Rapidrame Dual Audio 720p: Format resolution verification via yt-dlp simulation
-const rapidrameUrl = "https://s231.rapidrame.com/hls2/01/00008/1w79ozzd8jgz_,l,n,.urlset/master.m3u8?t=OtVBetpPsBZJsoUpm6gmrt6vnIMGbIE057M-Otl4298&s=1791966101&e=14400&f=41965&srv=s429&i=0.0&sp=0&n=9ngao6q1cvbt795v&p1=s231&p2=s231";
-const ytdlpPath = path.join(__dirname, '..', 'Tools', 'yt-dlp.exe');
-
-try {
-  // Test 720p + English (Orijinal)
-  const format720Eng = "bv*[height<=720][ext=mp4]+ba[format_id*=Original][ext=m4a]/bv*[height<=720]+ba[format_id*=Original]/bv*[height<=720][ext=mp4]+ba[format_id*=Eng][ext=m4a]/bv*[height<=720]+ba[format_id*=Eng]/bv*[height<=720]+ba/b[height<=720]/bv*+ba/b/best";
-  const cmdEng = `"${ytdlpPath}" --simulate -v -f "${format720Eng}" --referer "https://www.hdfilmcehennemi.nl/" "${rapidrameUrl}"`;
-  const outEng = execSync(cmdEng, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
-  assert(outEng.includes('2363+audio0-English'), '4.1 Rapidrame 720p English: Downloads full video (2363 ~689MB) + English audio (NEVER lone audio!)');
-
-  // Test 720p + Turkish Dublaj
-  const format720Tr = "bv*[height<=720][ext=mp4]+ba[format_id*=Turkish][ext=m4a]/bv*[height<=720]+ba[format_id*=Turkish]/bv*[height<=720]+ba[format_id*=Turk]/bv*[height<=720]+ba[language^=tr]/bv*[height<=720]+ba/b[height<=720]/bv*+ba/b/best";
-  const cmdTr = `"${ytdlpPath}" --simulate -v -f "${format720Tr}" --referer "https://www.hdfilmcehennemi.nl/" "${rapidrameUrl}"`;
-  const outTr = execSync(cmdTr, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
-  assert(outTr.includes('2363+audio0-T') || outTr.includes('audio0-Turk') || outTr.includes('audio0-Tr'), '4.2 Rapidrame 720p Turkish: Downloads full video (2363 ~689MB) + Turkish audio');
-
-  // Test Best (1080p/En Yüksek)
-  const formatBest = "bv*[ext=mp4]+ba[ext=m4a]/bv*+ba[format_id*=Eng]/bv*+ba/b[ext=mp4]/b/best";
-  const cmdBest = `"${ytdlpPath}" --simulate -v -f "${formatBest}" --referer "https://www.hdfilmcehennemi.nl/" "${rapidrameUrl}"`;
-  const outBest = execSync(cmdBest, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
-  assert(outBest.includes('2363+') && outBest.includes('audio0-'), '4.3 Rapidrame Best Quality: Selects full video stream + audio stream combined');
-} catch (err) {
-  assert(false, `Rapidrame yt-dlp test execution error: ${err.message}`);
+// Live sites use expiring URLs and are deliberately opt-in. Offline behavior is
+// covered by the core argument/manifest tests and the extension mock scenarios.
+if (process.env.FM_LIVE_MEDIA_URL) {
+  const ytdlpPath = path.join(__dirname, '..', 'Tools', 'yt-dlp.exe');
+  const args = ['--simulate', '--dump-single-json', '--no-playlist', '-f', 'bv*+ba/b'];
+  if (process.env.FM_LIVE_MEDIA_REFERER) args.push('--referer', process.env.FM_LIVE_MEDIA_REFERER);
+  args.push('--', process.env.FM_LIVE_MEDIA_URL);
+  try {
+    const result = JSON.parse(execFileSync(ytdlpPath, args, { encoding: 'utf8', timeout: 60000 }));
+    const formats = result.requested_formats || [result];
+    assert(formats.some(f => f.vcodec && f.vcodec !== 'none') && formats.some(f => f.acodec && f.acodec !== 'none'),
+      'Live media selection includes both video and audio');
+  } catch (err) {
+    assert(false, `Live media extraction failed: ${err.message}`);
+  }
+} else {
+  console.log('  SKIP: live media extraction (set FM_LIVE_MEDIA_URL to opt in)');
 }
 
 // 4.4 HDFilmcehennemi Hover & Sniffing simulation
 console.log('\n--- 5. HDFILMCEHENNEMI & FILMMAKINESI HOVER & IFRAME DETECTION ---');
 
 const iframePlayer = {
+  isConnected: true,
+  getAttribute: () => null,
   tagName: 'IFRAME',
   id: 'rapidrame-embed',
   src: 'https://rapidrame.com/embed/1w79ozzd8jgz',
@@ -418,7 +419,7 @@ assert(convertedSrt.includes('2\n00:01:14,000 --> 00:01:16,800\nTeresa Lisbon: A
   // SUMMARY REPORT
   // ─────────────────────────────────────────────────────────────────────────────
   console.log('================================================================');
-  console.log(`📊 MATRIX TEST RESULTS: ${passed} / ${passed + failed} TESTS PASSED (100%)`);
+  console.log(`📊 MATRIX TEST RESULTS: ${passed} / ${passed + failed} TESTS PASSED (${Math.round(100 * passed / (passed + failed))}%)`);
   console.log('================================================================');
 
   if (failed > 0) process.exit(1);

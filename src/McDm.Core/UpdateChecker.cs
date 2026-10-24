@@ -22,7 +22,7 @@ public static class UpdateChecker
             if (!string.IsNullOrWhiteSpace(entryVer) && entryVer != "0.0.0") return entryVer;
             var coreVer = typeof(UpdateChecker).Assembly.GetName().Version?.ToString(3);
             if (!string.IsNullOrWhiteSpace(coreVer) && coreVer != "0.0.0") return coreVer;
-            return "3.7.1";
+            return "1.0.0";
         }
     }
     public const string RepoOwner = "Ferdi-krbk";
@@ -90,6 +90,13 @@ public static class UpdateChecker
 
         if (Version.TryParse(lClean, out var lVer) && Version.TryParse(cClean, out var cVer))
         {
+            static bool Legacy(Version v) => v.Major == 3 && v.Minor is >= 5 and <= 7;
+            // The old numbering belongs to a separate pre-stable release epoch.
+            bool currentLegacy = Legacy(cVer), latestLegacy = Legacy(lVer);
+            if (currentLegacy && lVer.Major is >= 1 and < 3)
+                return true;
+            if (latestLegacy && cVer.Major is >= 1 and < 3)
+                return false;
             return lVer > cVer;
         }
 

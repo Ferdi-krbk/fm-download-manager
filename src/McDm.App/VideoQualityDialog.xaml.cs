@@ -14,6 +14,7 @@ public partial class VideoQualityDialog : Window
     public string SubtitleLangs { get; private set; } = "tr,en";
     public string? SelectedSubtitleUrl { get; private set; }
     public string? ResolvedUrl { get; private set; }
+    public string? DetectedTitle { get; private set; }
 
     private readonly string _url;
     private readonly DownloadRequest? _request;
@@ -602,6 +603,11 @@ public partial class VideoQualityDialog : Window
                 if (!string.IsNullOrWhiteSpace(result.Title) && (TxtVideoTitle.Text == "Video İndirmesi" || TxtVideoTitle.Text == "Video Download"))
                 {
                     TxtVideoTitle.Text = result.Title;
+                    DetectedTitle = result.Title;
+                }
+                else if (!string.IsNullOrWhiteSpace(result.Title) && string.IsNullOrWhiteSpace(DetectedTitle))
+                {
+                    DetectedTitle = result.Title;
                 }
 
                 TxtProbeStatus.Text = updated ? Strings.VideoDialogReady : "";

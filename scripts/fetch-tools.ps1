@@ -1,93 +1,45 @@
 [CmdletBinding()]
-param(
-    [string]$ToolsDir = "$PSScriptRoot\..\Tools"
-)
-
+param([string]$ToolsDir = "$PSScriptRoot\..\Tools")
 $ErrorActionPreference = 'Stop'
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13
+$ProgressPreference = 'SilentlyContinue'
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+$locked = Get-Content -LiteralPath "$PSScriptRoot\tools-lock.json" -Raw | ConvertFrom-Json
+New-Item -ItemType Directory -Force -Path $ToolsDir | Out-Null
+$toolsRoot = (Resolve-Path -LiteralPath $ToolsDir).Path
+$staging = Join-Path $toolsRoot ('.fetch-' + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $staging | Out-Null
 
-if (!(Test-Path $ToolsDir)) {
-    New-Item -ItemType Directory -Force -Path $ToolsDir | Out-Null
+function Get-VerifiedFile($Spec, [string]$Target) {
+    if ($Spec.sha256 -notmatch '^[0-9a-fA-F]{64}$' -or $Spec.url -notmatch '^https://') {
+        throw 'A pinned HTTPS URL and SHA-256 are required'
+    }
+    Invoke-WebRequest -Uri $Spec.url -OutFile $Target -UseBasicParsing
+    $actual = (Get-FileHash -LiteralPath $Target -Algorithm SHA256).Hash
+    if ($actual -ne $Spec.sha256) { throw "SHA-256 mismatch for $($Spec.url)" }
 }
 
-$ToolsDir = (Resolve-Path $ToolsDir).Path
-Write-Host "Downloading tools to: $ToolsDir"
-
-# yt-dlp release (latest)
-$ytDlpUrl = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
-$ytDlpShaUrl = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/SHA2-256SUMS"
-$ytDlpTarget = Join-Path $ToolsDir "yt-dlp.exe"
-
-Write-Host "Fetching yt-dlp.exe..."
 try {
-    $shaList = (Invoke-RestMethod -Uri $ytDlpShaUrl -UseBasicParsing) -split "`r?`n"
-    $expectedYtDlpHash = ""
-    foreach ($line in $shaList) {
-        if ($line -match "([0-9a-fA-F]{64})\s+.*yt-dlp\.exe$") {
-            $expectedYtDlpHash = $Matches[1].ToUpper()
-            break
-        }
-    }
-    
-    Invoke-WebRequest -Uri $ytDlpUrl -OutFile "$ytDlpTarget.tmp" -UseBasicParsing
-    $actualHash = (Get-FileHash "$ytDlpTarget.tmp" -Algorithm SHA256).Hash.ToUpper()
-    
-    if ($expectedYtDlpHash -and $actualHash -ne $expectedYtDlpHash) {
-        Remove-Item "$ytDlpTarget.tmp" -Force
-        throw "yt-dlp SHA-256 mismatch! Expected $expectedYtDlpHash, got $actualHash"
-    }
-    
-    Move-Item "$ytDlpTarget.tmp" $ytDlpTarget -Force
-    Write-Host "yt-dlp.exe verified and saved (SHA-256: $actualHash)"
-} catch {
-    Write-Warning "Failed to download yt-dlp: $_"
+    Get-VerifiedFile $locked.ytDlp (Join-Path $staging 'yt-dlp.exe')
+    Get-VerifiedFile $locked.quickJs (Join-Path $staging 'quickjs.exe')
+    $archive = Join-Path $staging 'ffmpeg.zip'
+    Get-VerifiedFile $locked.ffmpeg $archive
+    $expanded = Join-Path $staging 'ffmpeg'
+    Expand-Archive -LiteralPath $archive -DestinationPath $expanded
+    $ffmpeg = @(Get-ChildItem -LiteralPath $expanded -Recurse -File -Filter 'ffmpeg.exe')
+    $ffprobe = @(Get-ChildItem -LiteralPath $expanded -Recurse -File -Filter 'ffprobe.exe')
+    if ($ffmpeg.Count -ne 1 -or $ffprobe.Count -ne 1) { throw 'FFmpeg package must contain exactly one ffmpeg.exe and ffprobe.exe' }
+    # Only replace installed tools after every download and checksum has succeeded.
+    Copy-Item -LiteralPath (Join-Path $staging 'yt-dlp.exe') -Destination (Join-Path $toolsRoot 'yt-dlp.exe') -Force
+    Copy-Item -LiteralPath (Join-Path $staging 'quickjs.exe') -Destination (Join-Path $toolsRoot 'quickjs.exe') -Force
+    Copy-Item -LiteralPath $ffmpeg[0].FullName -Destination (Join-Path $toolsRoot 'ffmpeg.exe') -Force
+    Copy-Item -LiteralPath $ffprobe[0].FullName -Destination (Join-Path $toolsRoot 'ffprobe.exe') -Force
+    Write-Host "Verified yt-dlp $($locked.ytDlp.version), FFmpeg and ffprobe $($locked.ffmpeg.version)"
 }
-
-# ffmpeg release (gyan.dev essentials or lgpl build)
-# Using gyan.dev release builds which provide ffmpeg-release-essentials.zip
-$ffmpegZipUrl = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
-$ffmpegShaUrl = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip.sha256"
-$ffmpegZipTarget = Join-Path $ToolsDir "ffmpeg.zip"
-$ffmpegTarget = Join-Path $ToolsDir "ffmpeg.exe"
-$ffprobeTarget = Join-Path $ToolsDir "ffprobe.exe"
-
-Write-Host "Fetching ffmpeg..."
-try {
-    $expectedFfmpegHash = ""
-    try {
-        $expectedFfmpegHash = (Invoke-RestMethod -Uri $ffmpegShaUrl -UseBasicParsing).Trim().ToUpper()
-    } catch {
-        Write-Host "Could not fetch ffmpeg sha256 checksum file directly; proceeding with download."
+finally {
+    $resolvedStaging = [IO.Path]::GetFullPath($staging)
+    $expectedRoot = $toolsRoot.TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
+    if (!$resolvedStaging.StartsWith($expectedRoot, [StringComparison]::OrdinalIgnoreCase)) {
+        throw 'Refusing to clean a staging path outside ToolsDir'
     }
-
-    Invoke-WebRequest -Uri $ffmpegZipUrl -OutFile $ffmpegZipTarget -UseBasicParsing
-    $actualZipHash = (Get-FileHash $ffmpegZipTarget -Algorithm SHA256).Hash.ToUpper()
-
-    if ($expectedFfmpegHash -and $actualZipHash -ne $expectedFfmpegHash) {
-        Remove-Item $ffmpegZipTarget -Force
-        throw "ffmpeg.zip SHA-256 mismatch! Expected $expectedFfmpegHash, got $actualZipHash"
-    }
-
-    Write-Host "Extracting ffmpeg.exe and ffprobe.exe from zip..."
-    $extractDir = Join-Path $ToolsDir "ffmpeg-extract"
-    Expand-Archive -Path $ffmpegZipTarget -DestinationPath $extractDir -Force
-    $extractedExe = Get-ChildItem -Path $extractDir -Recurse -Filter "ffmpeg.exe" | Select-Object -First 1
-    if ($extractedExe) {
-        Move-Item $extractedExe.FullName $ffmpegTarget -Force
-        Write-Host "ffmpeg.exe saved to $ffmpegTarget"
-    }
-    $extractedProbe = Get-ChildItem -Path $extractDir -Recurse -Filter "ffprobe.exe" | Select-Object -First 1
-    if ($extractedProbe) {
-        Move-Item $extractedProbe.FullName $ffprobeTarget -Force
-        Write-Host "ffprobe.exe saved to $ffprobeTarget"
-    }
-    Remove-Item $extractDir -Recurse -Force
-    Remove-Item $ffmpegZipTarget -Force
-} catch {
-    Write-Warning "Failed to download ffmpeg: $_"
+    if (Test-Path -LiteralPath $resolvedStaging) { Remove-Item -LiteralPath $resolvedStaging -Recurse -Force }
 }
-
-Write-Host "Tools check:"
-Write-Host "yt-dlp: $(Test-Path $ytDlpTarget)"
-Write-Host "ffmpeg: $(Test-Path $ffmpegTarget)"
-Write-Host "ffprobe: $(Test-Path $ffprobeTarget)"

@@ -92,7 +92,7 @@ public sealed class SegmentedDownloader
 
         ResumeState? state = string.IsNullOrEmpty(item.SavePath) ? null : ReadState(item.SavePath);
         bool canResume = state != null && probe.Ranges && state.Ranges && state.Total == probe.Total
-                         && ValidatorsMatch(state.Validator, probe.Validator) && File.Exists(PartPath(item.SavePath));
+                         && ValidatorsMatch(state.Validator, probe.Validator) && ValidState(state, item.SavePath);
         List<Chunk> chunks;
         if (canResume)
         {
@@ -101,7 +101,7 @@ public sealed class SegmentedDownloader
         else
         {
             if (string.IsNullOrEmpty(item.SavePath)) AssignSavePath(item, probe.FileName);
-            else if (state != null && (probe.Total != state.Total || !probe.Ranges)) { TryDelete(PartPath(item.SavePath)); TryDelete(StatePath(item.SavePath)); }
+            else { TryDelete(PartPath(item.SavePath)); TryDelete(StatePath(item.SavePath)); }
             chunks = PlanChunks(probe.Total, probe.Ranges, maxConnections);
         }
         item.FileName = Path.GetFileName(item.SavePath);
@@ -119,7 +119,8 @@ public sealed class SegmentedDownloader
                 if (!string.IsNullOrEmpty(root))
                 {
                     var drive = new DriveInfo(root);
-                    if (drive.IsReady && drive.AvailableFreeSpace < probe.Total)
+                    long allocated = canResume ? new FileInfo(PartPath(item.SavePath)).Length : 0;
+                    if (drive.IsReady && drive.AvailableFreeSpace < Math.Max(0, probe.Total - allocated))
                     {
                         throw new FatalDownloadException(
                             $"Not enough disk space on drive {root}. Required: {probe.Total} bytes, available: {drive.AvailableFreeSpace} bytes");
@@ -242,6 +243,8 @@ public sealed class SegmentedDownloader
                     total = len ?? -1;
                     break;
                 case HttpStatusCode.RequestedRangeNotSatisfiable: // empty file
+                    if (resp.Content.Headers.ContentRange?.Length != 0)
+                        throw new FatalDownloadException("Server rejected the initial byte range");
                     ranges = false;
                     total = resp.Content.Headers.ContentRange?.Length ?? 0;
                     break;
@@ -260,16 +263,34 @@ public sealed class SegmentedDownloader
             {
                 try { name = Uri.UnescapeDataString(Path.GetFileName(url.AbsolutePath)); } catch { name = null; }
             }
-            string validator = resp.Headers.ETag?.Tag ?? resp.Content.Headers.LastModified?.ToString("R") ?? "";
+            string validator = ResponseValidator(resp) ?? "";
             return new Probe(url, total, ranges, validator.Length == 0 ? null : validator, FileNames.Sanitize(name));
         }
     }
 
     public static bool ValidatorsMatch(string? v1, string? v2)
     {
-        if (string.IsNullOrEmpty(v1) || string.IsNullOrEmpty(v2)) return true;
-        static string Clean(string s) => s.Trim().TrimStart('W', '/').Trim('"');
-        return string.Equals(Clean(v1), Clean(v2), StringComparison.OrdinalIgnoreCase);
+        if (string.IsNullOrWhiteSpace(v1) || string.IsNullOrWhiteSpace(v2)) return false;
+        if (v1.StartsWith("W/", StringComparison.Ordinal) || v2.StartsWith("W/", StringComparison.Ordinal)) return false;
+        return string.Equals(v1.Trim(), v2.Trim(), StringComparison.Ordinal);
+    }
+
+    private static string? ResponseValidator(HttpResponseMessage response) =>
+        response.Headers.ETag is { IsWeak: false } etag ? etag.ToString()
+            : response.Content.Headers.LastModified?.ToString("R");
+
+    private static bool ValidState(ResumeState state, string path)
+    {
+        if (!File.Exists(PartPath(path)) || new FileInfo(PartPath(path)).Length != state.Total || state.Chunks == null)
+            return false;
+        long next = 0;
+        foreach (var chunk in state.Chunks.OrderBy(c => c.Start))
+        {
+            if (chunk.Start != next || chunk.End < chunk.Start || chunk.End >= state.Total || chunk.Done < 0 || chunk.Done > chunk.Length)
+                return false;
+            next = chunk.End + 1;
+        }
+        return next == state.Total;
     }
 
     // ───────────────────────── chunk planning ─────────────────────────
@@ -428,7 +449,7 @@ public sealed class SegmentedDownloader
             catch (Exception ex) when (ex is HttpRequestException or IOException or TransientException
                                        || (ex is OperationCanceledException && !ct.IsCancellationRequested))
             {
-                if (chunk.Done > before) attempt = 0;
+                if (c.UseRange && chunk.Done > before) attempt = 0;
                 if (++attempt > _opt.MaxRetries)
                     throw new FatalDownloadException($"Segment failed after {_opt.MaxRetries} retries: {ex.Message}", ex);
                 await Task.Delay(Backoff(attempt), ct);
@@ -438,9 +459,14 @@ public sealed class SegmentedDownloader
 
     private async Task TransferAsync(RunCtx c, Chunk chunk, CancellationToken ct)
     {
+        if (!c.UseRange)
+        {
+            chunk.Done = 0;
+            RandomAccess.SetLength(c.Handle, Math.Max(0, c.Total));
+        }
         long pos = chunk.Start + chunk.Done;
         long? rangeEnd = c.UseRange && chunk.End >= 0 ? chunk.End : null;
-        var (resp, _) = await SendAsync(c.Item, c.Url, c.UseRange ? pos : null, rangeEnd, ct);
+        var (resp, _) = await SendAsync(c.Item, c.Url, c.UseRange ? pos : null, rangeEnd, ct, c.UseRange ? c.Validator : null);
         using (resp)
         {
             if (!resp.IsSuccessStatusCode) ThrowForStatus(resp);
@@ -448,8 +474,11 @@ public sealed class SegmentedDownloader
             {
                 if (resp.StatusCode != HttpStatusCode.PartialContent)
                     throw new FatalDownloadException("Server stopped honoring Range requests");
-                if (resp.Content.Headers.ContentRange?.From != pos)
+                if (resp.Content.Headers.ContentRange?.From != pos || resp.Content.Headers.ContentRange?.Length != c.Total
+                    || resp.Content.Headers.ContentRange?.To != rangeEnd)
                     throw new FatalDownloadException("Server returned an unexpected byte range");
+                if (c.Validator != null && !ValidatorsMatch(c.Validator, ResponseValidator(resp)))
+                    throw new FatalDownloadException("Remote file changed during download; restart the download");
             }
 
             await using var stream = await resp.Content.ReadAsStreamAsync(ct);
@@ -469,9 +498,20 @@ public sealed class SegmentedDownloader
 
                     if (_opt.Limiter != null) await _opt.Limiter.ThrottleAsync(n, ct);
 
-                    try { await RandomAccess.WriteAsync(c.Handle, buf.AsMemory(0, n), chunk.Start + chunk.Done, ct); }
+                    try
+                    {
+                        // Splitting, writing and checkpointing share this lock: a worker must never
+                        // write past a boundary moved by another worker while its read was pending.
+                        lock (c.StateLock)
+                        {
+                            if (chunk.End >= 0) n = (int)Math.Min(n, chunk.Length - chunk.Done);
+                            if (n <= 0) break;
+                            ct.ThrowIfCancellationRequested();
+                            RandomAccess.Write(c.Handle, buf.AsSpan(0, n), chunk.Start + chunk.Done);
+                            chunk.Done += n;
+                        }
+                    }
                     catch (IOException ex) { throw new FatalDownloadException($"Disk write failed: {ex.Message}", ex); }
-                    chunk.Done += n;
                 }
             }
             finally { ArrayPool<byte>.Shared.Return(buf); }
@@ -483,12 +523,12 @@ public sealed class SegmentedDownloader
 
     // ───────────────────────── HTTP ─────────────────────────
 
-    private async Task<(HttpResponseMessage, Uri)> SendAsync(DownloadItem item, Uri url, long? from, long? to, CancellationToken ct)
+    private async Task<(HttpResponseMessage, Uri)> SendAsync(DownloadItem item, Uri url, long? from, long? to, CancellationToken ct, string? validator = null)
     {
         var origin = new Uri(item.Request.Url);
         for (int hop = 0; hop < 10; hop++)
         {
-            var req = new HttpRequestMessage(HttpMethod.Get, url);
+            using var req = new HttpRequestMessage(HttpMethod.Get, url);
             req.Headers.TryAddWithoutValidation("Accept-Encoding", "identity");
             req.Headers.TryAddWithoutValidation("User-Agent",
                 item.Request.UserAgent ?? "Mozilla/5.0 (Windows NT 10.0; Win64; x64) MCDownloadManager/0.1");
@@ -500,6 +540,7 @@ public sealed class SegmentedDownloader
             if (sameSite && BuildCookie(item.Request, url) is { } cookie)
                 req.Headers.TryAddWithoutValidation("Cookie", cookie);
             if (from.HasValue) req.Headers.Range = new RangeHeaderValue(from, to);
+            if (from.HasValue && validator != null) req.Headers.TryAddWithoutValidation("If-Range", validator);
 
             using var hc = CancellationTokenSource.CreateLinkedTokenSource(ct);
             hc.CancelAfter(_opt.ReadTimeout);
@@ -521,21 +562,7 @@ public sealed class SegmentedDownloader
 
     private static string? BuildCookie(DownloadRequest r, Uri url)
     {
-        if (!string.IsNullOrWhiteSpace(r.CookieHeader)) return r.CookieHeader;
-        if (r.Cookies is not { Count: > 0 }) return null;
-        var parts = r.Cookies
-            .Where(c => DomainMatches(url.Host, c.Domain) && (!c.Secure || url.Scheme == "https"))
-            .Select(c => $"{c.Name}={c.Value}");
-        var joined = string.Join("; ", parts);
-        return joined.Length == 0 ? null : joined;
-    }
-
-    private static bool DomainMatches(string host, string? domain)
-    {
-        if (string.IsNullOrEmpty(domain)) return true;
-        domain = domain.TrimStart('.');
-        return host.Equals(domain, StringComparison.OrdinalIgnoreCase)
-               || host.EndsWith("." + domain, StringComparison.OrdinalIgnoreCase);
+        return RequestCookies.HeaderFor(r, url);
     }
 
     private static void ThrowForStatus(HttpResponseMessage r)
@@ -629,10 +656,10 @@ public sealed class SegmentedDownloader
         if (!c.UseRange || c.Total <= 0) return; // not resumable
         try
         {
-            if (flush) RandomAccess.FlushToDisk(c.Handle);
             List<Chunk> chunksSnapshot;
             lock (c.StateLock)
             {
+                if (flush) RandomAccess.FlushToDisk(c.Handle);
                 chunksSnapshot = c.Chunks.Select(ch => new Chunk { Start = ch.Start, End = ch.End, Done = ch.Done }).ToList();
             }
             var state = new ResumeState { Total = c.Total, Validator = c.Validator, Ranges = true, Chunks = chunksSnapshot };

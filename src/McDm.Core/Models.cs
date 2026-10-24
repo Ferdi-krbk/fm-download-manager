@@ -109,6 +109,8 @@ public sealed class DownloadItem : ObservableBase
     public DownloadRequest Request { get; set; } = new();
     public string Directory { get; set; } = "";
     public string? WorkDir { get; set; }
+    public string? ScanResult { get; set; }
+    public List<string> ContentFiles { get; set; } = new();
     public bool SupportsRanges { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

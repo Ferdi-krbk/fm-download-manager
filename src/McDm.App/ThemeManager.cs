@@ -39,10 +39,81 @@ public static class ThemeManager
     };
 
     public static bool IsAmoled { get; private set; } = false;
+    public static bool IsLightTheme { get; private set; } = false;
+    public static string CurrentThemeMode => IsLightTheme ? "light" : "dark";
+    public static event Action<string>? ThemeModeChanged;
 
     public static void ToggleTheme()
     {
-        SetAmoledTheme(!IsAmoled);
+        ApplyThemeMode(IsLightTheme ? "dark" : "light");
+    }
+
+    public static void ApplyThemeMode(string? mode)
+    {
+        bool light = string.Equals(mode, "light", StringComparison.OrdinalIgnoreCase);
+        IsLightTheme = light;
+        var res = Application.Current?.Resources;
+        if (res == null) return;
+
+        if (light)
+        {
+            res["Bg0Brush"] = new SolidColorBrush(Color.FromRgb(0xF8, 0xFA, 0xFC));
+            res["Bg1Brush"] = new SolidColorBrush(Color.FromRgb(0xF1, 0xF5, 0xF9));
+            res["Bg2Brush"] = new SolidColorBrush(Color.FromRgb(0xE2, 0xE8, 0xF0));
+            res["Bg3Brush"] = new SolidColorBrush(Color.FromRgb(0xCB, 0xD5, 0xE1));
+            res["Bg4Brush"] = new SolidColorBrush(Color.FromArgb(0x22, 0xE5, 0x09, 0x14));
+            res["LineBrush"] = new SolidColorBrush(Color.FromRgb(0xCB, 0xD5, 0xE1));
+            res["LineStrongBrush"] = new SolidColorBrush(Color.FromRgb(0x94, 0xA3, 0xB8));
+            res["TextBrush"] = new SolidColorBrush(Color.FromRgb(0x0F, 0x17, 0x2A));
+            res["TextDimBrush"] = new SolidColorBrush(Color.FromRgb(0x33, 0x41, 0x55));
+            res["TextMuteBrush"] = new SolidColorBrush(Color.FromRgb(0x64, 0x74, 0x8B));
+            res["TextStrongBrush"] = new SolidColorBrush(Color.FromRgb(0x09, 0x0D, 0x16));
+            res["AltRowBrush"] = new SolidColorBrush(Color.FromRgb(0xF1, 0xF5, 0xF9));
+            res["CardBgBrush"] = new SolidColorBrush(Color.FromRgb(0xFF, 0xFF, 0xFF));
+            res["CardBorderBrush"] = new SolidColorBrush(Color.FromRgb(0xCB, 0xD5, 0xE1));
+
+            var heroGrad = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(0, 1) };
+            heroGrad.GradientStops.Add(new GradientStop(Color.FromRgb(0xFF, 0xFF, 0xFF), 0));
+            heroGrad.GradientStops.Add(new GradientStop(Color.FromRgb(0xF1, 0xF5, 0xF9), 1));
+            heroGrad.Freeze();
+            res["HeroCardGradient"] = heroGrad;
+
+            res[SystemColors.WindowBrushKey] = res["Bg0Brush"];
+            res[SystemColors.WindowTextBrushKey] = res["TextBrush"];
+            res[SystemColors.ControlBrushKey] = res["Bg1Brush"];
+            res[SystemColors.ControlTextBrushKey] = res["TextBrush"];
+        }
+        else
+        {
+            res["Bg0Brush"] = new SolidColorBrush(Color.FromRgb(0x0A, 0x0B, 0x0E));
+            res["Bg1Brush"] = new SolidColorBrush(Color.FromRgb(0x0E, 0x10, 0x16));
+            res["Bg2Brush"] = new SolidColorBrush(Color.FromRgb(0x14, 0x17, 0x20));
+            res["Bg3Brush"] = new SolidColorBrush(Color.FromRgb(0x1E, 0x23, 0x30));
+            res["Bg4Brush"] = new SolidColorBrush(Color.FromRgb(0x26, 0x0D, 0x12));
+            res["LineBrush"] = new SolidColorBrush(Color.FromRgb(0x1B, 0x1F, 0x2A));
+            res["LineStrongBrush"] = new SolidColorBrush(Color.FromRgb(0x2A, 0x32, 0x45));
+            res["TextBrush"] = new SolidColorBrush(Color.FromRgb(0xF8, 0xFA, 0xFC));
+            res["TextDimBrush"] = new SolidColorBrush(Color.FromRgb(0x94, 0xA3, 0xB8));
+            res["TextMuteBrush"] = new SolidColorBrush(Color.FromRgb(0x64, 0x74, 0x8B));
+            res["TextStrongBrush"] = new SolidColorBrush(Color.FromRgb(0xFF, 0xFF, 0xFF));
+            res["AltRowBrush"] = new SolidColorBrush(Color.FromRgb(0x0C, 0x0D, 0x12));
+            res["CardBgBrush"] = new SolidColorBrush(Color.FromRgb(0x12, 0x15, 0x1E));
+            res["CardBorderBrush"] = new SolidColorBrush(Color.FromRgb(0x20, 0x26, 0x36));
+
+            var heroGrad = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(0, 1) };
+            heroGrad.GradientStops.Add(new GradientStop(Color.FromRgb(0x15, 0x18, 0x22), 0));
+            heroGrad.GradientStops.Add(new GradientStop(Color.FromRgb(0x0F, 0x11, 0x18), 1));
+            heroGrad.Freeze();
+            res["HeroCardGradient"] = heroGrad;
+
+            res[SystemColors.WindowBrushKey] = res["Bg0Brush"];
+            res[SystemColors.WindowTextBrushKey] = res["TextBrush"];
+            res[SystemColors.ControlBrushKey] = res["Bg1Brush"];
+            res[SystemColors.ControlTextBrushKey] = res["TextBrush"];
+        }
+
+        ApplyAccentColor(CurrentAccentHex);
+        ThemeModeChanged?.Invoke(CurrentThemeMode);
     }
 
     public static void SetAmoledTheme(bool amoled)
@@ -161,7 +232,7 @@ public static class ThemeManager
 
         var speedGraphFill = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(0, 1) };
         speedGraphFill.GradientStops.Add(new GradientStop(Color.FromArgb(0x45, c.R, c.G, c.B), 0));
-        speedGraphFill.GradientStops.Add(new GradientStop(Color.FromArgb(0x02, 0x0C, 0x0D, 0x12), 1));
+        speedGraphFill.GradientStops.Add(new GradientStop(IsLightTheme ? Color.FromArgb(0x05, c.R, c.G, c.B) : Color.FromArgb(0x02, 0x0C, 0x0D, 0x12), 1));
         speedGraphFill.Freeze();
 
         var res = Application.Current?.Resources;

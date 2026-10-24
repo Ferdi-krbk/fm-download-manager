@@ -14,6 +14,7 @@ public partial class SettingsWindow : Window
     private readonly AppSettings _settings;
     private readonly Action<AppSettings> _onSave;
     private readonly string _initialAccentColor;
+    private readonly string _initialAppTheme;
 
     public SettingsWindow(AppSettings settings, Action<AppSettings> onSave)
     {
@@ -21,10 +22,28 @@ public partial class SettingsWindow : Window
         _settings = settings;
         _onSave = onSave;
         _initialAccentColor = string.IsNullOrWhiteSpace(_settings.AccentColor) ? "#E50914" : _settings.AccentColor;
+        _initialAppTheme = string.IsNullOrWhiteSpace(_settings.AppTheme) ? "dark" : _settings.AppTheme;
 
         ApplyLocalization();
         LoadValues();
         CmbLanguage.SelectionChanged += Language_SelectionChanged;
+        CmbAppTheme.SelectionChanged += AppTheme_SelectionChanged;
+        Closed += (_, _) =>
+        {
+            if (DialogResult == true) return;
+            ThemeManager.ApplyThemeMode(_initialAppTheme);
+            ThemeManager.ApplyAccentColor(_initialAccentColor);
+            Strings.SetLanguage(_settings.Language);
+        };
+    }
+
+    private void AppTheme_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (CmbAppTheme.SelectedItem is ComboBoxItem item && item.Tag != null)
+        {
+            ThemeManager.ApplyThemeMode(item.Tag.ToString());
+            PopulateSwatches();
+        }
     }
 
     private void Language_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -55,6 +74,13 @@ public partial class SettingsWindow : Window
         ChkClipboardWatcher.Content = Strings.SettingsClipboardWatcher;
         ChkNotifications.Content = Strings.SettingsNotifications;
         ChkAutoCategorize.Content = Strings.SettingsAutoCategorize;
+        if (ChkVirusScan != null) ChkVirusScan.Content = Strings.SettingsVirusScan;
+        if (LblAppTheme != null) LblAppTheme.Text = Strings.IsTurkish ? "TEMA / GÖRÜNÜM MODU" : "APPEARANCE / THEME MODE";
+        if (CmbThemeDark != null) CmbThemeDark.Content = Strings.IsTurkish ? "🌙 Koyu Tema (Dark)" : "🌙 Dark Theme";
+        if (CmbThemeLight != null) CmbThemeLight.Content = Strings.IsTurkish ? "☀️ Açık / Beyaz Tema (Light)" : "☀️ Light / White Theme";
+        if (LblCustomAvTitle != null) LblCustomAvTitle.Text = Strings.IsTurkish ? "ÖZEL ANTİVİRÜS TARAYICISI (BOŞSA WINDOWS DEFENDER KULLANILIR)" : "CUSTOM ANTIVIRUS SCANNER (DEFAULTS TO WINDOWS DEFENDER IF EMPTY)";
+        if (BtnBrowseAv != null) BtnBrowseAv.Content = Strings.IsTurkish ? "SEÇ..." : "BROWSE...";
+        if (LblCustomAvArgs != null) LblCustomAvArgs.Text = Strings.IsTurkish ? "Parametreler:" : "Arguments:";
 
         LblScheduler.Text = Strings.SettingsSchedulerTitle;
         ChkScheduler.Content = Strings.SettingsSchedulerEnable;
@@ -119,6 +145,19 @@ public partial class SettingsWindow : Window
         ChkClipboardWatcher.IsChecked = _settings.ClipboardWatcherEnabled;
         ChkNotifications.IsChecked = _settings.NotificationsEnabled;
         ChkAutoCategorize.IsChecked = _settings.AutoCategorizeSubfolders;
+        if (ChkVirusScan != null) ChkVirusScan.IsChecked = _settings.VirusScanEnabled;
+        if (TxtCustomAvPath != null) TxtCustomAvPath.Text = _settings.CustomAntivirusPath ?? "";
+        if (TxtCustomAvArgs != null) TxtCustomAvArgs.Text = string.IsNullOrWhiteSpace(_settings.CustomAntivirusArgs) ? "\"{file}\"" : _settings.CustomAntivirusArgs;
+
+        for (int i = 0; i < CmbAppTheme.Items.Count; i++)
+        {
+            if (CmbAppTheme.Items[i] is ComboBoxItem item &&
+                string.Equals(item.Tag?.ToString(), _settings.AppTheme, StringComparison.OrdinalIgnoreCase))
+            {
+                CmbAppTheme.SelectedIndex = i;
+                break;
+            }
+        }
 
         ChkScheduler.IsChecked = _settings.SchedulerEnabled;
         TxtSchedStart.Text = _settings.SchedulerStartTime;
@@ -201,9 +240,27 @@ public partial class SettingsWindow : Window
             SelectedPath = Directory.Exists(TxtDlFolder.Text) ? TxtDlFolder.Text : ""
         };
 
-        if (dialog.ShowDialog() == Forms.DialogResult.OK && !string.IsNullOrWhiteSpace(dialog.SelectedPath))
+        if ( dialog.ShowDialog() == Forms.DialogResult.OK && !string.IsNullOrWhiteSpace(dialog.SelectedPath))
         {
             TxtDlFolder.Text = dialog.SelectedPath;
+        }
+    }
+
+    private void BrowseAv_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new OpenFileDialog
+        {
+            Title = Strings.IsTurkish ? "Antivirüs Komut Satırı / Tarayıcı (.exe / .com) Seçin" : "Select Antivirus Scanner Executable",
+            Filter = "Executable Files (*.exe;*.com)|*.exe;*.com",
+            CheckFileExists = true
+        };
+        if (!string.IsNullOrWhiteSpace(TxtCustomAvPath.Text) && File.Exists(TxtCustomAvPath.Text))
+        {
+            dlg.InitialDirectory = Path.GetDirectoryName(TxtCustomAvPath.Text);
+        }
+        if (dlg.ShowDialog(this) == true)
+        {
+            TxtCustomAvPath.Text = dlg.FileName;
         }
     }
 
@@ -237,13 +294,20 @@ public partial class SettingsWindow : Window
         if (CmbLanguage.SelectedItem is ComboBoxItem langItem && langItem.Tag != null)
             _settings.Language = langItem.Tag.ToString()!;
 
+        if (CmbAppTheme.SelectedItem is ComboBoxItem themeItem && themeItem.Tag != null)
+            _settings.AppTheme = themeItem.Tag.ToString()!;
+
         _settings.AccentColor = ThemeManager.CurrentAccentHex;
+        ThemeManager.ApplyThemeMode(_settings.AppTheme);
 
         _settings.StartWithWindows = ChkStartWithWindows.IsChecked == true;
         try { App.SetStartup(_settings.StartWithWindows); } catch { }
         _settings.ClipboardWatcherEnabled = ChkClipboardWatcher.IsChecked == true;
         _settings.NotificationsEnabled = ChkNotifications.IsChecked == true;
         _settings.AutoCategorizeSubfolders = ChkAutoCategorize.IsChecked == true;
+        if (ChkVirusScan != null) _settings.VirusScanEnabled = ChkVirusScan.IsChecked == true;
+        if (TxtCustomAvPath != null) _settings.CustomAntivirusPath = TxtCustomAvPath.Text.Trim();
+        if (TxtCustomAvArgs != null) _settings.CustomAntivirusArgs = string.IsNullOrWhiteSpace(TxtCustomAvArgs.Text) ? "\"{file}\"" : TxtCustomAvArgs.Text.Trim();
 
         _settings.SchedulerEnabled = ChkScheduler.IsChecked == true;
         _settings.SchedulerStartTime = string.IsNullOrWhiteSpace(TxtSchedStart.Text) ? "02:00" : TxtSchedStart.Text.Trim();
@@ -260,6 +324,7 @@ public partial class SettingsWindow : Window
 
     private void Cancel_Click(object sender, RoutedEventArgs e)
     {
+        ThemeManager.ApplyThemeMode(_initialAppTheme);
         ThemeManager.ApplyAccentColor(_initialAccentColor);
         Strings.SetLanguage(_settings.Language);
         DialogResult = false;

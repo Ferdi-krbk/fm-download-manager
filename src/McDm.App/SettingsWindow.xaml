@@ -112,13 +112,29 @@
                         </StackPanel>
                     </Grid>
 
-                    <!-- Language Selection -->
-                    <TextBlock x:Name="LblLanguage" Text="INTERFACE LANGUAGE" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,6" />
-                    <ComboBox x:Name="CmbLanguage" Margin="0,0,0,18" SelectedIndex="0">
-                        <ComboBoxItem x:Name="CmbItemFollowSys" Content="Follow Windows (Otomatik)" Tag="auto" />
-                        <ComboBoxItem Content="English" Tag="en" />
-                        <ComboBoxItem Content="Türkçe" Tag="tr" />
-                    </ComboBox>
+                    <!-- Language & Theme Mode Selection -->
+                    <Grid Margin="0,0,0,18">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="16" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock x:Name="LblLanguage" Text="INTERFACE LANGUAGE" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,6" />
+                            <ComboBox x:Name="CmbLanguage" SelectedIndex="0">
+                                <ComboBoxItem x:Name="CmbItemFollowSys" Content="Follow Windows (Otomatik)" Tag="auto" />
+                                <ComboBoxItem Content="English" Tag="en" />
+                                <ComboBoxItem Content="Türkçe" Tag="tr" />
+                            </ComboBox>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock x:Name="LblAppTheme" Text="APPEARANCE / THEME" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,6" />
+                            <ComboBox x:Name="CmbAppTheme" SelectedIndex="0">
+                                <ComboBoxItem x:Name="CmbThemeDark" Content="🌙 Koyu Tema (Dark)" Tag="dark" />
+                                <ComboBoxItem x:Name="CmbThemeLight" Content="☀️ Açık / Beyaz Tema (Light)" Tag="light" />
+                            </ComboBox>
+                        </StackPanel>
+                    </Grid>
 
                     <!-- Accent Color / Palette -->
                     <TextBlock x:Name="LblAccentColor" Text="VURGU RENGİ / PALET (ACCENT COLOR)" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,8" />
@@ -144,7 +160,29 @@
                     <CheckBox x:Name="ChkStartWithWindows" Content="START WITH WINDOWS" Margin="0,0,0,12" />
                     <CheckBox x:Name="ChkClipboardWatcher" Content="MONITOR CLIPBOARD FOR DOWNLOAD LINKS" Margin="0,0,0,12" />
                     <CheckBox x:Name="ChkNotifications" Content="SHOW SYSTEM NOTIFICATIONS ON COMPLETION" Margin="0,0,0,12" />
-                    <CheckBox x:Name="ChkAutoCategorize" Content="Kategoriye göre alt klasörleme yap (Videos, Music, Torrents vb.)" Margin="0,0,0,18" />
+                    <CheckBox x:Name="ChkAutoCategorize" Content="Kategoriye göre alt klasörleme yap (Videos, Music, Torrents vb.)" Margin="0,0,0,12" />
+                    <CheckBox x:Name="ChkVirusScan" Content="İndirme tamamlandığında otomatik virüs taraması yap (Windows Defender / Özel Antivirüs)" Margin="0,0,0,10" />
+                    <Border Background="{DynamicResource Bg2Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="12,10" Margin="0,0,0,18">
+                        <StackPanel>
+                            <TextBlock x:Name="LblCustomAvTitle" Text="ÖZEL ANTİVİRÜS TARAYICISI (İSTEĞE BAĞLI - BOŞSA WINDOWS DEFENDER KULLANILIR)" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="10.5" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,6" />
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="TxtCustomAvPath" FontFamily="{DynamicResource MonoFont}" FontSize="11.5" ToolTip="Örn: C:\Program Files\Kaspersky Lab\avp.com veya ESET ecls.exe (Boş bırakılırsa otomatik Windows Defender kullanılır)" />
+                                <Button x:Name="BtnBrowseAv" Grid.Column="1" Style="{DynamicResource SecondaryButton}" Content="SEÇ..." Margin="8,0,0,0" Click="BrowseAv_Click" />
+                            </Grid>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock x:Name="LblCustomAvArgs" Text="Parametreler:" FontFamily="{DynamicResource UiFont}" FontSize="11" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                <TextBox x:Name="TxtCustomAvArgs" Grid.Column="1" FontFamily="{DynamicResource MonoFont}" FontSize="11.5" Text="&quot;{file}&quot;" ToolTip="{}{file} yerine indirilen dosyanın yolu koyulur." />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
 
                     <Separator Margin="0,0,0,18" />
 

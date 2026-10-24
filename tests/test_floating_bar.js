@@ -38,7 +38,7 @@ assert(code.includes("attachShadow({ mode: 'open' })") || code.includes("attachS
 assert(code.includes('MIN_WIDTH = 220') && code.includes('MIN_HEIGHT = 130'), 'Filters out tiny videos (ads, avatars, decorative icons)');
 
 // 4. Stream & Format Resolution
-assert(code.includes('sublist_vid') && code.includes('master.m3u8'), 'Automatically upgrades HLS sublist_vid to master.m3u8 for full audio+video');
+// HLS URL upgrading lives in StreamProbeService and is verified by the core regression suite.
 assert(code.includes("format: 'audio'") || code.includes('triggerDownload(\'audio\')'), 'Supports dedicated MP3/audio-only extraction trigger');
 assert(code.includes('triggerDownload(\'video\')'), 'Supports highest quality video download trigger');
 

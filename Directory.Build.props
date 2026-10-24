@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
-    <NuGetAudit>false</NuGetAudit>
+    <NuGetAudit>true</NuGetAudit>
     <UseAppHost>false</UseAppHost>
   </PropertyGroup>
 </Project>

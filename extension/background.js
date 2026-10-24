@@ -69,6 +69,7 @@ async function pingRaw(settings) {
       if (resData.token) updates.token = resData.token;
       if (resData.accentColor) updates.accentColor = resData.accentColor;
       if (resData.language) updates.language = resData.language;
+      if (resData.themeMode) updates.themeMode = resData.themeMode;
       if (Object.keys(updates).length) api.storage.local.set(updates);
     }
     return resData;
@@ -157,7 +158,7 @@ async function cookiesFor(url) {
       header: list.map((c) => `${c.name}=${c.value}`).join('; '),
       list: list.map((c) => ({
         name: c.name, value: c.value, domain: c.domain, path: c.path,
-        secure: !!c.secure, expirationDate: c.expirationDate || 0,
+        secure: !!c.secure, httpOnly: !!c.httpOnly, expirationDate: c.expirationDate || 0,
       })),
     };
   } catch {
@@ -223,9 +224,7 @@ async function sendToApp({ url, filename, referer, kind, format, audioOnly, subt
   if (chosenSub && /^https?:/i.test(chosenSub)) {
     try {
       const subCk = await cookiesFor(chosenSub);
-      if (subCk?.header) {
-        mergedCookieHeader = (mergedCookieHeader ? mergedCookieHeader + '; ' : '') + subCk.header;
-      }
+      // Keep subtitle cookies in the domain-scoped list, never in the video's raw header.
       if (subCk?.list?.length) {
         mergedCookies.push(...subCk.list);
       }
@@ -1104,21 +1103,23 @@ api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           const raw = await pingRaw(settings);
           const app = raw && raw.paired ? await ping(settings) : null;
           const cached = app ? null : (await api.storage.local.get('captureExtensions')).captureExtensions;
-          const sTheme = await api.storage.local.get(['accentColor', 'language']);
+          const sTheme = await api.storage.local.get(['accentColor', 'language', 'themeMode']);
           sendResponse({
             online: !!app, reachable: !!raw, paired: !!(raw && raw.paired), rawApp: raw,
             app, settings, clickIntercept: !api.downloads?.onDeterminingFilename, isSafari: IS_SAFARI,
             canLaunch: !!api.runtime.sendNativeMessage, captureExtensions: (app && app.captureExtensions) || cached || [],
             accentColor: (raw && raw.accentColor) || sTheme.accentColor || '#E50914',
             language: (raw && raw.language) || sTheme.language || 'tr',
+            themeMode: (raw && raw.themeMode) || sTheme.themeMode || 'dark',
           });
           break;
         }
         case 'getAppConfig': {
-          const s = await api.storage.local.get(['accentColor', 'language']);
+          const s = await api.storage.local.get(['accentColor', 'language', 'themeMode']);
           sendResponse({
             accentColor: s.accentColor || '#E50914',
-            language: s.language || 'tr'
+            language: s.language || 'tr',
+            themeMode: s.themeMode || 'dark'
           });
           break;
         }
@@ -1126,7 +1127,17 @@ api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           const updates = {};
           if (msg.accentColor) updates.accentColor = msg.accentColor;
           if (msg.language) updates.language = msg.language;
-          if (Object.keys(updates).length) await api.storage.local.set(updates);
+          if (msg.themeMode) updates.themeMode = msg.themeMode;
+          if (Object.keys(updates).length) {
+            await api.storage.local.set(updates);
+            try {
+              await bridgeJSON('/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updates)
+              });
+            } catch {}
+          }
           sendResponse({ ok: true });
           break;
         }

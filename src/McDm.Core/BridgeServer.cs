@@ -21,6 +21,8 @@ public sealed class BridgeHooks
     public Func<DownloadRequest, Task<bool>>? ConfirmDownloadAsync { get; set; }
     public Func<string>? AccentColor { get; set; }
     public Func<string>? Language { get; set; }
+    public Func<string>? ThemeMode { get; set; }
+    public Action<string?, string?, string?>? UpdateConfig { get; set; }
 }
 
 /// <summary>Raised whenever a browser extension reaches the bridge.</summary>
@@ -59,7 +61,7 @@ public sealed class BridgeServer : IAsyncDisposable
     public event Action<ExtensionSeenEventArgs>? ExtensionSeen;
 
     public static string Version =>
-        typeof(BridgeServer).Assembly.GetName().Version?.ToString(3) ?? "3.5.0";
+        typeof(BridgeServer).Assembly.GetName().Version?.ToString(3) ?? "1.0.0";
 
     public BridgeServer(DownloadManager manager, TokenStore tokens, BridgeHooks? hooks = null)
     {
@@ -143,6 +145,7 @@ public sealed class BridgeServer : IAsyncDisposable
             bool paired = (bool)(ctx.Items["paired"] ?? false);
             string accent = _hooks.AccentColor?.Invoke() ?? "#E50914";
             string lang = _hooks.Language?.Invoke() ?? "tr";
+            string theme = _hooks.ThemeMode?.Invoke() ?? "dark";
 
             if (!paired)
             {
@@ -152,8 +155,6 @@ public sealed class BridgeServer : IAsyncDisposable
                     platform = "windows",
                     version = Version,
                     paired = false,
-                    accentColor = accent,
-                    language = lang,
                 });
             }
             return Results.Json(new
@@ -169,6 +170,7 @@ public sealed class BridgeServer : IAsyncDisposable
                 minSizeMB = _hooks.MinCaptureSizeMB(),
                 accentColor = accent,
                 language = lang,
+                themeMode = theme,
             });
         });
 
@@ -176,7 +178,17 @@ public sealed class BridgeServer : IAsyncDisposable
         {
             accentColor = _hooks.AccentColor?.Invoke() ?? "#E50914",
             language = _hooks.Language?.Invoke() ?? "tr",
+            themeMode = _hooks.ThemeMode?.Invoke() ?? "dark",
         }));
+
+        app.MapPost("/config", (ConfigUpdateRequest? req) =>
+        {
+            if (req != null)
+            {
+                _hooks.UpdateConfig?.Invoke(req.AccentColor, req.Language, req.ThemeMode);
+            }
+            return Results.Json(new { ok = true });
+        });
 
         app.MapGet("/downloads", () => Results.Json(new { items = _manager.Snapshot(50).Select(ToDto) }));
 
@@ -267,11 +279,13 @@ public sealed class BridgeServer : IAsyncDisposable
         speed = i.Speed,
         stage = i.Stage,
         error = i.Error,
+        scanResult = i.ScanResult,
     };
 
     private static string SafeHostName(string url) => Uri.TryCreate(url, UriKind.Absolute, out var u) ? u.Host : "download";
 
     private sealed record ActionRequest(string Id, string? Action);
+    private sealed record ConfigUpdateRequest(string? AccentColor, string? Language, string? ThemeMode);
 
     public async ValueTask DisposeAsync()
     {

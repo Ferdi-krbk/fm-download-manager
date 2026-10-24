@@ -56,7 +56,12 @@ public partial class DownloadDetailWindow : Window
     {
         TxtFileName.Text = string.IsNullOrEmpty(_item.FileName) ? "—" : _item.FileName;
         TxtUrl.Text = _item.Request.Url;
-        TxtStatus.Text = _item.Stage != null ? $"{_item.Status} ({_item.Stage})" : _item.Status.ToString();
+        string? stage = _item.Stage;
+        if (stage == null && _item.ScanResult != null)
+            stage = _item.ScanResult == "passed"
+                ? (Strings.IsTurkish ? "Antivirüs taraması tamamlandı" : "Antivirus scan completed")
+                : (Strings.IsTurkish ? "Tarama doğrulanmadı; kontrol gerekli" : "Scan unverified; review required");
+        TxtStatus.Text = stage != null ? $"{_item.Status} ({stage})" : _item.Status.ToString();
 
         string dlText = BytesConverter.Format(_item.DownloadedBytes);
         string totalText = _item.TotalBytes > 0 ? BytesConverter.Format(_item.TotalBytes) : "—";
@@ -74,7 +79,7 @@ public partial class DownloadDetailWindow : Window
             try
             {
                 var json = File.ReadAllText(statePath);
-                var doc = JsonDocument.Parse(json);
+                using var doc = JsonDocument.Parse(json);
                 if (doc.RootElement.TryGetProperty("Chunks", out var chunksEl) && chunksEl.ValueKind == JsonValueKind.Array)
                 {
                     var list = new List<SegmentRow>();

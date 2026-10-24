@@ -1,0 +1,40 @@
+name: Bug report
+description: Report a reproducible problem in FM Download Manager.
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: "Please remove cookies, pairing codes, private URLs and personal download history before posting."
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      placeholder: "1.0.0"
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Windows and browser version
+      placeholder: "Windows 11; Chrome … (if extension-related)"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include a public test URL only when it is safe to share.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Error message or screenshot
+      description: Check for personal information before attaching anything.

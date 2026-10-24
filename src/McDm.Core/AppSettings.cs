@@ -39,6 +39,10 @@ public sealed class AppSettings
     public bool StartWithWindows { get; set; }
     public bool ClipboardWatcher { get; set; } = true;
     public bool Notifications { get; set; } = true;
+    public bool VirusScanEnabled { get; set; } = false;
+    public string CustomAntivirusPath { get; set; } = "";
+    public string CustomAntivirusArgs { get; set; } = "\"{file}\"";
+    public string AppTheme { get; set; } = "dark";
     /// <summary>Global speed limit in KB/s, 0 = unlimited.</summary>
     public int SpeedLimitKBps { get; set; }
     /// <summary>"mp4" | "mkv" | "webm".</summary>

@@ -75,249 +75,6 @@ public partial class App : System.Windows.Application
             return;
         }
 
-        if (e.Args.Contains("--screenshot"))
-        {
-            var dataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MC Download Manager");
-            var mockTokens = new TokenStore(Path.Combine(dataDir, "bridge.token"));
-            var mockSettings = AppSettings.Load();
-            ThemeManager.ApplyAccentColor(mockSettings.AccentColor);
-            mockSettings.SpeedLimitKbps = 25600;
-            var mockManager = new DownloadManager(dataDir, mockSettings.DownloadDirectory, uiContext: new DispatcherSynchronizationContext(Dispatcher));
-            mockManager.Items.Clear();
-
-            mockManager.Items.Add(new DownloadItem
-            {
-                FileName = "ubuntu-24.04.1-desktop-amd64.iso",
-                TotalBytes = 6_120_000_000L,
-                DownloadedBytes = 4_420_000_000L,
-                Status = DownloadStatus.Downloading,
-                Speed = 18_400_000,
-                ActiveConnections = 8,
-                Stage = "İndiriliyor · 8 segment"
-            });
-
-            mockManager.Items.Add(new DownloadItem
-            {
-                FileName = "Cyberpunk_2077_Update_2.13.zip",
-                TotalBytes = 14_800_000_000L,
-                DownloadedBytes = 9_620_000_000L,
-                Status = DownloadStatus.Downloading,
-                Speed = 6_800_000,
-                ActiveConnections = 8,
-                Stage = "İndiriliyor · 8 segment"
-            });
-
-            mockManager.Items.Add(new DownloadItem
-            {
-                FileName = "Blender_4.2.0_Windows_x64.msi",
-                TotalBytes = 348_000_000L,
-                DownloadedBytes = 348_000_000L,
-                Status = DownloadStatus.Completed,
-                Speed = 0,
-                ActiveConnections = 0,
-                Stage = "Tamamlandı"
-            });
-
-            mockManager.Items.Add(new DownloadItem
-            {
-                FileName = "Interstellar_Soundtrack_Lossless.flac",
-                TotalBytes = 780_000_000L,
-                DownloadedBytes = 780_000_000L,
-                Status = DownloadStatus.Completed,
-                Speed = 0,
-                ActiveConnections = 0,
-                Stage = "Tamamlandı"
-            });
-
-            mockManager.Items.Add(new DownloadItem
-            {
-                FileName = "VSCodeUserSetup-x64-1.93.1.exe",
-                TotalBytes = 95_000_000L,
-                DownloadedBytes = 0,
-                Status = DownloadStatus.Queued,
-                Speed = 0,
-                ActiveConnections = 0,
-                Stage = "Kuyrukta"
-            });
-
-            mockManager.Items.Insert(0, new DownloadItem
-            {
-                FileName = "FMDownloadManager-Setup-3.7.1.exe",
-                TotalBytes = 124_216_814L,
-                DownloadedBytes = 124_216_814L,
-                Status = DownloadStatus.Completed,
-                Speed = 0,
-                ActiveConnections = 0,
-                Stage = "Tamamlandı"
-            });
-            mockManager.Items.Insert(1, new DownloadItem
-            {
-                FileName = "Interstellar.2014.IMAX.2160p.UHD.Remux.mkv",
-                TotalBytes = 28_400_000_000L,
-                DownloadedBytes = 8_200_000_000L,
-                Status = DownloadStatus.Downloading,
-                Speed = 18_900_000,
-                ActiveConnections = 16,
-                Stage = "İndiriliyor · 16 segment"
-            });
-
-            var win = new MainWindow(mockManager, mockTokens, mockSettings);
-            win.Width = 1160;
-            win.Height = 700;
-            win.Show();
-
-            var graph = win.FindName("SidebarSpeedGraph") as SpeedGraphControl;
-            if (graph != null)
-            {
-                for (int i = 0; i < 55; i++)
-                {
-                    double s = 22_000_000 + Math.Sin(i * 0.28) * 12_500_000 + Math.Cos(i * 0.45) * 5_000_000;
-                    graph.PushSample(Math.Max(5_000_000, s));
-                }
-            }
-
-            var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(600) };
-            timer.Tick += (_, _) =>
-            {
-                timer.Stop();
-                try
-                {
-                    void SavePng(System.Windows.Media.Visual v, int w, int h, string outPath)
-                    {
-                        var r = new System.Windows.Media.Imaging.RenderTargetBitmap(w, h, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
-                        r.Render(v);
-                        var e = new System.Windows.Media.Imaging.PngBitmapEncoder();
-                        e.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(r));
-                        using var fs = File.Create(outPath);
-                        e.Save(fs);
-                    }
-
-                    win.UpdateLayout();
-                    var visual = (win.Content as System.Windows.Media.Visual) ?? win;
-                    SavePng(visual, 1160, 700, @"C:\Users\Ferdi\Downloads\mc-dm-windows\docs\ui\dashboard_dark.png");
-                    SavePng(visual, 1160, 700, @"C:\Users\Ferdi\Downloads\mc-dm-windows\docs\ui\dashboard_pro.png");
-
-                    // Render animated frames for demo_turbo.gif directly from WPF
-                    var framesDir = @"C:\Users\Ferdi\Downloads\mc-dm-windows\dist\wpf_hero_frames";
-                    Directory.CreateDirectory(framesDir);
-                    var speedTxt = win.FindName("TotalSpeedText") as System.Windows.Controls.TextBlock;
-                    var interstellarItem = mockManager.Items.Count > 1 ? mockManager.Items[1] : null;
-                    long baseBytes = interstellarItem?.DownloadedBytes ?? 8_200_000_000L;
-                    for (int f = 0; f < 36; f++)
-                    {
-                        double s = 43_500_000 + Math.Sin(f * (2 * Math.PI / 36.0)) * 7_500_000 + Math.Cos(f * (4 * Math.PI / 36.0)) * 3_500_000;
-                        if (graph != null)
-                        {
-                            graph.PushSample(s);
-                            graph.PushSample(s + 400_000);
-                        }
-                        if (speedTxt != null)
-                        {
-                            speedTxt.Text = BytesConverter.Format(s) + "/s";
-                        }
-                        if (interstellarItem != null)
-                        {
-                            interstellarItem.Speed = s * 0.72;
-                            interstellarItem.DownloadedBytes = baseBytes + (long)(f * 48_000_000L);
-                        }
-                        win.UpdateLayout();
-                        SavePng(visual, 1160, 700, Path.Combine(framesDir, $"frame_{f:D3}.png"));
-                    }
-
-                    // Render VideoQualityDialog
-                    var qDlg = new VideoQualityDialog(
-                        "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-                        "Interstellar - Main Theme (Official 4K UHD Remastered)",
-                        true,
-                        "tr,en",
-                        new List<SubtitleTrackInfo>
-                        {
-                            new SubtitleTrackInfo { Lang = "tr", Label = "Türkçe (TR Altyazı)" },
-                            new SubtitleTrackInfo { Lang = "en", Label = "English (Original CC)" }
-                        },
-                        new List<VideoQualityInfo>
-                        {
-                            new VideoQualityInfo { Height = 2160, Label = "4K UHD (2160p60)", FormatId = "bestvideo[height=2160]" },
-                            new VideoQualityInfo { Height = 1440, Label = "2K QHD (1440p60)", FormatId = "bestvideo[height=1440]" },
-                            new VideoQualityInfo { Height = 1080, Label = "1080p FHD (1080p60)", FormatId = "bestvideo[height=1080]" },
-                            new VideoQualityInfo { Height = 720, Label = "720p HD", FormatId = "bestvideo[height=720]" }
-                        },
-                        new List<AudioTrackInfo>
-                        {
-                            new AudioTrackInfo { TrackId = "1", Lang = "tr", Label = "Türkçe Dublaj (5.1 Surround)" },
-                            new AudioTrackInfo { TrackId = "2", Lang = "en", Label = "English (Original Dolby Atmos)" }
-                        }
-                    );
-                    qDlg.Width = 620;
-                    qDlg.Height = 520;
-                    qDlg.Show();
-                    qDlg.UpdateLayout();
-                    var qVis = (qDlg.Content as System.Windows.Media.Visual) ?? qDlg;
-                    SavePng(qVis, 620, 520, @"C:\Users\Ferdi\Downloads\mc-dm-windows\docs\ui\video_dialog_pro.png");
-                    qDlg.Close();
-
-                    // Render DownloadDetailWindow (16-thread segment inspection)
-                    try
-                    {
-                        var statePath = Path.Combine(Path.GetTempPath(), "interstellar_test.mkv.mcdm");
-                        var fakeChunks = new List<object>();
-                        long chunkSize = 28_400_000_000L / 16;
-                        for (int i = 0; i < 16; i++)
-                        {
-                            long cStart = i * chunkSize;
-                            long cEnd = (i == 15) ? 28_400_000_000L - 1 : cStart + chunkSize - 1;
-                            long cDone = (long)(chunkSize * (0.28 + (i % 5) * 0.14));
-                            if (cDone > (cEnd - cStart + 1)) cDone = cEnd - cStart + 1;
-                            fakeChunks.Add(new { Start = cStart, End = cEnd, Done = cDone });
-                        }
-                        var fakeState = System.Text.Json.JsonSerializer.Serialize(new { Chunks = fakeChunks });
-                        File.WriteAllText(statePath, fakeState);
-
-                        var detailItem = new DownloadItem
-                        {
-                            FileName = "Interstellar.2014.IMAX.2160p.UHD.Remux.mkv",
-                            Request = new DownloadRequest { Url = "https://cdn.hyperstream.io/releases/interstellar_4k_remux.mkv" },
-                            TotalBytes = 28_400_000_000L,
-                            DownloadedBytes = 8_200_000_000L,
-                            Status = DownloadStatus.Downloading,
-                            Speed = 18_900_000,
-                            ActiveConnections = 16,
-                            SavePath = statePath.Replace(".mcdm", "")
-                        };
-                        var detailWin = new DownloadDetailWindow(detailItem);
-                        detailWin.Width = 620;
-                        detailWin.Height = 520;
-                        detailWin.Show();
-                        detailWin.UpdateLayout();
-                        var detVis = (detailWin.Content as System.Windows.Media.Visual) ?? detailWin;
-                        SavePng(detVis, 620, 520, @"C:\Users\Ferdi\Downloads\mc-dm-windows\docs\ui\download_details_pro.png");
-                        detailWin.Close();
-                    }
-                    catch { }
-
-                    // Render Palette Sync preview (Emerald Green theme)
-                    ThemeManager.ApplyAccentColor("#00D26A");
-                    var winEmerald = new MainWindow(mockManager, mockTokens, mockSettings);
-                    winEmerald.Width = 1160;
-                    winEmerald.Height = 700;
-                    winEmerald.Show();
-                    winEmerald.UpdateLayout();
-                    var emVis = (winEmerald.Content as System.Windows.Media.Visual) ?? winEmerald;
-                    SavePng(emVis, 1160, 700, @"C:\Users\Ferdi\Downloads\mc-dm-windows\docs\ui\palette_sync_pro.png");
-                    winEmerald.Close();
-
-                    File.WriteAllText(@"C:\Users\Ferdi\Downloads\mc-dm-windows\dist\screenshot.log", "SUCCESS: " + DateTime.UtcNow);
-                }
-                catch (Exception ex)
-                {
-                    File.WriteAllText(@"C:\Users\Ferdi\Downloads\mc-dm-windows\dist\screenshot.log", "ERROR: " + ex);
-                }
-                Shutdown();
-            };
-            timer.Start();
-            return;
-        }
-
         _singleInstance = new Mutex(true, @"Local\MCDownloadManager.SingleInstance", out bool first);
         bool quitRequested = e.Args.Contains("--quit");
         if (!first)
@@ -336,6 +93,7 @@ public partial class App : System.Windows.Application
         try
         {
             _settings = AppSettings.Load();
+            ThemeManager.ApplyThemeMode(_settings.AppTheme);
             ThemeManager.ApplyAccentColor(_settings.AccentColor);
             Strings.SetLanguage(_settings.Language);
 
@@ -353,7 +111,7 @@ public partial class App : System.Windows.Application
             }
         }) { IsBackground = true, Name = "InstanceSignalListener" }.Start();
 
-        var data = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MC Download Manager");
+        var data = AppPaths.DataDirectory;
         _tokenStore = new TokenStore(Path.Combine(data, "bridge.token"));
 
         var toolPaths = new ToolPaths();
@@ -367,7 +125,7 @@ public partial class App : System.Windows.Application
                 SpeedLimitBytes = _manager != null ? _manager.SpeedLimiter.BytesPerSecond : ((long)_settings.SpeedLimitKbps * 1024L)
             });
 
-        _torrentEngine = new TorrentDownloader();
+        _torrentEngine = new TorrentDownloader(() => _manager != null ? _manager.SpeedLimiter.BytesPerSecond : ((long)_settings.SpeedLimitKbps * 1024L));
         _manager = new DownloadManager(data, downloadDirectory: _settings.DownloadDirectory,
                                        uiContext: new DispatcherSynchronizationContext(Dispatcher),
                                        videoEngine: videoEngine,
@@ -376,6 +134,9 @@ public partial class App : System.Windows.Application
             DefaultConnections = _settings.ConnectionsPerDownload,
             MaxConcurrentDownloads = _settings.MaxConcurrentDownloads,
             AutoCategorizeSubfolders = _settings.AutoCategorizeSubfolders,
+            VirusScanEnabled = _settings.VirusScanEnabled,
+            CustomAntivirusPath = _settings.CustomAntivirusPath,
+            CustomAntivirusArgs = _settings.CustomAntivirusArgs,
         };
 
         if (_settings.SpeedLimitKbps > 0)
@@ -393,6 +154,8 @@ public partial class App : System.Windows.Application
                     {
                         if (!string.IsNullOrEmpty(item.SavePath) && File.Exists(item.SavePath))
                             System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{item.SavePath}\"");
+                        else if (!string.IsNullOrEmpty(item.SavePath) && Directory.Exists(item.SavePath))
+                            System.Diagnostics.Process.Start("explorer.exe", $"\"{item.SavePath}\"");
                         else
                             Dispatcher.BeginInvoke(ShowWindow);
                     }
@@ -409,6 +172,31 @@ public partial class App : System.Windows.Application
             MinCaptureSizeMB = () => (int)((_settings?.MinCaptureSizeBytes ?? 0) / (1024 * 1024)),
             AccentColor = () => ThemeManager.CurrentAccentHex ?? "#E50914",
             Language = () => Strings.IsTurkish ? "tr" : "en",
+            ThemeMode = () => ThemeManager.CurrentThemeMode,
+            UpdateConfig = (accent, lang, theme) =>
+            {
+                Dispatcher.BeginInvoke(() =>
+                {
+                    bool changed = false;
+                    if (!string.IsNullOrWhiteSpace(theme))
+                    {
+                        ThemeManager.ApplyThemeMode(theme);
+                        if (_settings != null) { _settings.AppTheme = ThemeManager.CurrentThemeMode; changed = true; }
+                    }
+                    if (!string.IsNullOrWhiteSpace(accent))
+                    {
+                        ThemeManager.ApplyAccentColor(accent);
+                        if (_settings != null) { _settings.AccentColor = ThemeManager.CurrentAccentHex; changed = true; }
+                    }
+                    if (!string.IsNullOrWhiteSpace(lang))
+                    {
+                        Strings.SetLanguage(lang);
+                        if (_settings != null) { _settings.Language = lang; changed = true; }
+                        _window?.ApplyLocalization();
+                    }
+                    if (changed) _settings?.Save();
+                });
+            },
             ConfirmDownloadAsync = async (req) =>
             {
                 var tcs = new TaskCompletionSource<bool>();
@@ -448,7 +236,13 @@ public partial class App : System.Windows.Application
                             {
                                 req.Kind = DownloadKind.Video;
                                 req.CustomFormat = qDlg.SelectedFormat;
-                                if (!string.IsNullOrWhiteSpace(qDlg.ResolvedUrl)) req.Url = qDlg.ResolvedUrl;
+                                if (!string.IsNullOrWhiteSpace(qDlg.ResolvedUrl))
+                                {
+                                    if (string.IsNullOrWhiteSpace(req.Referer) && qDlg.ResolvedUrl != req.Url) req.Referer = req.Url;
+                                    req.Url = qDlg.ResolvedUrl;
+                                }
+                                if (string.IsNullOrWhiteSpace(req.FileName) && !string.IsNullOrWhiteSpace(qDlg.DetectedTitle))
+                                    req.FileName = qDlg.DetectedTitle;
                                 req.WriteSubtitles = qDlg.DownloadSubtitles;
                                 req.SubtitleLangs = qDlg.SubtitleLangs;
                                 if (!string.IsNullOrEmpty(qDlg.SelectedSubtitleUrl))
@@ -715,7 +509,9 @@ public partial class App : System.Windows.Application
                                     {
                                         _manager?.Add(new DownloadRequest
                                         {
-                                            Url = text,
+                                            Url = !string.IsNullOrWhiteSpace(qDlg.ResolvedUrl) ? qDlg.ResolvedUrl : text,
+                                            FileName = !string.IsNullOrWhiteSpace(qDlg.DetectedTitle) ? qDlg.DetectedTitle : null,
+                                            Referer = !string.IsNullOrWhiteSpace(qDlg.ResolvedUrl) && qDlg.ResolvedUrl != text ? text : null,
                                             Kind = DownloadKind.Video,
                                             CustomFormat = qDlg.SelectedFormat,
                                             Container = qDlg.AudioOnly ? "mp3" : "mp4",
@@ -812,7 +608,7 @@ public partial class App : System.Windows.Application
         _trayTooltipTimer?.Stop();
         _schedulerTimer?.Stop();
         if (_tray != null) { _tray.Visible = false; _tray.Dispose(); }
-        _manager?.Dispose();
+        if (_manager != null) await _manager.DisposeAsync();
         _torrentEngine?.Dispose();
         if (_bridge != null) await _bridge.DisposeAsync();
         _window?.AllowClose();

@@ -1,6 +1,10 @@
 :root {
   color-scheme: dark;
   --bg: #121318;
+  --bg-header: #171820;
+  --bg-palette: #14151b;
+  --bg-details: #15161D;
+  --bg-bar: #252834;
   --bg-card: #1A1C24;
   --bg-card-hover: #222530;
   --fg: #F3F4F6;
@@ -13,6 +17,21 @@
   --accent-dim: #2D0E15;
   --success: #10B981;
   --danger: #EF4444;
+}
+
+body.theme-light {
+  color-scheme: light;
+  --bg: #F8FAFC;
+  --bg-header: #F1F5F9;
+  --bg-palette: #E2E8F0;
+  --bg-details: #F1F5F9;
+  --bg-bar: #CBD5E1;
+  --bg-card: #FFFFFF;
+  --bg-card-hover: #F1F5F9;
+  --fg: #0F172A;
+  --muted: #475569;
+  --line: #CBD5E1;
+  --line-strong: #94A3B8;
 }
 
 * {
@@ -34,7 +53,7 @@ header {
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  background: #171820;
+  background: var(--bg-header);
   border-bottom: 1px solid var(--line);
 }
 
@@ -68,7 +87,7 @@ header {
 .pill-btn:hover {
   border-color: var(--accent);
   background: var(--bg-card-hover);
-  color: #fff;
+  color: var(--fg);
 }
 
 .palette-bar {
@@ -76,7 +95,7 @@ header {
   align-items: center;
   gap: 10px;
   padding: 6px 16px;
-  background: #14151b;
+  background: var(--bg-palette);
   border-bottom: 1px solid var(--line);
 }
 
@@ -312,7 +331,7 @@ li .meta {
 }
 
 details {
-  background: #15161D;
+  background: var(--bg-details);
 }
 
 details summary {
@@ -338,7 +357,7 @@ details input {
   border: 1px solid var(--line-strong);
   border-radius: 8px;
   background: var(--bg-card);
-  color: #fff;
+  color: var(--fg);
   font-family: inherit;
   text-align: right;
 }
@@ -346,7 +365,7 @@ details input {
 .bar {
   height: 5px;
   border-radius: 3px;
-  background: #252834;
+  background: var(--bg-bar);
   margin: 6px 0 3px;
   overflow: hidden;
 }

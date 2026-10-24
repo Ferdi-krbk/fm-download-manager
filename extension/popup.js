@@ -65,7 +65,9 @@ const I18N_DICTS = {
 
 let currentLang = 'tr';
 let currentAccent = '#E50914';
+let currentThemeMode = 'dark';
 let userToggledLang = false;
+let userToggledTheme = false;
 
 const PALETTE = [
   { name: 'Crimson', hex: '#E50914' },
@@ -119,6 +121,13 @@ function applyAccentColor(hex) {
   document.querySelectorAll('.swatch').forEach(sw => {
     sw.classList.toggle('active', sw.dataset.hex.toLowerCase() === hex.toLowerCase());
   });
+}
+
+function applyThemeMode(mode) {
+  currentThemeMode = mode === 'light' ? 'light' : 'dark';
+  document.body.classList.toggle('theme-light', currentThemeMode === 'light');
+  const themeBtn = $('themeToggle');
+  if (themeBtn) themeBtn.textContent = currentThemeMode === 'light' ? '☀️' : '🌙';
 }
 
 function initPalette() {
@@ -228,6 +237,7 @@ function chooseBestSubUrl(subs, targetLang = 'tr') {
 async function refresh() {
   const st = await send({ type: 'status' });
   if (st && st.accentColor) applyAccentColor(st.accentColor);
+  if (st && st.themeMode && !userToggledTheme) applyThemeMode(st.themeMode);
   if (st && st.language && !userToggledLang) {
     currentLang = st.language;
     updateUiTexts();
@@ -688,6 +698,15 @@ $('pairBtn').onclick = async () => {
 };
 
 initPalette();
+if ($('themeToggle')) {
+  $('themeToggle').onclick = async () => {
+    userToggledTheme = true;
+    const nextTheme = currentThemeMode === 'light' ? 'dark' : 'light';
+    applyThemeMode(nextTheme);
+    await api.storage.local.set({ themeMode: nextTheme });
+    send({ type: 'setAppConfig', themeMode: nextTheme });
+  };
+}
 $('langToggle').onclick = async () => {
   userToggledLang = true;
   currentLang = currentLang === 'tr' ? 'en' : 'tr';
@@ -697,9 +716,10 @@ $('langToggle').onclick = async () => {
   refresh();
 };
 
-api.storage.local.get(['accentColor', 'language'], (res) => {
+api.storage.local.get(['accentColor', 'language', 'themeMode'], (res) => {
   if (res) {
     if (res.accentColor) applyAccentColor(res.accentColor);
+    if (res.themeMode) applyThemeMode(res.themeMode);
     if (res.language) { currentLang = res.language; updateUiTexts(); }
   }
 });

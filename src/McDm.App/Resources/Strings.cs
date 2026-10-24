@@ -161,6 +161,7 @@ public static class Strings
     public static string SettingsSchedulerAutoResume => IsTurkish ? "Başlangıç saatinde duraklatılan indirmeleri otomatik başlat" : "Automatically resume paused downloads at start time";
     public static string SettingsSchedulerAutoPause => IsTurkish ? "Bitiş saatinde çalışan indirmeleri otomatik duraklat" : "Automatically pause running downloads at stop time";
     public static string SettingsAutoCategorize => IsTurkish ? "Kategoriye göre alt klasörleme yap (Videos, Music, Torrents vb.)" : "Auto-categorize into subfolders (Videos, Music, Torrents etc.)";
+    public static string SettingsVirusScan => IsTurkish ? "İndirme tamamlandığında otomatik virüs taraması yap (Windows Defender)" : "Automatically scan completed downloads for viruses (Windows Defender)";
     public static string SettingsAccentColor => IsTurkish ? "VURGU RENGİ / PALET (ACCENT COLOR)" : "ACCENT COLOR PALETTE";
     public static string SettingsCustomHex => IsTurkish ? "Özel HEX:" : "Custom HEX:";
     public static string SettingsPreview => IsTurkish ? "ÖNİZLE" : "PREVIEW";
@@ -172,9 +173,9 @@ public static class Strings
     public static string PaletteTooltip => IsTurkish ? "Vurgu Rengi Paleti (Kişiselleştir)" : "Accent Color Palette (Customize)";
     public static string PaletteHeader => IsTurkish ? "VURGU RENGİ SEÇ" : "SELECT ACCENT COLOR";
     public static string PaletteOpenAllSettings => IsTurkish ? "Tüm Ayarları Aç..." : "Open All Settings...";
-    public static string BrowserSetupHeader => IsTurkish ? "Tek Tıkla Tarayıcıya Kurulum" : "1-Click Browser Extension Setup";
-    public static string BrowserSetupSub => IsTurkish ? "Tarayıcınızı seçin; eklenti otomatik olarak kurulacak ve eşleştirilecektir." : "Select your browser; the extension will be automatically installed and paired.";
-    public static string BrowserSetupAutoSection => IsTurkish ? "OTOMATİK KURULUM SEÇENEKLERİ" : "AUTOMATIC SETUP OPTIONS";
+    public static string BrowserSetupHeader => IsTurkish ? "Tarayıcı Eklentisi Kurulumu" : "Browser Extension Setup";
+    public static string BrowserSetupSub => IsTurkish ? "Tarayıcınızı seçin; eklenti klasörünü yükleyip bağlantıyı kontrol edin." : "Choose your browser, load the extension folder, then check the connection.";
+    public static string BrowserSetupAutoSection => IsTurkish ? "TARAYICI SEÇİN" : "CHOOSE YOUR BROWSER";
     public static string BrowserSetupChromeTitle => IsTurkish ? "Google Chrome Eklenti Sayfasını Aç" : "Open Google Chrome Extensions Page";
     public static string BrowserSetupChromeSub => IsTurkish ? "Yolu panoya kopyalar, klasörü açar ve Chrome'u başlatır" : "Copies path, opens folder, and launches Chrome";
     public static string BrowserSetupEdgeTitle => IsTurkish ? "Microsoft Edge Eklenti Sayfasını Aç" : "Open Microsoft Edge Extensions Page";
@@ -206,8 +207,8 @@ public static class Strings
         ? "1. Butona tıklayın: Eklenti klasörü açılır ve yolu panonuza kopyalanır.\n2. Tarayıcıda sağ üstten 'Geliştirici modu'nu açın ve 'Paketlenmemiş öge yükle' diyerek bu klasörü seçin."
         : "1. Click the button: The extension folder opens and its path is copied to clipboard.\n2. In browser extensions page, enable 'Developer mode' and click 'Load unpacked' to select this folder.";
     public static string BrowserSetupQuickTipAuto => IsTurkish 
-        ? "✓ Eşleştirme kodu gerekmez — Eklenti yüklendiği saniye otomatik bağlanır!" 
-        : "✓ No pairing code needed — The extension connects automatically upon loading!";
+        ? "Eşleştirme tamamlanmazsa aşağıdaki kodu eklenti penceresine yapıştırın."
+        : "If pairing does not complete, paste the code below into the extension popup.";
     public static string BrowserSetupAdvanced => IsTurkish ? "Gelişmiş / Manuel Kurulum Bilgileri" : "Advanced / Manual Setup Details";
     public static string BrowserSetupFolderPath => IsTurkish ? "Eklenti Klasörü Konumu:" : "Extension Folder Location:";
     public static string BrowserSetupSecurityToken => IsTurkish ? "Eşleştirme Güvenlik Kodu:" : "Security Pairing Token:";

@@ -64,38 +64,25 @@ public sealed class ToolPaths
 
     public async Task<string> DownloadYtDlpAsync(CancellationToken ct = default)
     {
-        Directory.CreateDirectory(UserToolsDirectory);
-        string target = UserYtDlpTarget;
-        string tmp = target + ".tmp";
-        using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("FMDownloadManager/3.6 (Windows; x64)");
-        using (var resp = await client.GetAsync("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe", HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false))
-        {
-            resp.EnsureSuccessStatusCode();
-            using var fs = File.Create(tmp);
-            await resp.Content.CopyToAsync(fs, ct).ConfigureAwait(false);
-        }
-        if (File.Exists(target)) File.Delete(target);
-        File.Move(tmp, target);
-        return target;
+        using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("FMDownloadManager/1.0.0");
+        string metadata = await client.GetStringAsync("https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest", ct).ConfigureAwait(false);
+        using var release = System.Text.Json.JsonDocument.Parse(metadata);
+        string tag = release.RootElement.GetProperty("tag_name").GetString()!;
+        string prefix = "https://github.com/yt-dlp/yt-dlp/releases/download/" + Uri.EscapeDataString(tag) + "/";
+        string sums = await client.GetStringAsync(prefix + "SHA2-256SUMS", ct).ConfigureAwait(false);
+        var match = Regex.Match(sums, @"(?m)^([a-fA-F0-9]{64})[ \t]+\*?yt-dlp\.exe[ \t]*\r?$");
+        if (!match.Success) throw new System.Security.Cryptography.CryptographicException("yt-dlp checksum was not available");
+        return await VerifiedToolDownload.SaveAsync(client, prefix + "yt-dlp.exe", match.Groups[1].Value, UserYtDlpTarget, ct).ConfigureAwait(false);
     }
 
     public async Task<string> DownloadQuickJsAsync(CancellationToken ct = default)
     {
-        Directory.CreateDirectory(UserToolsDirectory);
-        string target = UserQuickJsTarget;
-        string tmp = target + ".tmp";
-        using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("FMDownloadManager/3.6 (Windows; x64)");
-        using (var resp = await client.GetAsync("https://github.com/quickjs-ng/quickjs/releases/download/v0.17.0/qjs-windows-x86_64.exe", HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false))
-        {
-            resp.EnsureSuccessStatusCode();
-            using var fs = File.Create(tmp);
-            await resp.Content.CopyToAsync(fs, ct).ConfigureAwait(false);
-        }
-        if (File.Exists(target)) File.Delete(target);
-        File.Move(tmp, target);
-        return target;
+        using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("FMDownloadManager/1.0.0");
+        return await VerifiedToolDownload.SaveAsync(client,
+            "https://github.com/quickjs-ng/quickjs/releases/download/v0.17.0/qjs-windows-x86_64.exe",
+            "2aeabf0092c3262d6b2609824418f7dd7ed1f1df939f73b2b15645230cac0d77", UserQuickJsTarget, ct).ConfigureAwait(false);
     }
 
     private string? Find(string name, string envVar)
@@ -1333,17 +1320,9 @@ public sealed class VideoDownloader
                 fetchUrl += (fetchUrl.Contains('?') ? "&" : "?") + "fmt=vtt";
             }
 
-            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
-            if (!string.IsNullOrEmpty(req.UserAgent))
-                http.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", req.UserAgent);
-            else
-                http.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36");
-            if (!string.IsNullOrEmpty(req.Referer))
-                http.DefaultRequestHeaders.TryAddWithoutValidation("Referer", req.Referer);
-            if (!string.IsNullOrEmpty(req.CookieHeader))
-                http.DefaultRequestHeaders.TryAddWithoutValidation("Cookie", req.CookieHeader);
+            using var http = RequestCookies.CreateClient(req, TimeSpan.FromSeconds(15));
 
-            var resp = await http.GetAsync(fetchUrl, ct);
+            using var resp = await http.GetAsync(fetchUrl, ct);
             if (!resp.IsSuccessStatusCode) return null;
             var content = await resp.Content.ReadAsStringAsync(ct);
             if (string.IsNullOrWhiteSpace(content)) return null;

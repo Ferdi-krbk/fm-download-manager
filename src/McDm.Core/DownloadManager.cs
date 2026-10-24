@@ -1,10 +1,12 @@
 using System.Collections.ObjectModel;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Nodes;
+using System.Net.NetworkInformation;
 
 namespace McDm.Core;
 
-public sealed class DownloadManager : IDisposable
+public sealed class DownloadManager : IDisposable, IAsyncDisposable
 {
     private static readonly JsonSerializerOptions JsonOpts = new()
     {
@@ -20,12 +22,20 @@ public sealed class DownloadManager : IDisposable
     private readonly SynchronizationContext? _ui;
     private readonly string _dbPath;
     private readonly Dictionary<string, Task> _runningWorkers = new();
+    private readonly Dictionary<string, DateTimeOffset> _retryAfter = new();
+    private readonly HashSet<string> _deleteOnExit = new();
+    private readonly CancellationTokenSource _lifetime = new();
+    private NetworkAvailabilityChangedEventHandler? _networkHandler;
+    private bool _disposed;
 
     /// <summary>UI-bound mirror of the download list; mutated on the supplied SynchronizationContext.</summary>
     public ObservableCollection<DownloadItem> Items { get; } = new();
 
     public string DefaultDownloadDirectory { get; set; }
     public bool AutoCategorizeSubfolders { get; set; } = false;
+    public bool VirusScanEnabled { get; set; } = false;
+    public string? CustomAntivirusPath { get; set; }
+    public string? CustomAntivirusArgs { get; set; }
     public int DefaultConnections { get; set; } = 8;
     public int MaxConcurrentDownloads { get; set; } = 3;
     public SpeedLimiter SpeedLimiter { get; } = new();
@@ -48,12 +58,13 @@ public sealed class DownloadManager : IDisposable
 
         try
         {
-            System.Net.NetworkInformation.NetworkChange.NetworkAvailabilityChanged += (_, e) =>
+            _networkHandler = (_, e) =>
             {
                 if (e.IsAvailable)
                 {
                     lock (_gate)
                     {
+                        if (_disposed) return;
                         foreach (var item in _all.Where(i => i.Status == DownloadStatus.Failed && IsTransientNetworkError(i.Error)))
                         {
                             item.Status = DownloadStatus.Queued;
@@ -64,6 +75,7 @@ public sealed class DownloadManager : IDisposable
                     Pump();
                 }
             };
+            NetworkChange.NetworkAvailabilityChanged += _networkHandler;
         }
         catch { }
     }
@@ -195,7 +207,11 @@ public sealed class DownloadManager : IDisposable
             FileName = initialFileName,
             Status = DownloadStatus.Queued,
         };
-        lock (_gate) _all.Add(item);
+        lock (_gate)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            _all.Add(item);
+        }
         Post(() => Items.Insert(0, item));
         Save();
         Pump();
@@ -211,6 +227,7 @@ public sealed class DownloadManager : IDisposable
                 item.Status = DownloadStatus.Queued;
                 item.Error = null;
                 item.AutoRetryCount = 0;
+                _retryAfter.Remove(item.Id);
             }
         }
         Save();
@@ -261,6 +278,7 @@ public sealed class DownloadManager : IDisposable
         if (item == null || item.Status is not (DownloadStatus.Paused or DownloadStatus.Failed)) return false;
         item.Error = null;
         item.AutoRetryCount = 0;
+        lock (_gate) _retryAfter.Remove(item.Id);
         item.Status = DownloadStatus.Queued;
         Save();
         Pump();
@@ -272,9 +290,8 @@ public sealed class DownloadManager : IDisposable
         var item = Find(id);
         if (item == null) return false;
         if (item.Status is DownloadStatus.Completed or DownloadStatus.Cancelled) return false;
-        var wasRunning = item.Status == DownloadStatus.Downloading;
         item.Status = DownloadStatus.Cancelled;
-        if (wasRunning) item.Cts?.Cancel();   // the run task cleans up the files
+        if (item.Cts != null) item.Cts.Cancel();   // even a paused worker may still be unwinding
         else CleanupPartial(item);
         Save();
         return true;
@@ -284,12 +301,15 @@ public sealed class DownloadManager : IDisposable
     {
         var item = Find(id);
         if (item == null) return false;
-        if (item.Status == DownloadStatus.Downloading || item.Status == DownloadStatus.Queued)
+        if (item.Cts != null || item.Status == DownloadStatus.Downloading || item.Status == DownloadStatus.Queued)
             Cancel(id);
         if (deleteFile)
         {
-            CleanupPartial(item);
-            SegmentedDownloader.TryDelete(item.SavePath);
+            lock (_gate)
+            {
+                if (item.Cts != null) _deleteOnExit.Add(item.Id);
+                else DeleteFiles(item);
+            }
         }
         lock (_gate) _all.Remove(item);
         Post(() => Items.Remove(item));
@@ -304,6 +324,7 @@ public sealed class DownloadManager : IDisposable
         List<DownloadItem> toStart = new();
         lock (_gate)
         {
+            if (_disposed) return;
             var finished = _runningWorkers.Where(kv => kv.Value.IsCompleted).Select(kv => kv.Key).ToList();
             foreach (var id in finished) _runningWorkers.Remove(id);
 
@@ -311,8 +332,10 @@ public sealed class DownloadManager : IDisposable
             foreach (var i in _all.Where(i => i.Status == DownloadStatus.Queued))
             {
                 if (running >= MaxConcurrentDownloads) break;
+                if (_retryAfter.TryGetValue(i.Id, out var due) && due > DateTimeOffset.UtcNow) continue;
                 if (_runningWorkers.TryGetValue(i.Id, out var existing) && !existing.IsCompleted) continue;
 
+                _retryAfter.Remove(i.Id);
                 i.Status = DownloadStatus.Downloading;
                 i.Cts = new CancellationTokenSource();
                 toStart.Add(i);
@@ -332,7 +355,12 @@ public sealed class DownloadManager : IDisposable
         int connections = Math.Clamp(item.Request.Segments ?? DefaultConnections, 1, 32);
         try
         {
-            if (item.Request.Kind == DownloadKind.Video)
+            if (File.Exists(item.SavePath) || Directory.Exists(item.SavePath))
+            {
+                // A previous attempt may have finished downloading but been paused during scanning.
+                cts.Token.ThrowIfCancellationRequested();
+            }
+            else if (item.Request.Kind == DownloadKind.Video)
             {
                 if (_videoEngine == null) throw new FatalDownloadException("Video engine is not configured");
                 await _videoEngine.RunAsync(item, cts.Token);
@@ -346,14 +374,19 @@ public sealed class DownloadManager : IDisposable
             {
                 await _engine.RunAsync(item, connections, cts.Token);
             }
-            item.Status = DownloadStatus.Completed;
-            item.Error = null;
-            item.AutoRetryCount = 0;
             if (!string.IsNullOrEmpty(item.WorkDir))
             {
                 try { if (Directory.Exists(item.WorkDir)) Directory.Delete(item.WorkDir, recursive: true); } catch { }
                 item.WorkDir = null;
             }
+            if (VirusScanEnabled && !string.IsNullOrEmpty(item.SavePath) && (File.Exists(item.SavePath) || Directory.Exists(item.SavePath)))
+            {
+                await RunVirusScanAsync(item, CustomAntivirusPath, CustomAntivirusArgs, cts.Token);
+            }
+            cts.Token.ThrowIfCancellationRequested();
+            item.Status = DownloadStatus.Completed;
+            item.Error = null;
+            item.AutoRetryCount = 0;
             ItemCompleted?.Invoke(item);
         }
         catch (OperationCanceledException)
@@ -373,14 +406,15 @@ public sealed class DownloadManager : IDisposable
                         ? $"Ağ kesintisi! {delaySec} sn içinde tekrar denenecek ({item.AutoRetryCount}/10)..."
                         : $"Network drop! Reconnecting in {delaySec}s ({item.AutoRetryCount}/10)...";
                     item.Status = DownloadStatus.Queued;
+                    lock (_gate) _retryAfter[item.Id] = DateTimeOffset.UtcNow.AddSeconds(delaySec);
                     _ = Task.Run(async () =>
                     {
-                        await Task.Delay(TimeSpan.FromSeconds(delaySec));
-                        lock (_gate)
+                        try
                         {
-                            if (item.Status == DownloadStatus.Queued)
-                                Pump();
+                            await Task.Delay(TimeSpan.FromSeconds(delaySec), _lifetime.Token);
+                            Pump();
                         }
+                        catch (OperationCanceledException) { }
                     });
                 }
                 else
@@ -399,11 +433,82 @@ public sealed class DownloadManager : IDisposable
             if (item.Status == DownloadStatus.Cancelled) CleanupPartial(item);
             lock (_gate)
             {
+                if (_deleteOnExit.Remove(item.Id)) DeleteFiles(item);
                 _runningWorkers.Remove(item.Id);
             }
             Save();
             Pump();
         }
+    }
+
+    private static async Task RunVirusScanAsync(DownloadItem item, string? customAvPath, string? customAvArgs, CancellationToken cancel)
+    {
+        bool tr = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "tr";
+        bool custom = !string.IsNullOrWhiteSpace(customAvPath);
+        string? scanner = custom ? customAvPath : FindWindowsDefenderScanner();
+        item.ScanResult = "unverified";
+        if (string.IsNullOrEmpty(scanner) || !File.Exists(scanner))
+        {
+            item.Stage = tr ? "⚠ Tarama yapılamadı: antivirüs bulunamadı" : "⚠ Not scanned: antivirus unavailable";
+            return;
+        }
+        item.Stage = tr ? "Antivirüs taraması yapılıyor…" : "Antivirus scan in progress…";
+        var start = new System.Diagnostics.ProcessStartInfo(scanner);
+        if (custom)
+        {
+            string template = string.IsNullOrWhiteSpace(customAvArgs) ? "\"{file}\"" : customAvArgs.Trim();
+            start.Arguments = template.Contains("{file}", StringComparison.OrdinalIgnoreCase)
+                ? template.Replace("{file}", item.SavePath, StringComparison.OrdinalIgnoreCase)
+                : $"{template} \"{item.SavePath}\"";
+        }
+        else
+        {
+            foreach (string arg in new[] { "-Scan", "-ScanType", "3", "-File", item.SavePath }) start.ArgumentList.Add(arg);
+        }
+        try
+        {
+            int code = await AntivirusScanner.RunAsync(start, TimeSpan.FromMinutes(3), cancel);
+            if (code != 0)
+            {
+                item.ScanResult = "attention";
+                item.Stage = tr ? $"⚠ Tarama doğrulanamadı (kod {code})" : $"⚠ Scan requires attention (code {code})";
+                // Exit codes differ between scanners. Defender's 2 also includes scan errors.
+                throw new FatalDownloadException(item.Stage);
+            }
+            if (!File.Exists(item.SavePath) && !Directory.Exists(item.SavePath))
+                throw new FatalDownloadException(tr ? "Dosya tarama sırasında kaldırıldı veya karantinaya alındı" : "File removed or quarantined during scanning");
+            item.ScanResult = "passed";
+            item.Stage = tr ? "✓ Antivirüs taraması tamamlandı" : "✓ Antivirus scan completed";
+        }
+        catch (OperationCanceledException) when (cancel.IsCancellationRequested) { throw; }
+        catch (FatalDownloadException) { throw; }
+        catch (Exception ex) when (ex is TimeoutException or IOException or System.ComponentModel.Win32Exception)
+        {
+            item.Stage = tr ? "⚠ Tarama tamamlanamadı; dosyanın güvenliği doğrulanmadı" : "⚠ Scan incomplete; file safety unverified";
+        }
+    }
+
+    private static string? FindWindowsDefenderScanner()
+    {
+        try
+        {
+            string progFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+            string direct = Path.Combine(progFiles, "Windows Defender", "MpCmdRun.exe");
+            if (File.Exists(direct)) return direct;
+
+            string platformRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "Microsoft", "Windows Defender", "Platform");
+            if (Directory.Exists(platformRoot))
+            {
+                var dirs = Directory.GetDirectories(platformRoot).OrderByDescending(d => d);
+                foreach (var dir in dirs)
+                {
+                    string candidate = Path.Combine(dir, "MpCmdRun.exe");
+                    if (File.Exists(candidate)) return candidate;
+                }
+            }
+        }
+        catch { }
+        return null;
     }
 
     private static void CleanupPartial(DownloadItem item)
@@ -418,6 +523,26 @@ public sealed class DownloadManager : IDisposable
         SegmentedDownloader.TryDelete(item.SavePath + ".mcdm.tmp");
     }
 
+    private static void DeleteFiles(DownloadItem item)
+    {
+        CleanupPartial(item);
+        string root = Path.GetFullPath(item.Directory).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        foreach (string file in item.ContentFiles)
+        {
+            if (Path.GetFullPath(file).StartsWith(root, StringComparison.OrdinalIgnoreCase)) SegmentedDownloader.TryDelete(file);
+        }
+        SegmentedDownloader.TryDelete(item.SavePath);
+        // Never recursively delete a torrent directory: it may contain unrelated user files.
+        try
+        {
+            if (Directory.Exists(item.SavePath) && !Path.GetFullPath(item.SavePath).TrimEnd(Path.DirectorySeparatorChar)
+                .Equals(root.TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase))
+                Directory.Delete(item.SavePath, recursive: false);
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
+    }
+
     // ───────────────────────── persistence ─────────────────────────
 
     private void Save()
@@ -426,9 +551,26 @@ public sealed class DownloadManager : IDisposable
         {
             lock (_gate)
             {
-                var json = JsonSerializer.Serialize(_all, JsonOpts);
+                var rows = JsonSerializer.SerializeToNode(_all, JsonOpts)!.AsArray();
+                for (int index = 0; index < rows.Count; index++)
+                {
+                    var request = rows[index]!["Request"]!.AsObject();
+                    var secrets = new JsonObject
+                    {
+                        ["CookieHeader"] = request["CookieHeader"]?.DeepClone(),
+                        ["Cookies"] = request["Cookies"]?.DeepClone(),
+                    };
+                    request.Remove("CookieHeader");
+                    request.Remove("Cookies");
+                    if (_all[index].Status is not (DownloadStatus.Completed or DownloadStatus.Cancelled)
+                        && (_all[index].Request.Cookies is { Count: > 0 } || !string.IsNullOrEmpty(_all[index].Request.CookieHeader)))
+                        request["ProtectedCredentials"] = CredentialProtection.Protect(secrets.ToJsonString());
+                }
+                var json = rows.ToJsonString(JsonOpts);
                 var tmp = _dbPath + ".tmp";
                 File.WriteAllText(tmp, json);
+                File.WriteAllText(_dbPath + ".bak.tmp", json);
+                File.Move(_dbPath + ".bak.tmp", _dbPath + ".bak", overwrite: true);
                 File.Move(tmp, _dbPath, overwrite: true);
             }
         }
@@ -437,10 +579,37 @@ public sealed class DownloadManager : IDisposable
 
     private void Load()
     {
-        try
+        List<DownloadItem>? list = null;
+        bool found = false;
+        foreach (var path in new[] { _dbPath, _dbPath + ".bak" })
         {
-            if (!File.Exists(_dbPath)) return;
-            var list = JsonSerializer.Deserialize<List<DownloadItem>>(File.ReadAllText(_dbPath), JsonOpts) ?? new();
+            if (!File.Exists(path)) continue;
+            found = true;
+            try
+            {
+                var rows = JsonNode.Parse(File.ReadAllText(path))!.AsArray();
+                foreach (var row in rows)
+                {
+                    var request = row?["Request"]?.AsObject();
+                    if (request?["ProtectedCredentials"]?.GetValue<string>() is { } encrypted
+                        && CredentialProtection.Unprotect(encrypted) is { } clear)
+                    {
+                        var credentials = JsonNode.Parse(clear)!;
+                        request["CookieHeader"] = credentials["CookieHeader"]?.DeepClone();
+                        request["Cookies"] = credentials["Cookies"]?.DeepClone();
+                    }
+                    request?.Remove("ProtectedCredentials");
+                }
+                list = rows.Deserialize<List<DownloadItem>>(JsonOpts) ?? new();
+                break;
+            }
+            catch (Exception ex) when (ex is JsonException or IOException or InvalidOperationException) { }
+        }
+        if (list == null)
+        {
+            if (found) throw new InvalidDataException("Download history and its backup could not be read. Your history has not been overwritten.");
+            return;
+        }
             foreach (var i in list)
             {
                 // nothing is running right after startup; let the user resume explicitly
@@ -448,8 +617,8 @@ public sealed class DownloadManager : IDisposable
                 _all.Add(i);
             }
             foreach (var i in _all.OrderBy(i => i.CreatedAt)) Items.Insert(0, i);
-        }
-        catch { /* corrupt db: start empty */ }
+        // Migrate legacy plaintext cookies immediately, including the recovery copy.
+        Save();
     }
 
     private void Post(Action a)
@@ -480,7 +649,6 @@ public sealed class DownloadManager : IDisposable
         if (ex == null) return false;
         if (ex is System.Net.Http.HttpRequestException ||
             ex is System.Net.Sockets.SocketException ||
-            ex is IOException ||
             ex is TimeoutException)
             return true;
         if (ex.InnerException != null && IsTransientNetworkError(ex.InnerException))
@@ -498,11 +666,25 @@ public sealed class DownloadManager : IDisposable
                msg.Contains("ağ") || msg.Contains("bağlantı");
     }
 
-    public void Dispose()
+    public void Dispose() => DisposeAsync().AsTask().GetAwaiter().GetResult();
+
+    public async ValueTask DisposeAsync()
     {
-        List<DownloadItem> running;
-        lock (_gate) running = _all.Where(i => i.Cts != null).ToList();
-        foreach (var i in running) { i.Status = DownloadStatus.Paused; i.Cts?.Cancel(); }
+        Task[] workers;
+        lock (_gate)
+        {
+            if (_disposed) return;
+            _disposed = true;
+            _lifetime.Cancel();
+            foreach (var i in _all.Where(i => i.Cts != null || i.Status == DownloadStatus.Queued))
+            {
+                i.Status = DownloadStatus.Paused;
+                i.Cts?.Cancel();
+            }
+            workers = _runningWorkers.Values.ToArray();
+        }
+        if (_networkHandler != null) NetworkChange.NetworkAvailabilityChanged -= _networkHandler;
+        try { await Task.WhenAll(workers).ConfigureAwait(false); } catch { }
         _torrentEngine?.Dispose();
         Save();
     }

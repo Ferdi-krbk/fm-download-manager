@@ -96,6 +96,8 @@ class MockElement {
 
   getBoundingClientRect() { return this._rect; }
 
+  getElementById(id) { return this.querySelector('#' + id); }
+
   querySelector(sel) {
     for (const c of this.children) {
       if (sel.startsWith('.') && c.classList.contains(sel.slice(1))) return c;
@@ -155,7 +157,7 @@ const mockWindow = {
   __fmFloatingBarLoaded: false,
   innerWidth: 1920,
   innerHeight: 1080,
-  location: { href: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', hostname: 'www.youtube.com' },
+  location: { href: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', hostname: 'www.youtube.com', pathname: '/watch', origin: 'https://www.youtube.com' },
   addEventListener: (t, fn, o) => addListener('window', t, fn, o),
   setTimeout: setTimeout,
   clearTimeout: clearTimeout,

@@ -221,7 +221,7 @@ public static class StreamProbeService
     private static readonly HttpClient Http = new(new HttpClientHandler
     {
         AllowAutoRedirect = true,
-        ServerCertificateCustomValidationCallback = (_, _, _, _) => true
+        UseCookies = false,
     })
     {
         Timeout = TimeSpan.FromSeconds(5)
@@ -579,16 +579,9 @@ public static class StreamProbeService
             req.Headers.TryAddWithoutValidation("Origin", $"{tUri.Scheme}://{tUri.Authority}");
         }
 
-        string? effectiveCookie = null;
-        if (!string.IsNullOrWhiteSpace(cookieHeader)) effectiveCookie = cookieHeader;
-        else if (cookies is { Count: > 0 })
-        {
-            effectiveCookie = string.Join("; ", cookies.Where(c => !string.IsNullOrEmpty(c.Name)).Select(c => $"{c.Name}={c.Value}"));
-        }
-        if (!string.IsNullOrWhiteSpace(effectiveCookie))
-            req.Headers.TryAddWithoutValidation("Cookie", effectiveCookie);
-
-        using var resp = await Http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
+        using var http = RequestCookies.CreateClient(new DownloadRequest
+        { Url = url, Referer = referer, UserAgent = userAgent, Cookies = cookies, CookieHeader = cookieHeader }, TimeSpan.FromSeconds(5));
+        using var resp = await http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
         if (!resp.IsSuccessStatusCode)
         {
             // If upgraded master failed with 404, fallback to original url without re-upgrading

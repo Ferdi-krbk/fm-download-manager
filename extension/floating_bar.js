@@ -43,6 +43,7 @@
   // Bilingual dictionary & dynamic theme support
   let currentLang = 'tr';
   let currentAccent = '#E50914';
+  let currentThemeMode = 'dark';
 
   const I18N = {
     tr: {
@@ -112,14 +113,16 @@
     return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
   }
 
-  function applyTheme(accentHex, lang) {
+  function applyTheme(accentHex, lang, themeMode) {
     if (accentHex) currentAccent = accentHex;
     if (lang) currentLang = lang;
+    if (themeMode) currentThemeMode = themeMode;
     if (shadowRoot && shadowRoot.host) {
       shadowRoot.host.style.setProperty('--fm-accent', currentAccent);
       shadowRoot.host.style.setProperty('--fm-accent-glow', hexToRgba(currentAccent, 0.45));
       shadowRoot.host.style.setProperty('--fm-accent-dim', hexToRgba(currentAccent, 0.15));
       shadowRoot.host.style.setProperty('--fm-accent-hover', lightenHex(currentAccent, 25));
+      shadowRoot.host.classList.toggle('fm-light', currentThemeMode === 'light');
     }
     updateBarTexts();
   }
@@ -162,11 +165,12 @@
   // Load and listen to theme / language from storage
   try {
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      chrome.storage.local.get(['accentColor', 'language'], (res) => {
+      chrome.storage.local.get(['accentColor', 'language', 'themeMode'], (res) => {
         if (res) {
           if (res.accentColor) currentAccent = res.accentColor;
           if (res.language) currentLang = res.language;
-          applyTheme(currentAccent, currentLang);
+          if (res.themeMode) currentThemeMode = res.themeMode;
+          applyTheme(currentAccent, currentLang, currentThemeMode);
         }
       });
       chrome.storage.onChanged.addListener((changes, area) => {
@@ -174,7 +178,8 @@
           let ch = false;
           if (changes.accentColor) { currentAccent = changes.accentColor.newValue; ch = true; }
           if (changes.language) { currentLang = changes.language.newValue; ch = true; }
-          if (ch) applyTheme(currentAccent, currentLang);
+          if (changes.themeMode) { currentThemeMode = changes.themeMode.newValue; ch = true; }
+          if (ch) applyTheme(currentAccent, currentLang, currentThemeMode);
         }
       });
     }
@@ -463,6 +468,77 @@
       background: rgba(255, 255, 255, 0.08);
       padding: 1px 5px;
       border-radius: 4px;
+    }
+
+    /* Light / White Theme Overrides for Floating Hover Bar */
+    :host(.fm-light) .fm-bar {
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.16), 0 0 12px var(--fm-accent-glow, rgba(229, 9, 20, 0.22));
+    }
+
+    :host(.fm-light) .fm-bar:hover {
+      background: rgba(248, 250, 252, 0.98);
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.22), 0 0 18px var(--fm-accent-glow, rgba(229, 9, 20, 0.35));
+    }
+
+    :host(.fm-light) .fm-btn-action:hover,
+    :host(.fm-light) .fm-arrow-btn:hover {
+      background: rgba(15, 23, 42, 0.07);
+    }
+
+    :host(.fm-light) .fm-title {
+      color: #0f172a;
+    }
+
+    :host(.fm-light) .fm-arrow {
+      color: #475569;
+    }
+
+    :host(.fm-light) .fm-close-btn {
+      color: #64748b;
+    }
+
+    :host(.fm-light) .fm-close-btn:hover {
+      background: rgba(15, 23, 42, 0.12);
+      color: #0f172a;
+    }
+
+    :host(.fm-light) .fm-menu {
+      background: rgba(255, 255, 255, 0.97);
+      border: 1px solid rgba(203, 213, 225, 0.95);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18), 0 0 15px var(--fm-accent-dim, rgba(229, 9, 20, 0.12));
+    }
+
+    :host(.fm-light) .fm-item {
+      color: #1e293b;
+    }
+
+    :host(.fm-light) .fm-item:hover {
+      background: var(--fm-accent-dim, rgba(229, 9, 20, 0.16));
+      color: #0f172a;
+    }
+
+    :host(.fm-light) .fm-item-sub,
+    :host(.fm-light) .fm-subs-title {
+      color: #475569;
+    }
+
+    :host(.fm-light) .fm-subs-header {
+      border-bottom: 1px solid rgba(15, 23, 42, 0.1);
+    }
+
+    :host(.fm-light) .fm-sub-item {
+      color: #1e293b;
+    }
+
+    :host(.fm-light) .fm-sub-item:hover {
+      background: var(--fm-accent-dim, rgba(229, 9, 20, 0.16));
+      color: #0f172a;
+    }
+
+    :host(.fm-light) .fm-sub-code {
+      color: #475569;
+      background: rgba(15, 23, 42, 0.08);
     }
   `;
 
@@ -936,7 +1012,7 @@
       subsPanelEl.appendChild(subsListEl);
 
       dropdownMenu.appendChild(subsPanelEl);
-            applyTheme(currentAccent, currentLang);
+      applyTheme(currentAccent, currentLang, currentThemeMode);
       barContainer.appendChild(dropdownMenu);
       shadowRoot.appendChild(barContainer);
 
@@ -1301,7 +1377,7 @@
     if (!f || f.tagName !== 'IFRAME') return false;
     const src = (f.src || f.getAttribute('src') || f.getAttribute('data-src') || '').toLowerCase();
     if (!src || src === 'about:blank' || src.startsWith('javascript:')) return false;
-    return /(vidmoly|rapidvid|streamtape|dood|filemoon|vidspeed|supervideo|upstream|mixdrop|streamwish|voe\.sx|sibnet|ok\.ru\/videoembed|vk\.com\/video_ext|player\.vimeo\.com|dailymotion\.com\/embed|youtube\.com\/embed|youtube-nocookie\.com\/embed|twitch\.tv\/\?channel|rumble\.com\/embed)/i.test(src);
+    return /(vidmoly|rapidvid|rapidrame|streamtape|dood|filemoon|vidspeed|supervideo|upstream|mixdrop|streamwish|voe\.sx|sibnet|ok\.ru\/videoembed|vk\.com\/video_ext|player\.vimeo\.com|dailymotion\.com\/embed|youtube\.com\/embed|youtube-nocookie\.com\/embed|twitch\.tv\/\?channel|rumble\.com\/embed)/i.test(src);
   }
 
   function isRealDownloadableVideo(el) {

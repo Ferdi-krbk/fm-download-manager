@@ -22,6 +22,11 @@ jobs:
       with:
         dotnet-version: '8.0.x'
 
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: '24'
+
     - name: Fetch Bundled Tools (yt-dlp, ffmpeg, ffprobe)
       shell: pwsh
       run: ./scripts/fetch-tools.ps1
@@ -34,6 +39,23 @@ jobs:
 
     - name: Run test suite
       run: dotnet run -c Release --project tests/McDm.Tests
+
+    - name: Run extension tests
+      shell: pwsh
+      run: |
+        foreach ($testFile in Get-ChildItem tests -Filter 'test_*.js') {
+          node $testFile.FullName
+          if ($LASTEXITCODE -ne 0) { throw "Extension test failed: $($testFile.Name)" }
+        }
+
+    - name: Run Windows acceptance checks
+      run: dotnet run -c Release --project tests/McDm.Acceptance -- dist/ci-acceptance dist/ci-screenshots
+
+    - name: Upload acceptance results
+      uses: actions/upload-artifact@v4
+      with:
+        name: Acceptance-results
+        path: dist/ci-acceptance/results.txt
 
     - name: Publish Self-Contained (win-x64)
       run: dotnet publish src/McDm.App/McDm.App.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish/win-x64
@@ -52,10 +74,30 @@ jobs:
         name: FMDownloadManager-Setup
         path: dist/FMDownloadManager-Setup-*.exe
 
+    - name: Generate Winget manifest
+      shell: pwsh
+      run: |
+        [xml]$project = Get-Content src/McDm.App/McDm.App.csproj
+        $version = [string]($project.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1)
+        if ($env:GITHUB_REF -like 'refs/tags/*' -and $env:GITHUB_REF_NAME -ne "v$version") { throw 'Release tag and project version differ' }
+        ./scripts/generate-winget.ps1 -Version $version -InstallerPath "dist/FMDownloadManager-Setup-$version.exe"
+
+    - name: Upload Winget manifest
+      uses: actions/upload-artifact@v4
+      with:
+        name: FMDownloadManager-Winget
+        path: dist/winget/*.yaml
+
     - name: Release on tag
       if: startsWith(github.ref, 'refs/tags/v')
       uses: softprops/action-gh-release@v2
       with:
-        files: dist/FMDownloadManager-Setup-*.exe
+        name: FM Download Manager ${{ github.ref_name }}
+        body_path: release_notes_v1.md
+        make_latest: true
+        prerelease: false
+        files: |
+          dist/FMDownloadManager-Setup-*.exe
+          dist/winget/*.yaml
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

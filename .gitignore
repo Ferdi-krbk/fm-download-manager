@@ -3,6 +3,8 @@ obj/
 *.user
 .vs/
 Tools/*.exe
+Tools/.fetch-*/
+extension/token.json
 dist/
 publish/
 *.mcdm-part

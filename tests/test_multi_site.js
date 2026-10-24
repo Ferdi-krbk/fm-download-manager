@@ -37,6 +37,7 @@ const classifyMatch = bgCode.match(/function classify\(url, ct\) \{([\s\S]*?)\n\
 const classify = new Function('url', 'ct', `
   const FRAGMENT = /\\.(ts|m4s|m4f|cmfv|cmfa|fmp4|init)(\\?|#|$)|[/_.-](seg|segment|chunk|frag|fragment)[-_]?\\d+/i;
   const MEDIA_EXT = /\\.(mp4|m4v|webm|mkv|mov|avi|flv|mp3|m4a|aac|ogg|opus|wav|flac)(\\?|#|$)/i;
+  ${bgCode.match(/function isAudioOnlyStreamUrl\(url, ct\) \{[\s\S]*?\n\}/)[0]}
   ${classifyMatch[1]}
 `);
 

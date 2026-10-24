@@ -83,7 +83,8 @@ public sealed class SpeedGraphControl : FrameworkElement
         if (w <= 10 || h <= 10) return;
 
         // Subtle background grid lines (horizontal 25%, 50%, 75%)
-        var gridPen = new Pen(new SolidColorBrush(Color.FromArgb(0x18, 0xFF, 0xFF, 0xFF)), 1);
+        var gridColor = ThemeManager.IsLightTheme ? Color.FromArgb(0x22, 0x00, 0x00, 0x00) : Color.FromArgb(0x18, 0xFF, 0xFF, 0xFF);
+        var gridPen = new Pen(new SolidColorBrush(gridColor), 1);
         gridPen.Freeze();
         dc.DrawLine(gridPen, new Point(0, h * 0.25), new Point(w, h * 0.25));
         dc.DrawLine(gridPen, new Point(0, h * 0.50), new Point(w, h * 0.50));

@@ -56,7 +56,7 @@
                         </Border>
                         <TextBlock Text="FM Download Manager" FontFamily="{DynamicResource UiFont}" FontWeight="Bold" FontSize="12.5" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" />
                         <Border Background="{DynamicResource Bg3Brush}" CornerRadius="4" Padding="5,1" Margin="8,0,0,0" VerticalAlignment="Center">
-                            <TextBlock Text="v3.7.1" FontFamily="{DynamicResource UiFont}" FontSize="9.5" FontWeight="SemiBold" Foreground="{DynamicResource AccentHoverBrush}" />
+                            <TextBlock Text="v1.0.0" FontFamily="{DynamicResource UiFont}" FontSize="9.5" FontWeight="SemiBold" Foreground="{DynamicResource AccentHoverBrush}" />
                         </Border>
                     </StackPanel>
                 </DockPanel>
@@ -146,6 +146,15 @@
                                         <DropShadowEffect BlurRadius="16" ShadowDepth="4" Opacity="0.5" Color="#000000" />
                                     </Border.Effect>
                                     <StackPanel>
+                                        <Grid Margin="0,0,0,10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="6" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Button x:Name="BtnThemeDark" Grid.Column="0" Style="{DynamicResource SecondaryButton}" Height="26" Content="🌙 Koyu" FontSize="11" Click="QuickThemeDark_Click" />
+                                            <Button x:Name="BtnThemeLight" Grid.Column="2" Style="{DynamicResource SecondaryButton}" Height="26" Content="☀️ Açık" FontSize="11" Click="QuickThemeLight_Click" />
+                                        </Grid>
                                         <TextBlock x:Name="LblPaletteHeader" Text="VURGU RENGİ SEÇ" FontFamily="{DynamicResource UiFont}" FontWeight="Bold" FontSize="10.5" Foreground="{DynamicResource TextDimBrush}" Margin="2,0,0,8" />
                                         <WrapPanel x:Name="PnlQuickSwatches" Orientation="Horizontal" Margin="0,0,0,6" />
                                         <Button x:Name="BtnPaletteOpenSettings" Style="{DynamicResource GhostButton}" Height="24" Content="Tüm Ayarları Aç..." FontSize="10.5" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,4,0,0" Click="OpenSettingsFromPalette_Click" />
@@ -360,7 +369,7 @@
                                     <TextBlock x:Name="LblMultiThreadOptimize" Text="Paralel parçalama optimize" FontFamily="{DynamicResource UiFont}" FontSize="11" Foreground="{DynamicResource TextMuteBrush}" />
                                 </StackPanel>
                                 <Border Grid.Row="2" Background="{DynamicResource Bg1Brush}" CornerRadius="2" Padding="6,2" Margin="0,3,0,0" HorizontalAlignment="Left">
-                                    <TextBlock Text="⚡ Turbo Multi-Thread" FontFamily="{DynamicResource UiFont}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource FlameBrush}" />
+                                    <TextBlock Text="HTTP / Range" FontFamily="{DynamicResource UiFont}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource FlameBrush}" />
                                 </Border>
                             </Grid>
                         </Border>
@@ -588,7 +597,7 @@
                                                             <Setter Property="Foreground" Value="{DynamicResource TextMuteBrush}" />
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding Status}" Value="Downloading">
-                                                                    <Setter Property="Text" Value="{Binding ActiveConnections, StringFormat={}{0} th}" />
+                                                                    <Setter Property="Text" Value="{Binding ActiveConnections}" />
                                                                     <Setter Property="Foreground" Value="{Binding Progress, Converter={StaticResource ProgressBrush}}" />
                                                                     <Setter Property="FontWeight" Value="SemiBold" />
                                                                 </DataTrigger>
@@ -611,10 +620,10 @@
                                                         <Setter Property="Background" Value="{DynamicResource Bg2Brush}" />
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding Status}" Value="Completed">
-                                                                <Setter Property="Background" Value="#122A20" />
+                                                                <Setter Property="Background" Value="#2210B981" />
                                                             </DataTrigger>
                                                             <DataTrigger Binding="{Binding Status}" Value="Failed">
-                                                                <Setter Property="Background" Value="#2D1418" />
+                                                                <Setter Property="Background" Value="#22EF4444" />
                                                             </DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
@@ -715,7 +724,7 @@
                 <DockPanel LastChildFill="True" VerticalAlignment="Center">
                     <!-- Right: Info -->
                     <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
-                        <TextBlock Text="Cyber-Fluent v3.7.1 PRO" FontFamily="{DynamicResource UiFont}" FontSize="10.5" Foreground="{DynamicResource TextMuteBrush}" VerticalAlignment="Center" />
+                        <TextBlock Text="FM Download Manager · Windows" FontFamily="{DynamicResource UiFont}" FontSize="10.5" Foreground="{DynamicResource TextMuteBrush}" VerticalAlignment="Center" />
                     </StackPanel>
 
                     <!-- Left: Status Summary -->

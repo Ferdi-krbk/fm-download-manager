@@ -178,12 +178,16 @@ public partial class MainWindow : Window
         bool isTr = Strings.IsTurkish;
         LblCategories.Text = isTr ? "Kategoriler" : "Categories";
         LblTotalSpeed.Text = isTr ? "Toplam Hız" : "Total Speed";
-        LblBridgeConnected.Text = isTr ? "Eklenti Bağlı" : "Bridge Connected";
+        LblBridgeConnected.Text = isTr ? "Yerel köprü hazır" : "Local bridge ready";
         if (LblTransferStatus != null) LblTransferStatus.Text = isTr ? "TRANSFER DURUMU" : "TRANSFER STATUS";
-        if (LblMultiThreadOptimize != null) LblMultiThreadOptimize.Text = isTr ? "Paralel parçalama optimize" : "Parallel segment optimized";
+        if (LblMultiThreadOptimize != null) LblMultiThreadOptimize.Text = isTr ? "Paralel HTTP aktarımı" : "Parallel HTTP transfers";
         if (LblStorageBridge != null) LblStorageBridge.Text = isTr ? "DEPOLAMA & EKLENTİ" : "STORAGE & EXTENSION";
-        if (LblNativeBridgeActive != null) LblNativeBridgeActive.Text = isTr ? "● Native Bridge Aktif" : "● Native Bridge Active";
+        if (LblNativeBridgeActive != null) LblNativeBridgeActive.Text = isTr ? "● Yerel tarayıcı köprüsü" : "● Local browser bridge";
         if (BtnEmptyAddUrl != null) BtnEmptyAddUrl.Content = isTr ? "URL Ekle" : "Add URL";
+        if (BtnThemeDark != null) BtnThemeDark.Content = isTr ? "🌙 Koyu" : "🌙 Dark";
+        if (BtnThemeLight != null) BtnThemeLight.Content = isTr ? "☀️ Açık" : "☀️ Light";
+        if (LblPaletteHeader != null) LblPaletteHeader.Text = Strings.PaletteHeader;
+        if (BtnPaletteOpenSettings != null) BtnPaletteOpenSettings.Content = Strings.PaletteOpenAllSettings;
         TxtEmptyTitle.Text = Strings.NoDownloadsTitle;
         TxtEmptySubtitle.Text = Strings.NoDownloadsSub;
         if (TxtDragDropTitle != null) TxtDragDropTitle.Text = Strings.DragDropTitle;
@@ -352,7 +356,9 @@ public partial class MainWindow : Window
             {
                 var req = new DownloadRequest
                 {
-                    Url = text,
+                    Url = !string.IsNullOrWhiteSpace(qDlg.ResolvedUrl) ? qDlg.ResolvedUrl : text,
+                    FileName = !string.IsNullOrWhiteSpace(qDlg.DetectedTitle) ? qDlg.DetectedTitle : null,
+                    Referer = !string.IsNullOrWhiteSpace(qDlg.ResolvedUrl) && qDlg.ResolvedUrl != text ? text : null,
                     Kind = DownloadKind.Video,
                     CustomFormat = qDlg.SelectedFormat,
                     Container = qDlg.AudioOnly ? "mp3" : "mp4",
@@ -426,7 +432,7 @@ public partial class MainWindow : Window
                 CornerRadius = new CornerRadius(4),
                 Margin = new Thickness(0, 0, 6, 6),
                 Background = new SolidColorBrush(col),
-                BorderBrush = isSelected ? System.Windows.Media.Brushes.White : new SolidColorBrush(Color.FromArgb(0x40, 0xFF, 0xFF, 0xFF)),
+                BorderBrush = isSelected ? (ThemeManager.IsLightTheme ? System.Windows.Media.Brushes.Black : System.Windows.Media.Brushes.White) : new SolidColorBrush(Color.FromArgb(0x40, 0x88, 0x88, 0x88)),
                 BorderThickness = new Thickness(isSelected ? 2 : 1),
                 Cursor = System.Windows.Input.Cursors.Hand,
                 ToolTip = ThemeManager.GetPresetDisplayName(preset, isTr)
@@ -463,6 +469,24 @@ public partial class MainWindow : Window
     {
         PalettePopup.IsOpen = false;
         Settings_Click(sender, e);
+    }
+
+    private void QuickThemeDark_Click(object sender, RoutedEventArgs e)
+    {
+        ThemeManager.ApplyThemeMode("dark");
+        _settings.AppTheme = "dark";
+        _settings.Save();
+        PopulateQuickSwatches();
+        SidebarSpeedGraph?.InvalidateVisual();
+    }
+
+    private void QuickThemeLight_Click(object sender, RoutedEventArgs e)
+    {
+        ThemeManager.ApplyThemeMode("light");
+        _settings.AppTheme = "light";
+        _settings.Save();
+        PopulateQuickSwatches();
+        SidebarSpeedGraph?.InvalidateVisual();
     }
 
     private void AddUrls_Click(object sender, RoutedEventArgs e)
@@ -525,16 +549,28 @@ public partial class MainWindow : Window
 
     private void Open_Click(object s, RoutedEventArgs e)
     {
-        if (Selected.FirstOrDefault() is { } i && File.Exists(i.SavePath))
-            Process.Start(new ProcessStartInfo(i.SavePath) { UseShellExecute = true });
+        if (Selected.FirstOrDefault() is { } i && !string.IsNullOrEmpty(i.SavePath))
+        {
+            if (File.Exists(i.SavePath) || Directory.Exists(i.SavePath))
+                Process.Start(new ProcessStartInfo(i.SavePath) { UseShellExecute = true });
+        }
     }
 
     private void OpenFolder_Click(object s, RoutedEventArgs e)
     {
-        if (Selected.FirstOrDefault() is { } i && File.Exists(i.SavePath))
-            Process.Start("explorer.exe", $"/select,\"{i.SavePath}\"");
+        if (Selected.FirstOrDefault() is { } i && !string.IsNullOrEmpty(i.SavePath))
+        {
+            if (File.Exists(i.SavePath))
+                Process.Start("explorer.exe", $"/select,\"{i.SavePath}\"");
+            else if (Directory.Exists(i.SavePath))
+                Process.Start("explorer.exe", $"\"{i.SavePath}\"");
+            else
+                Process.Start("explorer.exe", $"\"{_manager.DefaultDownloadDirectory}\"");
+        }
         else
+        {
             Process.Start("explorer.exe", $"\"{_manager.DefaultDownloadDirectory}\"");
+        }
     }
 
     private void CopyUrl_Click(object s, RoutedEventArgs e)
@@ -566,9 +602,13 @@ public partial class MainWindow : Window
             _manager.DefaultConnections = updated.ConnectionsPerDownload;
             _manager.MaxConcurrentDownloads = updated.MaxConcurrentDownloads;
             _manager.AutoCategorizeSubfolders = updated.AutoCategorizeSubfolders;
+            _manager.VirusScanEnabled = updated.VirusScanEnabled;
+            _manager.CustomAntivirusPath = updated.CustomAntivirusPath;
+            _manager.CustomAntivirusArgs = updated.CustomAntivirusArgs;
             _manager.SpeedLimiter.BytesPerSecond = (long)updated.SpeedLimitKbps * 1024;
             SldSpeedLimit.Value = Math.Round((double)updated.SpeedLimitKbps / 1024);
             TxtSpeedLimitVal.Text = updated.SpeedLimitKbps > 0 ? $"{updated.SpeedLimitKbps / 1024} MB/s" : Strings.Unlimited;
+            SidebarSpeedGraph?.InvalidateVisual();
 
             // Apply culture change if user switched language
             Strings.SetLanguage(updated.Language);
@@ -637,7 +677,7 @@ public partial class MainWindow : Window
 
     private void Grid_DoubleClick(object s, MouseButtonEventArgs e)
     {
-        if (Grid.SelectedItem is DownloadItem { Status: DownloadStatus.Completed } i && File.Exists(i.SavePath))
+        if (Grid.SelectedItem is DownloadItem { Status: DownloadStatus.Completed } i && !string.IsNullOrEmpty(i.SavePath) && (File.Exists(i.SavePath) || Directory.Exists(i.SavePath)))
             Process.Start(new ProcessStartInfo(i.SavePath) { UseShellExecute = true });
         else if (Grid.SelectedItem is DownloadItem itm)
         {
@@ -896,7 +936,9 @@ public partial class MainWindow : Window
                 {
                     _manager.Add(new DownloadRequest
                     {
-                        Url = url,
+                        Url = !string.IsNullOrWhiteSpace(qDlg.ResolvedUrl) ? qDlg.ResolvedUrl : url,
+                        FileName = !string.IsNullOrWhiteSpace(qDlg.DetectedTitle) ? qDlg.DetectedTitle : null,
+                        Referer = !string.IsNullOrWhiteSpace(qDlg.ResolvedUrl) && qDlg.ResolvedUrl != url ? url : null,
                         Kind = DownloadKind.Video,
                         CustomFormat = qDlg.SelectedFormat,
                         Container = qDlg.AudioOnly ? "mp3" : "mp4",

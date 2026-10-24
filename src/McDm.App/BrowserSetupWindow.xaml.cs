@@ -199,7 +199,7 @@ public partial class BrowserSetupWindow : Window
             if (key != null)
             {
                 key.SetValue("path", extensionDir);
-                key.SetValue("version", "3.2.0");
+                key.SetValue("version", BridgeServer.Version);
             }
         }
         catch { }

@@ -143,21 +143,23 @@ public static class StreamProbeService
     public static string FormatAudioLabel(string? langCode, string? formatNote = null, bool isOriginal = false)
     {
         var (trName, natName) = GetLanguageInfo(langCode, formatNote);
-        string langTag = trName.Equals(natName, StringComparison.OrdinalIgnoreCase) ? trName : $"{trName} ({natName})";
+        bool tr = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "tr";
+        string name = tr ? trName : GetEnglishLanguageName(langCode ?? "", natName);
+        string langTag = name.Equals(natName, StringComparison.OrdinalIgnoreCase) ? name : $"{name} ({natName})";
 
         if (isOriginal)
         {
-            return $"Orijinal Ses - {langTag}";
+            return tr ? $"Orijinal Ses - {langTag}" : $"Original audio - {langTag}";
         }
 
         if (langCode?.StartsWith("tr", StringComparison.OrdinalIgnoreCase) == true ||
             formatNote?.Contains("Turkish", StringComparison.OrdinalIgnoreCase) == true ||
             formatNote?.Contains("Türkçe", StringComparison.OrdinalIgnoreCase) == true)
         {
-            return "Türkçe Dublaj";
+            return tr ? "Türkçe Dublaj" : "Turkish dub";
         }
 
-        return $"{trName} Dublaj ({natName})";
+        return tr ? $"{trName} Dublaj ({natName})" : $"{name} dub ({natName})";
     }
 
     public static string GetEnglishLanguageName(string code, string fallback)

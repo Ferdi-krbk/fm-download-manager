@@ -238,6 +238,23 @@ public static class RepairRegressionTests
             return Task.CompletedTask;
         });
 
+        await test("repair: audio and subtitle labels respect Turkish and English UI cultures", () =>
+        {
+            var previous = System.Globalization.CultureInfo.CurrentUICulture;
+            try
+            {
+                System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo("en-US");
+                check(StreamProbeService.FormatSubtitleLabel("tr", false) == "Turkish (Türkçe) Subtitles", "English subtitle label incorrect");
+                check(StreamProbeService.FormatAudioLabel("tr", isOriginal: false) == "Turkish dub", "English dub label incorrect");
+                check(StreamProbeService.FormatAudioLabel("en", isOriginal: true).StartsWith("Original audio"), "English original audio label incorrect");
+                System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
+                check(StreamProbeService.FormatSubtitleLabel("tr", false) == "Türkçe Altyazı", "Turkish subtitle label incorrect");
+                check(StreamProbeService.FormatAudioLabel("tr", isOriginal: false) == "Türkçe Dublaj", "Turkish dub label incorrect");
+            }
+            finally { System.Globalization.CultureInfo.CurrentUICulture = previous; }
+            return Task.CompletedTask;
+        });
+
         await test("repair: tool checksum failure preserves the installed binary", async () =>
         {
             string target = Path.Combine(tmp(), "tool.exe");

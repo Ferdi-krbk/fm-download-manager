@@ -304,6 +304,7 @@ Son sahne metni.
 
         await test("video: multi-language audio dubs and subtitle localization across global languages", () =>
         {
+            using var culture = new UiCultureScope("tr-TR");
             // 1. Language Info detection
             var esInfo = StreamProbeService.GetLanguageInfo("es");
             check(esInfo.Turkish == "İspanyolca" && esInfo.Native == "Español", "es language info mismatch");
@@ -370,5 +371,12 @@ Son sahne metni.
 
             return Task.CompletedTask;
         });
+    }
+
+    private sealed class UiCultureScope : IDisposable
+    {
+        private readonly System.Globalization.CultureInfo _previous = System.Globalization.CultureInfo.CurrentUICulture;
+        public UiCultureScope(string name) => System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo(name);
+        public void Dispose() => System.Globalization.CultureInfo.CurrentUICulture = _previous;
     }
 }

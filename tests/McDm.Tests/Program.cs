@@ -12,6 +12,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 // ───────────── test origin server ─────────────
+if (Environment.GetEnvironmentVariable("MCDM_TEST_UI_CULTURE") is { Length: > 0 } testCulture)
+    System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo(testCulture);
 if (args.Length >= 2 && args[0] == "--scanner-fixture")
 {
     if (args[1] == "wait")

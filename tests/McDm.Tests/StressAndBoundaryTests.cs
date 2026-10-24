@@ -559,6 +559,7 @@ Late timestamp with full 3-part hour specification.";
         // ── 17. Subtitle XML/VTT Conversion, Lang Code Normalization & Dubbing Sort ─
         await test("regression: YouTube XML timedtext to SRT conversion, NormalizeSubtitleFileLangCode, and SortAudioTracks", () =>
         {
+            using var culture = new UiCultureScope("tr-TR");
             // 1. YouTube srv1 XML (<text start="..." dur="...">) -> SRT
             string srv1Xml = @"<?xml version=""1.0"" encoding=""utf-8"" ?><transcript><text start=""1.5"" dur=""2.25"">Merhaba &amp; Hoşgeldiniz</text><text start=""4.0"" dur=""3.5"">İkinci satır</text></transcript>";
             string srt1 = VideoDownloader.ConvertXmlTimedTextToSrt(srv1Xml);

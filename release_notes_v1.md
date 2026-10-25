@@ -1,7 +1,7 @@
 # FM Download Manager 1.0.0
 
 <!--
-FM_STABLE_BUILD=4
+FM_STABLE_BUILD=5
 -->
 
 The first official stable release. Earlier numbered builds are retained as
@@ -24,6 +24,12 @@ historical alpha/beta prereleases; their tags and downloadable files remain inta
 - External audio downloads report their own progress and clear stale transfer speeds.
 
 ## Automatic antivirus integration
+
+Stable build 5 fixes product names disappearing after **Detect again**. WMI
+product properties are looked up per instance, avoiding the observed E_FAIL on
+repeated queries. The generic Windows scan transport is no longer presented as
+the antivirus product name. Repeated real queries and the actual settings button
+were tested on the installed Kaspersky system.
 
 Installed products are detected through Windows Security Center. File scanning uses
 registered Windows AMSI providers in a separate bounded process, with known

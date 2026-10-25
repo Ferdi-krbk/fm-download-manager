@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.0 antivirus detection fix (stable build 5) - 2026-10-25
+
+- Fix repeated antivirus-name detection failing with WMI E_FAIL and showing the
+  generic Windows scan integration as the detected product. Query names through
+  each WMI object's property collection; keep product identity separate from the
+  scan transport. Add repeated-query and actual Detect again button regressions.
+
 ## 1.0.0 security refresh (stable build 4) - 2026-10-25
 
 - Enable HTTPS certificate validation in the actual yt-dlp download command.

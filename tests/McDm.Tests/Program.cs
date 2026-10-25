@@ -557,6 +557,7 @@ await McDm.Tests.VideoTests.RunAsync(Test, Check, Tmp);
 await McDm.Tests.HardeningTests.RunAsync(Test, Check, Tmp);
 await McDm.Tests.StressAndBoundaryTests.RunAsync(Test, Check, Tmp);
 await McDm.Tests.RepairRegressionTests.RunAsync(Test, Check, Tmp);
+await McDm.Tests.AntivirusRefreshTests.RunAsync(Test, Check);
 await McDm.Tests.ReleaseSecurityTests.RunAsync(Test, Check, Tmp);
 
 Console.WriteLine($"\n{passed} passed, {failed} failed");

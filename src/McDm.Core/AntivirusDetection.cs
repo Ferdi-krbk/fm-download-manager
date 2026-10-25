@@ -46,19 +46,44 @@ public static class AntivirusDetection
             locator = Activator.CreateInstance(type);
             services = ((dynamic)locator!).ConnectServer(".", @"root\SecurityCenter2");
             results = ((dynamic)services!).ExecQuery("SELECT displayName FROM AntiVirusProduct");
-            foreach (dynamic product in (System.Collections.IEnumerable)results!)
+            foreach (object product in (System.Collections.IEnumerable)results!)
             {
-                try { string name = (string)product.displayName; if (!string.IsNullOrWhiteSpace(name)) names.Add(name); }
-                finally { if (System.Runtime.InteropServices.Marshal.IsComObject(product)) System.Runtime.InteropServices.Marshal.FinalReleaseComObject(product); }
+                try
+                {
+                    string? name = ReadProductDisplayName(product);
+                    if (!string.IsNullOrWhiteSpace(name)) names.Add(name);
+                }
+                finally { ReleaseCom(product); }
             }
         }
         catch (Exception error) when (error is System.Runtime.InteropServices.COMException or Microsoft.CSharp.RuntimeBinder.RuntimeBinderException) { }
         finally
         {
             foreach (var item in new[] { results, services, locator })
-                if (item != null && System.Runtime.InteropServices.Marshal.IsComObject(item)) System.Runtime.InteropServices.Marshal.FinalReleaseComObject(item);
+                ReleaseCom(item);
         }
         return names.Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+    }
+
+    internal static string? ReadProductDisplayName(object product)
+    {
+        object? properties = null, property = null;
+        try
+        {
+            // WMI's synthetic displayName dispatch ID belongs to an individual instance.
+            // C# dynamic can cache it across products/queries and subsequently fail with
+            // E_FAIL. Look the name up through the stable SWbem property collection instead.
+            properties = ((dynamic)product).Properties_;
+            property = ((dynamic)properties).Item("displayName", 0);
+            return ((dynamic)property).Value as string;
+        }
+        finally { ReleaseCom(property); ReleaseCom(properties); }
+    }
+
+    private static void ReleaseCom(object? item)
+    {
+        if (OperatingSystem.IsWindows() && item != null && System.Runtime.InteropServices.Marshal.IsComObject(item))
+            System.Runtime.InteropServices.Marshal.FinalReleaseComObject(item);
     }
 
     public static AntivirusProfile? Detect(string? previousPath = null, string? previousArguments = null, IEnumerable<string>? installRoots = null, bool allowWindowsIntegration = true)

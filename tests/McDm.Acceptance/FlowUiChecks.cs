@@ -205,6 +205,21 @@ internal static class FlowUiChecks
                     "antivirus setup still requires a user-selected executable or arguments");
                 Require(settingsDialog.FindName("TxtDetectedAv") is TextBlock && settingsDialog.FindName("BtnDetectAv") is Button,
                     "automatic antivirus detection UI is missing");
+                var knownProducts = Task.Run(AntivirusDetection.InstalledProductNames).GetAwaiter().GetResult();
+                var detect = (Button)settingsDialog.FindName("BtnDetectAv");
+                var detected = (TextBlock)settingsDialog.FindName("TxtDetectedAv");
+                for (int attempt = 0; attempt < 4; attempt++)
+                {
+                    settingsDialog.Dispatcher.BeginInvoke(new Action(() => detect.RaiseEvent(new RoutedEventArgs(Button.ClickEvent))));
+                    Pump(40);
+                    var deadline = System.Diagnostics.Stopwatch.StartNew();
+                    while (!detect.IsEnabled && deadline.Elapsed < TimeSpan.FromSeconds(10)) Pump(20);
+                    Require(detect.IsEnabled, "antivirus refresh did not finish");
+                    Require(detected.Text != "Detected: Windows", "scan transport was incorrectly displayed as an antivirus product");
+                    foreach (string product in knownProducts)
+                        Require(detected.Text.Contains(product, StringComparison.OrdinalIgnoreCase), "registered antivirus vanished after Detect again");
+                }
+                Console.WriteLine("PASS actual Detect again button: repeated worker queries retain registered antivirus names");
             }
             finally { settingsDialog.Close(); }
             Console.WriteLine("PASS automatic antivirus settings without manual executable/command fields");

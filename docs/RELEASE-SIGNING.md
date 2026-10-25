@@ -28,7 +28,7 @@ unsigned update. Main/PR builds do not need the secret.
 For a manually published, already-tested installer, sign it locally:
 
 ```powershell
-pwsh -NoProfile -File scripts/sign-update.ps1 -AssetPath dist/FMDownloadManager-Setup-1.0.0.exe -Version 1.0.0 -Build 4 -UseLocalKey
+pwsh -NoProfile -File scripts/sign-update.ps1 -AssetPath dist/FMDownloadManager-Setup-1.0.0.exe -Version 1.0.0 -Build 5 -UseLocalKey
 ```
 
 Upload the executable and both manifest files to the same release. Sign the bridge

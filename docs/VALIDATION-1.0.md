@@ -3,7 +3,17 @@
 Validated on Windows on 25 October 2026. Automated tests are not a guarantee that
 every host, browser version or antivirus product will behave identically.
 
-## Security refresh: stable build 4
+## Antivirus refresh: stable build 5
+
+The 76 Core tests and native UI checks passed after fixing repeated WMI product
+name lookup. Eight actual queries on the installed Kaspersky system retained the
+same registered names, and the real Detect again button passed four consecutive
+refreshes. Regression tests cover per-instance WMI lookup and worker-thread
+refresh. Update tests require build 4 to discover build 5 and build 5 not to offer
+itself again. The user also reported a successful actual 3.7.2 to 1.0.0 upgrade;
+that report is separate from the automated upgrade/parser tests.
+
+## Security refresh: stable build 4 validation
 
 - All 74 Core regressions passed, including seven update/origin/TLS security checks.
 - The actual bundled yt-dlp rejected a generated, untrusted HTTPS video certificate;

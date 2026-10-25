@@ -252,10 +252,14 @@ public partial class SettingsWindow : Window
         try
         {
             var found = await Task.Run(() => (Profile: McDm.Core.AntivirusDetection.Detect(_settings.CustomAntivirusPath, _settings.CustomAntivirusArgs), Names: McDm.Core.AntivirusDetection.InstalledProductNames()));
-            string names = found.Names.Count > 0 ? string.Join(", ", found.Names) : found.Profile?.Name ?? "";
+            // "Windows" identifies the scan integration, not an antivirus product.
+            string names = found.Names.Count > 0 ? string.Join(", ", found.Names)
+                : found.Profile?.Kind != "windows" ? found.Profile?.Name ?? "" : "";
             TxtDetectedAv.Text = names.Length > 0
                 ? (Strings.IsTurkish ? "Alg\u0131lanan: " : "Detected: ") + names
-                : (Strings.IsTurkish ? "Uyumlu tarama entegrasyonu bulunamad\u0131" : "No compatible scan integration found");
+                : found.Profile != null
+                    ? (Strings.IsTurkish ? "Antivir\u00fcs \u00fcr\u00fcn ad\u0131 belirlenemedi" : "Antivirus product name could not be determined")
+                    : (Strings.IsTurkish ? "Uyumlu tarama entegrasyonu bulunamad\u0131" : "No compatible scan integration found");
             if (found.Profile != null)
                 TxtAntivirusHelp.Text = Strings.IsTurkish ? "Dosyalar\u0131 Windows antivir\u00fcs entegrasyonu tarar. Exe ya da komut se\u00e7mene gerek yok." : "Files are scanned through Windows antivirus integration. No executable or command setup is needed.";
             if (found.Profile == null)

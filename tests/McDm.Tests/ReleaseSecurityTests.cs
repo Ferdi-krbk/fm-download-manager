@@ -20,10 +20,11 @@ public static class ReleaseSecurityTests
         using var key = RSA.Create(3072);
         using var wrongKey = RSA.Create(3072);
         byte[] payload = "harmless update fixture, never executed"u8.ToArray();
+        int build = UpdateChecker.CurrentStableBuild;
         const string prefix = "https://github.com/Ferdi-krbk/fm-download-manager/releases/download/v3.8.1/";
-        var update = new UpdateInfo { LatestVersion = "1.0.0", LatestBuild = 4, AssetName = "FM-Legacy-Update.exe",
+        var update = new UpdateInfo { LatestVersion = "1.0.0", LatestBuild = build, AssetName = "FM-Legacy-Update.exe",
             DownloadUrl = prefix + "FM-Legacy-Update.exe", ManifestUrl = prefix + "update-manifest.json", SignatureUrl = prefix + "update-manifest.sig" };
-        byte[] metadata = JsonSerializer.SerializeToUtf8Bytes(new SignedUpdates.Manifest("1.0.0", 4, update.AssetName, Convert.ToHexString(SHA256.HashData(payload)), payload.Length));
+        byte[] metadata = JsonSerializer.SerializeToUtf8Bytes(new SignedUpdates.Manifest("1.0.0", build, update.AssetName, Convert.ToHexString(SHA256.HashData(payload)), payload.Length));
         byte[] signature = key.SignData(metadata, HashAlgorithmName.SHA256, RSASignaturePadding.Pss);
         string publicKey = key.ExportSubjectPublicKeyInfoPem();
         async Task Reject(Func<Task> operation)
@@ -65,17 +66,17 @@ public static class ReleaseSecurityTests
         await test("security: signed version build asset mismatch and replay are rejected", async () =>
         {
             foreach (var manifest in new[] {
-                new SignedUpdates.Manifest("1.0.1", 4, update.AssetName, new string('a',64), payload.Length),
-                new SignedUpdates.Manifest("1.0.0", 3, update.AssetName, new string('a',64), payload.Length),
-                new SignedUpdates.Manifest("1.0.0", 4, "other.exe", new string('a',64), payload.Length),
-                new SignedUpdates.Manifest("1.0.0", 4, update.AssetName, new string('a',64), long.MaxValue) })
+                new SignedUpdates.Manifest("1.0.1", build, update.AssetName, new string('a',64), payload.Length),
+                new SignedUpdates.Manifest("1.0.0", build - 1, update.AssetName, new string('a',64), payload.Length),
+                new SignedUpdates.Manifest("1.0.0", build, "other.exe", new string('a',64), payload.Length),
+                new SignedUpdates.Manifest("1.0.0", build, update.AssetName, new string('a',64), long.MaxValue) })
             {
                 byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(manifest);
                 using var http = new HttpClient(new UpdateHandler(update, bytes, key.SignData(bytes, HashAlgorithmName.SHA256, RSASignaturePadding.Pss), payload));
                 await Reject(() => SignedUpdates.DownloadVerifiedAsync(http, update, tmp(), publicKey));
             }
-            var old = new UpdateInfo { LatestVersion = "1.0.0", LatestBuild = 3, AssetName = update.AssetName };
-            byte[] replay = JsonSerializer.SerializeToUtf8Bytes(new SignedUpdates.Manifest("1.0.0", 3, update.AssetName, new string('a',64), payload.Length));
+            var old = new UpdateInfo { LatestVersion = "1.0.0", LatestBuild = build - 1, AssetName = update.AssetName };
+            byte[] replay = JsonSerializer.SerializeToUtf8Bytes(new SignedUpdates.Manifest("1.0.0", build - 1, update.AssetName, new string('a',64), payload.Length));
             await Reject(() => Task.FromResult(SignedUpdates.VerifyManifest(replay, key.SignData(replay, HashAlgorithmName.SHA256, RSASignaturePadding.Pss), old, publicKey)));
         });
         await test("security: untrusted release hosts HTTP redirects and missing signatures fail closed", async () =>

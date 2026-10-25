@@ -327,10 +327,14 @@ public static class RepairRegressionTests
             check(UpdateChecker.ParseRelease(refreshed, "1.0.0", 3)?.HasUpdate == false, "same build creates an update loop");
             check(UpdateChecker.ParseRelease(refreshed, "1.0.0", 4)?.HasUpdate == false, "older stable build was offered as a downgrade");
             check(UpdateChecker.ParseRelease(refreshed, "2.0.0", 1)?.HasUpdate == false, "build marker overrode a newer product version");
-            check(UpdateChecker.CurrentStableBuild == 4, "stable-build assembly metadata missing");
+            check(UpdateChecker.CurrentStableBuild == 5, "stable-build assembly metadata missing");
             var official = refreshed.Replace("v3.8.1", "v1.0.0").Replace("FM_STABLE_BUILD=3", "FM_STABLE_BUILD=4");
             check(UpdateChecker.ParseRelease(official, "1.0.0", 3)?.LatestBuild == 4, "official release build metadata was lost");
             check(UpdateChecker.ParseRelease(official, "1.0.0", 4)?.HasUpdate == false, "official release creates an update loop");
+            var hotfix = refreshed.Replace("FM_STABLE_BUILD=3", "FM_STABLE_BUILD=5");
+            check(UpdateChecker.ParseRelease(hotfix, "1.0.0", 4)?.HasUpdate == true, "installed build 4 cannot discover antivirus hotfix");
+            check(UpdateChecker.ParseRelease(hotfix, "1.0.0", 5)?.HasUpdate == false, "installed hotfix creates an update loop");
+            check(UpdateChecker.ParseRelease(hotfix, "1.0.0", 6)?.HasUpdate == false, "hotfix downgrades a newer build");
             var installed = UpdateChecker.ParseRelease(json, "1.0.0");
             check(installed?.HasUpdate == false, "bridge creates an endless update loop");
             check(UpdateChecker.ParseRelease(json.Replace("FM_STABLE_TARGET=1.0.0", "FM_STABLE_TARGET=garbage"), "1.0.0") == null, "invalid target accepted");

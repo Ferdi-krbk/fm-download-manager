@@ -2,6 +2,7 @@ bin/
 obj/
 *.user
 .vs/
+**/node_modules/
 Tools/*.exe
 Tools/.fetch-*/
 extension/token.json

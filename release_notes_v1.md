@@ -3,6 +3,17 @@
 The first official stable release. Earlier numbered builds are retained as
 historical alpha/beta prereleases; their tags and downloadable files remain intact.
 
+## Interface refresh
+
+- Rebuilt desktop workspace, compact extension popup and small fm. video overlay.
+- Bundled Inter Regular/Medium/SemiBold fonts; no separate font installation.
+- Light/dark modes, preset and custom accent colors across the interface.
+- Monitor-aware window bounds, compact layouts and a thin scrollbar.
+- Smooth pixel scrolling, staggered card entrance, hover lift, removal transitions,
+  selection details and interpolated progress. Windows/browser reduced-motion settings are respected.
+- Unified file categories and clearer audio/subtitle classification.
+- External audio downloads report their own progress and clear stale transfer speeds.
+
 ## Included
 
 - Windows x64 desktop application with light/dark themes and English/Turkish UI.
@@ -38,9 +49,11 @@ Download `FMDownloadManager-Setup-1.0.0.exe`. The runtime and media tools are in
 Install the optional extension from the installed app's `extension` folder, then
 check pairing in Browser setup. Reload an existing unpacked extension after updating.
 
-Existing 3.x users need to run this installer once: their old updater considers
-1.0.0 numerically older. Settings and download history remain in the existing
-per-user data location. See the migration guide before moving between versions.
+3.7.2 users can accept the in-app update without downloading files from GitHub.
+A separate compatibility entry (machine tag v3.8.0) delivers the 1.0.0 installer,
+installs after the existing confirmation and reopens FM. The refreshed client reads
+the actual stable target and avoids repeat prompts. Settings/history stay in place.
+The old client cannot be changed remotely to skip its own confirmation.
 
 Unsigned Windows builds may show a publisher warning. Antivirus scanning is
 optional and does not guarantee that a downloaded file is harmless.

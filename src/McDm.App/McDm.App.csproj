@@ -19,6 +19,8 @@
   <ItemGroup>
     <Resource Include="Resources\app.ico" />
     <Resource Include="Resources\logo.png" />
+    <Resource Include="Resources\Fonts\*.ttf" />
+    <Content Include="Resources\Fonts\LICENSE.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <!-- WinForms and WPF both define Application, Clipboard, MessageBox...: keep WinForms out of the implicit usings -->

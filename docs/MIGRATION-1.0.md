@@ -3,15 +3,32 @@
 The stable release uses version 1.0.0. App, Core, extension and installer versions
 must agree. CI rejects a release tag that differs from the project version.
 
-An already installed 3.x executable still has its original numeric update
-comparison. Changing the comparison in the new source cannot update an executable
-that the user has not installed yet. Users of those builds must run the 1.0.0
-installer once, or first install a separate legacy bridge release containing the
-new comparison. Do not describe this initial transition as an automatic update.
+## In-app transition
 
-After 1.0.0 is installed, the new comparator treats 3.5–3.7 as the pre-stable
-epoch, preventing a stable installation from being offered one of those old builds.
-The per-user data folder and installer AppId remain unchanged.
+Installed 3.7.2 clients compare version numbers numerically. The reserved GitHub
+release tag `v3.8.0` is an update compatibility marker; its payload installs the
+actual stable application **1.0.0**. It is not a new 3.x application release.
+The release body declares `FM_STABLE_TARGET=1.0.0`. Refreshed stable clients read
+that target, so they do not repeatedly offer the bridge after installation.
+
+Old clients discover the compatibility release through their existing startup
+check (unless update checks are disabled) or the tray's Check for updates action.
+Their existing confirmation is still required. After accepting it, the app downloads
+the bridge, exits, installs 1.0.0 silently and reopens FM. No browser download or
+installer wizard is required. Installed old code cannot be made to bypass its own
+confirmation remotely. Windows publisher/security prompts may still appear.
+
+The bridge embeds the exact official installer and checks its SHA-256 before
+launching it. It preserves the registered installation directory, uses the same
+per-user installer AppId, and does not delete settings or download history.
+Its `--verify-only` mode verifies the embedded payload without installing it.
+The checksum validates the embedded payload; it does not replace code signing.
+
+Keep `v3.8.0` as the API's Latest release for old clients. For subsequent stable
+updates, refresh its payload and stable-target marker together. The official
+human-facing installer and release notes remain under `v1.0.0`. The compatibility
+tag is excluded from the normal tag-build workflow because the application
+version remains 1.0.0.
 
 On startup, legacy download history cookies are migrated to Windows DPAPI
 encryption for the current user. Completed/cancelled jobs do not retain cookies

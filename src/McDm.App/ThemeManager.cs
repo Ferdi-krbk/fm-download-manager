@@ -12,6 +12,7 @@ public static class ThemeManager
 {
     public static readonly IReadOnlyList<AccentPreset> Presets = new AccentPreset[]
     {
+        new("Lavender", "Lavanta", "#C3AFFF"),
         new("Crimson", "Kızıl Alev (Crimson)", "#E50914"),
         new("Cyan", "Siber Mavi (Electric Cyan)", "#00E5FF"),
         new("Emerald", "Zümrüt Yeşil (Matrix)", "#10B981"),
@@ -54,27 +55,28 @@ public static class ThemeManager
         IsLightTheme = light;
         var res = Application.Current?.Resources;
         if (res == null) return;
+        res["UiFont"] = FontCatalog.Interface;
 
         if (light)
         {
-            res["Bg0Brush"] = new SolidColorBrush(Color.FromRgb(0xF8, 0xFA, 0xFC));
-            res["Bg1Brush"] = new SolidColorBrush(Color.FromRgb(0xF1, 0xF5, 0xF9));
-            res["Bg2Brush"] = new SolidColorBrush(Color.FromRgb(0xE2, 0xE8, 0xF0));
-            res["Bg3Brush"] = new SolidColorBrush(Color.FromRgb(0xCB, 0xD5, 0xE1));
+            res["Bg0Brush"] = new SolidColorBrush(Color.FromRgb(0xF3, 0xF2, 0xF7));
+            res["Bg1Brush"] = new SolidColorBrush(Color.FromRgb(0xEC, 0xEB, 0xF2));
+            res["Bg2Brush"] = new SolidColorBrush(Color.FromRgb(0xE8, 0xE6, 0xEF));
+            res["Bg3Brush"] = new SolidColorBrush(Color.FromRgb(0xDE, 0xDC, 0xE9));
             res["Bg4Brush"] = new SolidColorBrush(Color.FromArgb(0x22, 0xE5, 0x09, 0x14));
-            res["LineBrush"] = new SolidColorBrush(Color.FromRgb(0xCB, 0xD5, 0xE1));
-            res["LineStrongBrush"] = new SolidColorBrush(Color.FromRgb(0x94, 0xA3, 0xB8));
-            res["TextBrush"] = new SolidColorBrush(Color.FromRgb(0x0F, 0x17, 0x2A));
-            res["TextDimBrush"] = new SolidColorBrush(Color.FromRgb(0x33, 0x41, 0x55));
-            res["TextMuteBrush"] = new SolidColorBrush(Color.FromRgb(0x64, 0x74, 0x8B));
+            res["LineBrush"] = new SolidColorBrush(Color.FromRgb(0xDE, 0xDC, 0xE9));
+            res["LineStrongBrush"] = new SolidColorBrush(Color.FromRgb(0xA7, 0xA3, 0xB8));
+            res["TextBrush"] = new SolidColorBrush(Color.FromRgb(0x22, 0x21, 0x2C));
+            res["TextDimBrush"] = new SolidColorBrush(Color.FromRgb(0x5E, 0x59, 0x6B));
+            res["TextMuteBrush"] = new SolidColorBrush(Color.FromRgb(0x6C, 0x68, 0x7D));
             res["TextStrongBrush"] = new SolidColorBrush(Color.FromRgb(0x09, 0x0D, 0x16));
-            res["AltRowBrush"] = new SolidColorBrush(Color.FromRgb(0xF1, 0xF5, 0xF9));
+            res["AltRowBrush"] = new SolidColorBrush(Color.FromRgb(0xEC, 0xEB, 0xF2));
             res["CardBgBrush"] = new SolidColorBrush(Color.FromRgb(0xFF, 0xFF, 0xFF));
-            res["CardBorderBrush"] = new SolidColorBrush(Color.FromRgb(0xCB, 0xD5, 0xE1));
+            res["CardBorderBrush"] = new SolidColorBrush(Color.FromRgb(0xDE, 0xDC, 0xE9));
 
             var heroGrad = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(0, 1) };
             heroGrad.GradientStops.Add(new GradientStop(Color.FromRgb(0xFF, 0xFF, 0xFF), 0));
-            heroGrad.GradientStops.Add(new GradientStop(Color.FromRgb(0xF1, 0xF5, 0xF9), 1));
+            heroGrad.GradientStops.Add(new GradientStop(Color.FromRgb(0xEC, 0xEB, 0xF2), 1));
             heroGrad.Freeze();
             res["HeroCardGradient"] = heroGrad;
 
@@ -85,20 +87,20 @@ public static class ThemeManager
         }
         else
         {
-            res["Bg0Brush"] = new SolidColorBrush(Color.FromRgb(0x0A, 0x0B, 0x0E));
-            res["Bg1Brush"] = new SolidColorBrush(Color.FromRgb(0x0E, 0x10, 0x16));
-            res["Bg2Brush"] = new SolidColorBrush(Color.FromRgb(0x14, 0x17, 0x20));
-            res["Bg3Brush"] = new SolidColorBrush(Color.FromRgb(0x1E, 0x23, 0x30));
+            res["Bg0Brush"] = new SolidColorBrush(Color.FromRgb(0x10, 0x10, 0x14));
+            res["Bg1Brush"] = new SolidColorBrush(Color.FromRgb(0x14, 0x14, 0x19));
+            res["Bg2Brush"] = new SolidColorBrush(Color.FromRgb(0x19, 0x19, 0x1F));
+            res["Bg3Brush"] = new SolidColorBrush(Color.FromRgb(0x25, 0x24, 0x2E));
             res["Bg4Brush"] = new SolidColorBrush(Color.FromRgb(0x26, 0x0D, 0x12));
-            res["LineBrush"] = new SolidColorBrush(Color.FromRgb(0x1B, 0x1F, 0x2A));
-            res["LineStrongBrush"] = new SolidColorBrush(Color.FromRgb(0x2A, 0x32, 0x45));
-            res["TextBrush"] = new SolidColorBrush(Color.FromRgb(0xF8, 0xFA, 0xFC));
-            res["TextDimBrush"] = new SolidColorBrush(Color.FromRgb(0x94, 0xA3, 0xB8));
-            res["TextMuteBrush"] = new SolidColorBrush(Color.FromRgb(0x64, 0x74, 0x8B));
+            res["LineBrush"] = new SolidColorBrush(Color.FromRgb(0x30, 0x30, 0x38));
+            res["LineStrongBrush"] = new SolidColorBrush(Color.FromRgb(0x43, 0x40, 0x4E));
+            res["TextBrush"] = new SolidColorBrush(Color.FromRgb(0xF3, 0xF1, 0xFA));
+            res["TextDimBrush"] = new SolidColorBrush(Color.FromRgb(0xA7, 0xA3, 0xB8));
+            res["TextMuteBrush"] = new SolidColorBrush(Color.FromRgb(0xA7, 0xA3, 0xB8));
             res["TextStrongBrush"] = new SolidColorBrush(Color.FromRgb(0xFF, 0xFF, 0xFF));
             res["AltRowBrush"] = new SolidColorBrush(Color.FromRgb(0x0C, 0x0D, 0x12));
-            res["CardBgBrush"] = new SolidColorBrush(Color.FromRgb(0x12, 0x15, 0x1E));
-            res["CardBorderBrush"] = new SolidColorBrush(Color.FromRgb(0x20, 0x26, 0x36));
+            res["CardBgBrush"] = new SolidColorBrush(Color.FromRgb(0x19, 0x19, 0x1F));
+            res["CardBorderBrush"] = new SolidColorBrush(Color.FromRgb(0x30, 0x30, 0x38));
 
             var heroGrad = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(0, 1) };
             heroGrad.GradientStops.Add(new GradientStop(Color.FromRgb(0x15, 0x18, 0x22), 0));
@@ -185,6 +187,21 @@ public static class ThemeManager
 
         CurrentAccentHex = hex!.StartsWith("#") ? hex.ToUpperInvariant() : ("#" + hex).ToUpperInvariant();
 
+        static double Luminance(Color color)
+        {
+            static double Linear(byte channel) { double v = channel / 255d; return v <= .04045 ? v / 12.92 : Math.Pow((v + .055) / 1.055, 2.4); }
+            return .2126 * Linear(color.R) + .7152 * Linear(color.G) + .0722 * Linear(color.B);
+        }
+        var textAccent = Color.FromRgb(c.R, c.G, c.B);
+        double surface = Luminance(IsLightTheme ? Colors.White : Color.FromRgb(0x19, 0x19, 0x1F));
+        for (int n = 0; n < 32; n++)
+        {
+            double l = Luminance(textAccent);
+            if ((Math.Max(l, surface) + .05) / (Math.Min(l, surface) + .05) >= 4.5) break;
+            byte Blend(byte v) => (byte)Math.Round(v * .9 + (IsLightTheme ? 0 : 255) * .1);
+            textAccent = Color.FromRgb(Blend(textAccent.R), Blend(textAccent.G), Blend(textAccent.B));
+        }
+
         // Calculate lighter hover color
         byte rH = (byte)Math.Min(255, c.R + Math.Max(25, (255 - c.R) / 3));
         byte gH = (byte)Math.Min(255, c.G + Math.Max(25, (255 - c.G) / 3));
@@ -201,8 +218,8 @@ public static class ThemeManager
         var colorDim = Color.FromArgb(0x28, c.R, c.G, c.B);
 
         // Optimal foreground on accent (white vs dark charcoal based on perceived luminance)
-        double lum = (0.299 * c.R + 0.587 * c.G + 0.114 * c.B) / 255.0;
-        var colorOnAccent = lum > 0.65 ? Color.FromRgb(0x0A, 0x0B, 0x0E) : Colors.White;
+        double lum = Luminance(c);
+        var colorOnAccent = (lum + .05) / .05 > 1.05 / (lum + .05) ? Colors.Black : Colors.White;
 
         var colorFlame = colorHover;
 
@@ -246,14 +263,19 @@ public static class ThemeManager
             res["ColorFlame"] = colorFlame;
 
             res["AccentBrush"] = accentBrush;
+            res["AccentTextBrush"] = new SolidColorBrush(textAccent);
+            var panel = IsLightTheme ? Colors.White : Color.FromRgb(0x19, 0x19, 0x1F);
+            Color Tint(double amount) => Color.FromRgb((byte)(panel.R * (1 - amount) + c.R * amount), (byte)(panel.G * (1 - amount) + c.G * amount), (byte)(panel.B * (1 - amount) + c.B * amount));
+            res["FlowSelectedBrush"] = new SolidColorBrush(Tint(.05));
+            res["AccentBorderBrush"] = new SolidColorBrush(Tint(.5));
             res["AccentHoverBrush"] = accentHoverBrush;
             res["AccentPressBrush"] = accentPressBrush;
             res["AccentDimBrush"] = accentDimBrush;
             res["OnAccentBrush"] = onAccentBrush;
             res["FlameBrush"] = flameBrush;
 
-            res["AccentGradientBrush"] = accentGradient;
-            res["AccentHoverGradientBrush"] = accentHoverGradient;
+            res["AccentGradientBrush"] = accentBrush;
+            res["AccentHoverGradientBrush"] = accentHoverBrush;
             res["ProgressGradient"] = progressGradient;
             res["SpeedGraphFillBrush"] = speedGraphFill;
         }

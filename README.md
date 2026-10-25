@@ -7,7 +7,7 @@
 <p align="center">Files, media and torrents. One Windows desktop app.</p>
 
 <p align="center">
-  <a href="https://github.com/Ferdi-krbk/fm-download-manager/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/Ferdi-krbk/fm-download-manager?color=E50914&label=release"></a>
+  <a href="https://github.com/Ferdi-krbk/fm-download-manager/releases/tag/v1.0.0"><img alt="Latest release" src="https://img.shields.io/badge/release-1.0.0-C3AFFF"></a>
   <a href="https://github.com/Ferdi-krbk/fm-download-manager/actions/workflows/build.yml"><img alt="Build and tests" src="https://github.com/Ferdi-krbk/fm-download-manager/actions/workflows/build.yml/badge.svg"></a>
   <img alt="Windows 10 and 11" src="https://img.shields.io/badge/platform-Windows%2010%20%2F%2011-475569">
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-475569"></a>
@@ -74,7 +74,7 @@ Load the installed folder so app updates can replace the extension files. Reload
 
 ### Coming from 3.x?
 
-**1.0.0 is the first official stable release.** Earlier numbered builds are retained as historical prereleases. Existing 3.x installations need a one-time manual installation of 1.0.0 because their old updater treats a lower number as older. [Migration notes](docs/MIGRATION-1.0.md).
+**1.0.0 is the first official stable release.** Earlier numbered builds are retained as historical prereleases. 3.7.2 users can accept the in-app update: the compatibility bridge downloads and installs 1.0.0, then reopens FM. The old client may display the compatibility tag 3.8.0; the installed application is 1.0.0. [Migration notes](docs/MIGRATION-1.0.md).
 
 ## Privacy and safety
 

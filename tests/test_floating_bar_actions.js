@@ -31,11 +31,12 @@ try {
   assert(false, `Syntax error: ${e.message}`);
 }
 
-// 2. Direct click vs Dropdown Arrow separation
+// 2. The compact mark opens choices; menu items perform downloads.
 assert(code.includes('id="fm-btn-action"') || code.includes("'fm-btn-action'"), 'Template has dedicated #fm-btn-action for immediate video download');
 assert(code.includes('id="fm-arrow-btn"') || code.includes("'fm-arrow-btn'"), 'Template has dedicated #fm-arrow-btn for toggling options');
-assert(code.includes("btnAction.addEventListener('click'") && code.includes("triggerDownload('video')"), 'Clicking #fm-btn-action triggers direct video download immediately');
-assert(code.includes("arrowBtn.addEventListener('click'") && code.includes("barContainer.classList.toggle('fm-open')"), 'Clicking #fm-arrow-btn toggles dropdown menu');
+assert(code.includes("btnAction.addEventListener('click', toggleOptions)"), 'Clicking the compact mark opens the options menu');
+assert(code.includes("optVideo.addEventListener('click'") && code.includes("triggerDownload('video')"), 'Video menu item starts the download');
+assert(code.includes("arrowBtn.addEventListener('click', toggleOptions)"), 'Options toggle shares the menu action');
 
 // 3. In-memory Per-video Dismissal (resets on navigation/reload)
 assert(code.includes('isDismissedForPage = true'), 'Sets in-memory dismissal flag immediately upon close click');

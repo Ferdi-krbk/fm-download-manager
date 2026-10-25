@@ -257,9 +257,12 @@ assert(wrap && wrap.classList.contains('fm-visible'), '1.1 YouTube: Floating bar
 async function runSuite() {
   const btnAction = wrap.querySelector('#fm-btn-action');
   btnAction.trigger('click');
+  assert(wrap.classList.contains('fm-open'), '1.2 Logo click opens download choices');
+  assert(!ytEnv.sentMessages.some(m => m.type === 'download'), '1.2 Logo click does not start an unintended download');
+  wrap.querySelector('#fm-opt-video').trigger('click');
   await new Promise(r => setTimeout(r, 80));
   const ytActionMsg = ytEnv.sentMessages.find(m => m.type === 'download' && m.format === 'video');
-  assert(ytActionMsg && ytActionMsg.url.includes('youtube.com/watch?v=dQw4w9WgXcQ'), '1.2 YouTube Hover: Direct click requests YouTube video download');
+  assert(ytActionMsg && ytActionMsg.url.includes('youtube.com/watch?v=dQw4w9WgXcQ'), '1.2 YouTube Hover: Video option requests YouTube video download');
   assert(ytActionMsg && ytActionMsg.writeSubtitles === true, '1.2 YouTube Hover: Video download requests subtitles write');
   assert(ytActionMsg && ytActionMsg.subtitleLangs.includes('tr'), '1.2 YouTube Hover: Subtitle languages include Turkish');
 

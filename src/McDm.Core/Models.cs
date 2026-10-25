@@ -189,6 +189,13 @@ public sealed class DownloadItem : ObservableBase
 
     /// <summary>Free-form phase text for video downloads ("Merging…"); null for plain files.</summary>
     [JsonIgnore] public string? Stage { get => _stage; set => Set(ref _stage, value); }
+    private bool _isTotalEstimated;
+    /// <summary>Fragment-based size estimates cannot provide a reliable countdown.</summary>
+    [JsonIgnore] public bool IsTotalEstimated
+    {
+        get => _isTotalEstimated;
+        set { if (Set(ref _isTotalEstimated, value)) Raise(nameof(EtaFormatted)); }
+    }
     [JsonIgnore]
     public double Speed
     {
@@ -209,7 +216,7 @@ public sealed class DownloadItem : ObservableBase
     {
         get
         {
-            if (_status != DownloadStatus.Downloading || _speed <= 1024 || _total <= 0 || _downloaded >= _total)
+            if (_status != DownloadStatus.Downloading || IsTotalEstimated || _speed <= 1024 || _total <= 0 || _downloaded >= _total)
                 return null;
             long remaining = _total - _downloaded;
             double secs = remaining / _speed;

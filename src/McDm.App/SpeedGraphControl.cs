@@ -82,14 +82,6 @@ public sealed class SpeedGraphControl : FrameworkElement
         double h = ActualHeight;
         if (w <= 10 || h <= 10) return;
 
-        // Subtle background grid lines (horizontal 25%, 50%, 75%)
-        var gridColor = ThemeManager.IsLightTheme ? Color.FromArgb(0x22, 0x00, 0x00, 0x00) : Color.FromArgb(0x18, 0xFF, 0xFF, 0xFF);
-        var gridPen = new Pen(new SolidColorBrush(gridColor), 1);
-        gridPen.Freeze();
-        dc.DrawLine(gridPen, new Point(0, h * 0.25), new Point(w, h * 0.25));
-        dc.DrawLine(gridPen, new Point(0, h * 0.50), new Point(w, h * 0.50));
-        dc.DrawLine(gridPen, new Point(0, h * 0.75), new Point(w, h * 0.75));
-
         // Reorder samples chronologically (oldest to newest)
         var samples = new double[HistoryCount];
         for (int i = 0; i < HistoryCount; i++)
@@ -150,23 +142,9 @@ public sealed class SpeedGraphControl : FrameworkElement
         // Line Geometry
         var lineGeo = new PathGeometry();
         lineGeo.Figures.Add(figure);
-        var linePen = new Pen(LineBrush, 2.2) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round };
+        var linePen = new Pen(LineBrush, 1.6) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round };
         linePen.Freeze();
         dc.DrawGeometry(null, linePen, lineGeo);
 
-        // Peak speed label in top-right corner
-        if (_peakSpeed > 0)
-        {
-            string peakText = "Pik: " + BytesConverter.Format(_peakSpeed) + "/s";
-            var ft = new FormattedText(
-                peakText,
-                CultureInfo.InvariantCulture,
-                FlowDirection.LeftToRight,
-                new Typeface("Bahnschrift, Segoe UI, sans-serif"),
-                10,
-                new SolidColorBrush(Color.FromArgb(0x99, 0x9C, 0xA3, 0xAF)),
-                1.0);
-            dc.DrawText(ft, new Point(w - ft.Width - 6, 4));
-        }
     }
 }

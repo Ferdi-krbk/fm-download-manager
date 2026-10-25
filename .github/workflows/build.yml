@@ -3,7 +3,7 @@ name: Build & Release
 on:
   push:
     branches: [ main ]
-    tags: [ 'v*' ]
+    tags: [ 'v*', '!v3.8.0' ]
   pull_request:
     branches: [ main ]
 
@@ -37,6 +37,9 @@ jobs:
     - name: Build solution
       run: dotnet build -c Release --no-restore
 
+    - name: Check fonts, window sizing and smooth scrolling
+      run: dotnet run -c Release --project tests/McDm.Acceptance -- --ui-only dist/ui-polish-checks
+
     - name: Run test suite
       run: dotnet run -c Release --project tests/McDm.Tests
 
@@ -50,6 +53,18 @@ jobs:
 
     - name: Run Windows acceptance checks
       run: dotnet run -c Release --project tests/McDm.Acceptance -- dist/ci-acceptance dist/ci-screenshots
+
+    - name: Install browser UI test dependencies
+      working-directory: tests/ui
+      run: |
+        npm ci
+        npx playwright install chromium
+
+    - name: Check extension UI in an isolated browser
+      working-directory: tests/ui
+      env:
+        MCDM_SAMPLE_VIDEO: dist/ci-acceptance/fixtures/sample-clip.mp4
+      run: npm test
 
     - name: Upload acceptance results
       uses: actions/upload-artifact@v4
@@ -110,3 +125,32 @@ jobs:
           dist/SHA256SUMS.txt
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Publish legacy automatic-update bridge
+      if: github.ref == 'refs/tags/v1.0.0'
+      shell: pwsh
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        ./scripts/build-legacy-bootstrap.ps1 -InstallerPath dist/FMDownloadManager-Setup-1.0.0.exe
+        if ($LASTEXITCODE -ne 0) { throw 'Bridge verification failed' }
+        $notes = @'
+        This compatibility update installs FM Download Manager 1.0.0. Accept the update in your existing app; downloading and installation then complete automatically. The 3.8.0 tag only lets old numeric-only updaters discover 1.0.0.
+
+        FM_STABLE_TARGET=1.0.0
+
+        Official release: https://github.com/Ferdi-krbk/fm-download-manager/releases/tag/v1.0.0
+        The embedded official installer is SHA-256 checked before installation. Existing update confirmation and Windows security prompts still apply. Settings and history are preserved. Reload an unpacked browser extension after updating.
+        '@
+        $notes | Set-Content dist/legacy-bridge/release-notes.md -Encoding utf8
+        $sha = (Get-FileHash dist/legacy-bridge/FM-Legacy-Update.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+        "$sha  FM-Legacy-Update.exe" | Set-Content dist/legacy-bridge/SHA256SUMS.txt -Encoding ascii
+        gh release view v3.8.0 --repo $env:GITHUB_REPOSITORY *> $null
+        if ($LASTEXITCODE -ne 0) {
+          gh release create v3.8.0 --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title 'FM Download Manager 1.0.0 - update compatibility' --notes-file dist/legacy-bridge/release-notes.md --latest=false
+          if ($LASTEXITCODE -ne 0) { throw 'Bridge release creation failed' }
+        }
+        gh release upload v3.8.0 dist/legacy-bridge/FM-Legacy-Update.exe dist/legacy-bridge/SHA256SUMS.txt --repo $env:GITHUB_REPOSITORY --clobber
+        if ($LASTEXITCODE -ne 0) { throw 'Bridge upload failed' }
+        gh release edit v3.8.0 --repo $env:GITHUB_REPOSITORY --title 'FM Download Manager 1.0.0 - update compatibility' --notes-file dist/legacy-bridge/release-notes.md --latest
+        if ($LASTEXITCODE -ne 0) { throw 'Bridge promotion failed' }

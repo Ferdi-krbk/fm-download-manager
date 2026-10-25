@@ -99,6 +99,10 @@ public static class StressAndBoundaryTests
                 check(CategoryHelper.GetCategorySubfolder($"archive{ext}", null, DownloadKind.File) == "Compressed", $"archive ext {ext}");
 
             // Kind overrides
+            check(CategoryHelper.GetCategorySubfolder(new DownloadRequest { Kind = DownloadKind.Video, AudioOnly = true }) == "Music", "audio extraction must not be filed as video");
+            check(CategoryHelper.GetCategorySubfolder(new DownloadRequest { Kind = DownloadKind.Video, SubtitlesOnly = true }) == "Documents", "subtitle extraction must not be filed as video");
+            check(CategoryHelper.GetCategorySubfolder(new DownloadRequest { Kind = DownloadKind.File, Url = "https://example.com/a", FileName = "track.OPUS" }) == "Music", "UI and destination must share case-insensitive format classification");
+            check(CategoryHelper.GetCategorySubfolder(new DownloadRequest { Kind = DownloadKind.File, FileName = "unknown.newformat" }) == "", "unknown formats must not be guessed");
             check(CategoryHelper.GetCategorySubfolder("arbitrary_name", null, DownloadKind.Video) == "Videos", "kind video overrides filename");
             check(CategoryHelper.GetCategorySubfolder("file.iso", null, DownloadKind.Torrent) == "Torrents", "kind torrent overrides filename");
 

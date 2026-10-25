@@ -155,7 +155,7 @@ public sealed class DownloadManager : IDisposable, IAsyncDisposable
         string targetDir = !string.IsNullOrWhiteSpace(request.Directory)
             ? request.Directory
             : (AutoCategorizeSubfolders
-                ? CategoryHelper.ResolveDestinationDirectory(DefaultDownloadDirectory, request.FileName, request.Url, request.Kind, true)
+                ? CategoryHelper.ResolveDestinationDirectory(DefaultDownloadDirectory, request, true)
                 : DefaultDownloadDirectory);
 
         string initialFileName = "";

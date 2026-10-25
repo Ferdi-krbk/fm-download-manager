@@ -229,6 +229,23 @@ public static class RepairRegressionTests
             catch (ArgumentException) { }
         });
 
+        await test("repair: legacy bridge discovery and stable no-loop", () =>
+        {
+            // Exact numeric-only comparison shipped in 3.7.2.
+            check(new Version("3.8.0") > new Version("3.7.2"), "old client cannot discover bridge");
+            check(UpdateChecker.IsNewer("3.8.0", "1.0.0"), "previous stable client cannot discover refreshed build");
+            const string json = """
+            {"tag_name":"v3.8.0","body":"Compatibility update\nFM_STABLE_TARGET=1.0.0","assets":[{"name":"FM-Legacy-Update.exe","browser_download_url":"https://github.com/Ferdi-krbk/fm-download-manager/releases/download/v3.8.0/FM-Legacy-Update.exe"}]}
+            """;
+            var old = UpdateChecker.ParseRelease(json, "3.7.2");
+            check(old?.HasUpdate == true && old.LatestVersion == "1.0.0", "bridge target was not mapped to stable");
+            var installed = UpdateChecker.ParseRelease(json, "1.0.0");
+            check(installed?.HasUpdate == false, "bridge creates an endless update loop");
+            check(UpdateChecker.ParseRelease(json.Replace("FM_STABLE_TARGET=1.0.0", "FM_STABLE_TARGET=garbage"), "1.0.0") == null, "invalid target accepted");
+            check(UpdateChecker.ParseRelease(json.Replace("FM_STABLE_TARGET=1.0.0", "FM_STABLE_TARGET=3.8.0"), "1.0.0") == null, "legacy target accepted");
+            return Task.CompletedTask;
+        });
+
         await test("repair: stable release epoch and HLS upgrade behave correctly", () =>
         {
             check(UpdateChecker.IsNewer("1.0.0", "3.7.2"), "legacy to stable migration missing");

@@ -42,6 +42,9 @@
     <SolidColorBrush x:Key="TextMuteBrush" Color="{StaticResource ColorTextMute}" />
     <SolidColorBrush x:Key="TextStrongBrush" Color="#FFFFFF" />
     <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource ColorAccent}" />
+    <SolidColorBrush x:Key="AccentTextBrush" Color="{StaticResource ColorAccentHover}" />
+    <SolidColorBrush x:Key="FlowSelectedBrush" Color="#22202B" />
+    <SolidColorBrush x:Key="AccentBorderBrush" Color="#6C5B94" />
     <SolidColorBrush x:Key="AccentHoverBrush" Color="{StaticResource ColorAccentHover}" />
     <SolidColorBrush x:Key="AccentPressBrush" Color="{StaticResource ColorAccentPress}" />
     <SolidColorBrush x:Key="AccentDimBrush" Color="{StaticResource ColorAccentDim}" />
@@ -92,14 +95,14 @@
 
     <!-- Corner Radii: Razor-sharp chiseled industrial architecture (No toy pills) -->
     <CornerRadius x:Key="SharpCorner">2</CornerRadius>
-    <CornerRadius x:Key="ModernCorner">4</CornerRadius>
-    <CornerRadius x:Key="ButtonCorner">3</CornerRadius>
+    <CornerRadius x:Key="ModernCorner">10</CornerRadius>
+    <CornerRadius x:Key="ButtonCorner">8</CornerRadius>
     <CornerRadius x:Key="PillCorner">4</CornerRadius>
     <Thickness x:Key="BorderThickness1">1</Thickness>
     <Thickness x:Key="BorderThickness2">2</Thickness>
 
     <!-- Typography: Sleek modern Bahnschrift DIN geometry -->
-    <FontFamily x:Key="UiFont">Bahnschrift, Segoe UI Variable Display, Segoe UI, sans-serif</FontFamily>
+    <FontFamily x:Key="UiFont">pack://application:,,,/FMDownloadManager;component/Resources/Fonts/#Inter, sans-serif</FontFamily>
     <FontFamily x:Key="MonoFont">Consolas, monospace</FontFamily>
     <FontFamily x:Key="GlyphFont">Segoe MDL2 Assets, Segoe Fluent Icons, sans-serif</FontFamily>
 

@@ -150,7 +150,7 @@ public sealed class VideoOptions
 }
 
 /// <summary>One parsed --progress-template line.</summary>
-public sealed record VideoProgress(string Status, long Downloaded, long? Total, double Speed, int? Fragment, int? FragmentCount);
+public sealed record VideoProgress(string Status, long Downloaded, long? Total, double Speed, int? Fragment, int? FragmentCount, bool IsTotalEstimated = false);
 
 /// <summary>
 /// Runs yt-dlp as a child process (ArgumentList only, never a shell string) and maps its output onto a DownloadItem.
@@ -367,7 +367,8 @@ public sealed class VideoDownloader
             : double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var d) && !double.IsNaN(d) ? (long)d : null;
         static int? I(string s) => int.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v) ? v : null;
         double speed = double.TryParse(p[5], NumberStyles.Float, CultureInfo.InvariantCulture, out var sp) && !double.IsNaN(sp) ? sp : 0;
-        return new VideoProgress(p[1], L(p[2]) ?? 0, L(p[3]) ?? L(p[4]), speed, I(p[6]), I(p[7]));
+        long? exactTotal = L(p[3]);
+        return new VideoProgress(p[1], L(p[2]) ?? 0, exactTotal ?? L(p[4]), speed, I(p[6]), I(p[7]), exactTotal is not > 0);
     }
 
     /// <summary>Accumulates progress across yt-dlp's separate video/audio streams into one running total.</summary>
@@ -592,6 +593,8 @@ public sealed class VideoDownloader
         }
         else if (!string.IsNullOrWhiteSpace(targetSubUrl))
         {
+            item.Speed = 0;
+            item.Stage = IsTurkish ? "Altyazılar İndiriliyor..." : "Downloading Subtitles...";
             srtContent = await DownloadSubtitleFileAsync(targetSubUrl, item.Request, ct);
         }
 
@@ -689,9 +692,12 @@ public sealed class VideoDownloader
                     if (!HasAudioStream(extMuxFfmpeg, item.SavePath))
                     {
                         item.Stage = IsTurkish ? "Harici Ses Akışı İndiriliyor ve Birleştiriliyor..." : "Downloading & Merging External Audio...";
+                        item.Speed = 0;
                         string? extAudioFile = await DownloadExternalAudioStreamAsync(item, tool, firstAttemptCookies, jsRuntime, ct);
                         if (!string.IsNullOrEmpty(extAudioFile) && File.Exists(extAudioFile))
                         {
+                            item.Speed = 0;
+                            item.Stage = IsTurkish ? "Ses ve Görüntü Birleştiriliyor (FFmpeg)..." : "Merging Video & Audio (FFmpeg)...";
                             if (MergeVideoAndAudioWithFfmpeg(extMuxFfmpeg, item.SavePath, extAudioFile, item.SavePath))
                             {
                                 long mergedLen = new FileInfo(item.SavePath).Length;
@@ -702,6 +708,7 @@ public sealed class VideoDownloader
                         }
                     }
                 }
+                catch (OperationCanceledException) { throw; }
                 catch { }
                 finally
                 {
@@ -730,6 +737,7 @@ public sealed class VideoDownloader
                     if (srtToEmbed != null && File.Exists(srtToEmbed) && _ffmpeg() is { } ffmpegPath && File.Exists(ffmpegPath))
                     {
                         item.Stage = IsTurkish ? "Altyazı Gömülüyor (FFmpeg)..." : "Embedding Subtitles (FFmpeg)...";
+                        item.Speed = 0;
                         try
                         {
                             EmbedSubtitleWithFfmpeg(ffmpegPath, item.SavePath, srtToEmbed, cleanSubLang);
@@ -820,9 +828,10 @@ public sealed class VideoDownloader
             if (VideoDownloader.ParseProgress(line) is { } p)
             {
                 var (done, total) = acc.Apply(p);
+                item.IsTotalEstimated = p.IsTotalEstimated;
                 item.TotalBytes = total;
                 item.DownloadedBytes = done;
-                item.Speed = p.Speed;
+                item.Speed = p.Status == "finished" ? 0 : p.Speed;
                 if (p.Fragment is > 0 && p.FragmentCount is > 0)
                 {
                     item.Stage = IsTurkish 
@@ -889,6 +898,7 @@ public sealed class VideoDownloader
             }
             else if (line.StartsWith("[download] Destination: ", StringComparison.Ordinal))
             {
+                item.Speed = 0;
                 item.Stage = IsTurkish ? "İndirme Başlatılıyor..." : "Starting Download...";
                 var fp = line.Substring("[download] Destination: ".Length).Trim();
                 if (!string.IsNullOrEmpty(fp))
@@ -906,6 +916,7 @@ public sealed class VideoDownloader
             }
             else if (line.Contains("Writing video subtitles") || line.Contains("Downloading subtitles"))
             {
+                item.Speed = 0;
                 item.Stage = IsTurkish ? "Altyazılar İndiriliyor..." : "Downloading Subtitles...";
             }
             else if (line.Contains("Extracting URL:") || line.Contains("[youtube]") || line.Contains("[twitter]") || line.Contains("[tiktok]") || line.Contains("[generic]"))
@@ -933,6 +944,7 @@ public sealed class VideoDownloader
             }
             else if (line.Contains("Retrying fragment", StringComparison.OrdinalIgnoreCase) || line.Contains("HTTP Error 429", StringComparison.OrdinalIgnoreCase))
             {
+                item.Speed = 0;
                 item.Stage = IsTurkish ? "Sunucu yoğunluğu, parça yeniden deneniyor..." : "Server busy, retrying chunk...";
             }
             else if (line.Contains("Downloading 1 format") || line.Contains("Downloading m3u8"))
@@ -949,7 +961,13 @@ public sealed class VideoDownloader
             }
         }
         proc.OutputDataReceived += (_, e) => OnLine(e.Data);
-        proc.ErrorDataReceived += (_, e) => { if (!string.IsNullOrWhiteSpace(e.Data)) lastError = e.Data.Trim(); };
+        proc.ErrorDataReceived += (_, e) =>
+        {
+            if (string.IsNullOrWhiteSpace(e.Data)) return;
+            lastError = e.Data.Trim();
+            if (e.Data.Contains("Retrying fragment", StringComparison.OrdinalIgnoreCase) || e.Data.Contains("HTTP Error 429", StringComparison.OrdinalIgnoreCase))
+                OnLine(e.Data);
+        };
 
         if (!proc.Start()) throw new FatalDownloadException("Could not start yt-dlp");
         try { proc.StandardInput.Close(); } catch { }
@@ -1662,49 +1680,60 @@ public sealed class VideoDownloader
                 StandardErrorEncoding = Encoding.UTF8
             };
             foreach (var l in tool.Lead) psi.ArgumentList.Add(l);
-            psi.ArgumentList.Add("--no-playlist");
-            psi.ArgumentList.Add("--no-warnings");
-            psi.ArgumentList.Add("-f");
-            psi.ArgumentList.Add("ba/b");
-            psi.ArgumentList.Add("-o");
-            psi.ArgumentList.Add(outTemplate);
-            if (!string.IsNullOrEmpty(cookieFile) && File.Exists(cookieFile))
-            {
-                psi.ArgumentList.Add("--cookies");
-                psi.ArgumentList.Add(cookieFile);
-            }
-            if (!string.IsNullOrWhiteSpace(item.Request.UserAgent))
-            {
-                psi.ArgumentList.Add("--user-agent");
-                psi.ArgumentList.Add(item.Request.UserAgent);
-            }
-            if (!string.IsNullOrWhiteSpace(item.Request.Referer))
-            {
-                psi.ArgumentList.Add("--referer");
-                psi.ArgumentList.Add(item.Request.Referer);
-            }
-            if (jsRuntime is { } js && !string.IsNullOrWhiteSpace(js.Name) && !string.IsNullOrWhiteSpace(js.Path))
-            {
-                psi.ArgumentList.Add("--js-runtimes");
-                psi.ArgumentList.Add($"{js.Name}:{js.Path}");
-            }
-            psi.ArgumentList.Add("--");
-            psi.ArgumentList.Add(audioUrl);
+            var audioOptions = new VideoOptions { CustomFormat = "ba/b", SpeedLimitBytes = _options().SpeedLimitBytes };
+            var audioArguments = BuildArguments(audioUrl, audioOptions, tempDir, tempDir,
+                         cookieFile, _ffmpeg(), item.Request.UserAgent, item.Request.Referer,
+                         Path.GetFileName(outTemplate), jsRuntime);
+            // Preserve certificate validation in the separate-audio path.
+            audioArguments.Remove("--no-check-certificates");
+            foreach (var arg in audioArguments)
+                psi.ArgumentList.Add(arg);
 
-            using var proc = Process.Start(psi);
-            if (proc == null) return null;
+            long videoBytes = item.DownloadedBytes;
+            item.Speed = 0;
+            item.TotalBytes = -1;
+            var acc = new ProgressAccumulator();
+            void OnAudioLine(string? line)
+            {
+                if (line == null) return;
+                if (ParseProgress(line) is { } p)
+                {
+                    var (done, total) = acc.Apply(p);
+                    item.IsTotalEstimated = p.IsTotalEstimated;
+                    item.TotalBytes = total > 0 ? videoBytes + total : -1;
+                    item.DownloadedBytes = videoBytes + done;
+                    item.Speed = p.Status == "finished" ? 0 : p.Speed;
+                    item.Stage = p.Fragment is > 0 && p.FragmentCount is > 0
+                        ? (IsTurkish ? $"Ses Akışı İndiriliyor ({p.Fragment}/{p.FragmentCount})" : $"Audio Stream Downloading ({p.Fragment}/{p.FragmentCount})")
+                        : (IsTurkish ? "Ses Akışı İndiriliyor..." : "Downloading Audio Stream...");
+                }
+                else if (line.Contains("Retrying fragment", StringComparison.OrdinalIgnoreCase) || line.Contains("HTTP Error 429", StringComparison.OrdinalIgnoreCase))
+                {
+                    item.Speed = 0;
+                    item.Stage = IsTurkish ? "Ses parçası yeniden deneniyor..." : "Retrying audio fragment...";
+                }
+            }
+            using var proc = new Process { StartInfo = psi };
+            proc.OutputDataReceived += (_, e) => OnAudioLine(e.Data);
+            proc.ErrorDataReceived += (_, e) => OnAudioLine(e.Data);
+            if (!proc.Start()) return null;
             try { proc.StandardInput.Close(); } catch { }
             proc.BeginOutputReadLine();
             proc.BeginErrorReadLine();
 
+            using var registration = ct.Register(() => { try { if (!proc.HasExited) proc.Kill(entireProcessTree: true); } catch { } });
             await proc.WaitForExitAsync(ct);
             proc.WaitForExit();
+            ct.ThrowIfCancellationRequested();
+            item.Speed = 0;
+            if (proc.ExitCode != 0) return null;
 
             var prefix = Path.GetFileNameWithoutExtension(outTemplate).Replace(".%(ext)", "");
             return Directory.GetFiles(tempDir, prefix + "*").FirstOrDefault(f =>
                 !f.EndsWith(".part", StringComparison.OrdinalIgnoreCase) &&
                 !f.EndsWith(".ytdl", StringComparison.OrdinalIgnoreCase));
         }
+        catch (OperationCanceledException) { throw; }
         catch
         {
             return null;

@@ -1,0 +1,6 @@
+{
+  "name": "fm-download-manager-ui-checks",
+  "private": true,
+  "scripts": { "test": "node extension-flow.cjs" },
+  "devDependencies": { "playwright": "1.64.1" }
+}

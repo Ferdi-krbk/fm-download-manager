@@ -149,6 +149,13 @@ Son sahne metni.
             check(p1.Total == 10485760, "total bytes mismatch");
             check(p1.Speed == 524288, "speed mismatch");
             check(p1.Fragment == 1 && p1.FragmentCount == 10, "fragment mismatch");
+            check(!p1.IsTotalEstimated, "an exact content length must allow ETA");
+            var estimated = VideoDownloader.ParseProgress("MCDM_PROGRESS|downloading|1000000|NA|3000000|1000000|1|30")!;
+            check(estimated.IsTotalEstimated, "HLS estimate must be distinguished from exact size");
+            var etaItem = new DownloadItem { Status = DownloadStatus.Downloading, DownloadedBytes = 1000000, TotalBytes = 3000000, Speed = 1000000 };
+            check(etaItem.Eta != null, "known size should provide ETA");
+            etaItem.IsTotalEstimated = estimated.IsTotalEstimated;
+            check(etaItem.Eta == null, "estimated HLS size must not produce a repeating seconds countdown");
 
             var acc = new VideoDownloader.ProgressAccumulator();
             var r1 = acc.Apply(p1);
@@ -267,6 +274,72 @@ Son sahne metni.
             }
 
             check(caught, "Cancellation token did not stop fake yt-dlp");
+
+            // Exercise the separate-audio subprocess path: its output used to be discarded.
+            using var culture = new UiCultureScope("en-US");
+            var audioMethod = typeof(VideoDownloader).GetMethod("DownloadExternalAudioStreamAsync",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+            Task<string?> RunAudio(VideoDownloader engine, ToolLauncher tool, DownloadItem audioItem, CancellationToken token) =>
+                (Task<string?>)audioMethod.Invoke(engine, new object?[] { audioItem, tool, null, null, token })!;
+            string audioScript = Path.Combine(testDir, "audio_ytdlp.js");
+            string argsFile = Path.Combine(testDir, "audio_args.json");
+            File.WriteAllText(audioScript, $$"""
+                const fs = require('fs'), path = require('path');
+                const a = process.argv.slice(2);
+                fs.writeFileSync({{JsonSerializer.Serialize(argsFile)}}, JSON.stringify(a));
+                console.log('MCDM_PROGRESS|downloading|500000|NA|2000000|1000000|1|3');
+                setTimeout(() => console.error('WARNING: Retrying fragment 2 (1/30)'), 100);
+                setTimeout(() => console.log('MCDM_PROGRESS|downloading|1000000|NA|2200000|800000|2|3'), 250);
+                setTimeout(() => {
+                    fs.writeFileSync(path.join(a[a.indexOf('-P')+1], a[a.indexOf('-o')+1].replace('%(ext)s', 'm4a')), 'audio');
+                    process.exit(0);
+                }, 450);
+                """);
+            var audioTool = new ToolLauncher(node, new[] { audioScript });
+            var audioEngine = new VideoDownloader(() => audioTool, () => null, () => new VideoOptions());
+            var audioItem = new DownloadItem
+            {
+                Request = new DownloadRequest { Url = "https://example.com/video", AudioStreamUrl = "https://example.com/audio.m3u8" },
+                WorkDir = testDir, DownloadedBytes = 10000000, TotalBytes = 10000000,
+                Speed = 9999999, Status = DownloadStatus.Downloading
+            };
+            bool sawAudioProgress = false, sawRetry = false;
+            audioItem.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(DownloadItem.Speed) && audioItem.Speed == 800000)
+                    sawAudioProgress = audioItem.DownloadedBytes == 11000000 && audioItem.TotalBytes == 12200000 && audioItem.Eta == null;
+                if (e.PropertyName == nameof(DownloadItem.Stage) && audioItem.Stage?.Contains("Retrying audio") == true)
+                    sawRetry = audioItem.Speed == 0;
+            };
+            string? audioPath = await RunAudio(audioEngine, audioTool, audioItem, CancellationToken.None);
+            check(audioPath != null && File.Exists(audioPath), "external audio output not found");
+            check(sawAudioProgress, "external audio must update bytes/speed while preserving the completed video bytes");
+            check(sawRetry, "fragment retries on stderr must clear stale speed and identify the waiting stage");
+            check(audioItem.Speed == 0, "audio exit must clear transfer speed before muxing");
+            var audioArgs = JsonSerializer.Deserialize<string[]>(File.ReadAllText(argsFile))!;
+            check(audioArgs.Contains("--progress-template") && audioArgs.Contains("--socket-timeout"), "audio must use shared progress and bounded network options");
+            check(!audioArgs.Contains("--no-check-certificates"), "separate audio must preserve HTTPS certificate validation");
+
+            string audioPid = Path.Combine(testDir, "audio.pid");
+            string audioHangScript = Path.Combine(testDir, "audio_hang.js");
+            File.WriteAllText(audioHangScript, $"require('fs').writeFileSync({JsonSerializer.Serialize(audioPid)}, String(process.pid)); setInterval(() => {{}}, 1000);");
+            var audioHangTool = new ToolLauncher(node, new[] { audioHangScript });
+            using var audioCts = new CancellationTokenSource();
+            var pendingAudio = RunAudio(audioEngine, audioHangTool, audioItem, audioCts.Token);
+            var deadline = Stopwatch.StartNew();
+            while (!File.Exists(audioPid) && deadline.Elapsed < TimeSpan.FromSeconds(10)) await Task.Delay(25);
+            audioCts.Cancel();
+            caught = false;
+            try { await pendingAudio; } catch (OperationCanceledException) { caught = true; }
+            check(caught, "external audio must propagate pause/cancellation");
+            check(File.Exists(audioPid), "external audio cancellation fixture did not start");
+            if (File.Exists(audioPid))
+            {
+                bool exited;
+                try { using var child = Process.GetProcessById(int.Parse(File.ReadAllText(audioPid))); exited = child.WaitForExit(5000); }
+                catch (ArgumentException) { exited = true; }
+                check(exited, "cancelled external audio subprocess remained running");
+            }
         });
 
         await test("video: StreamProbeService dynamic HLS manifest extraction (qualities, audio tracks, subtitles)", () =>

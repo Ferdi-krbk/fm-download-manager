@@ -1,68 +1,145 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>FM Download Manager</title>
-<link rel="stylesheet" href="popup.css">
-</head>
-<body>
-  <header>
-    <div class="title">
-      <img src="icons/icon48.png" alt="" width="20" height="20">
-      <span>FM Download Manager</span>
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>FM Download Manager</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div id="fm-flow" aria-label="FM Download Manager">
+      <div class="f-popup" aria-label="Eklenti açılır penceresi">
+        <div class="f-popup-head">
+          <span class="f-brandmark f-logo-live">fm<span>.</span></span>
+          <div>
+            <strong>Download Manager</strong><small>Tarayıcı eklentisi</small>
+          </div>
+          <button
+            class="f-quiet cursor-interaction"
+            aria-label="Eklenti görünüm ayarları"
+            data-popup-settings
+          >
+            <i data-lucide="sliders-horizontal" aria-hidden="true"></i>
+          </button>
+        </div>
+        <div class="f-popup-state">
+          <span class="f-dot" id="connectionDot"></span
+          ><span><span id="connectionText">Bağlanıyor…</span></span>
+        </div>
+        <section id="notice" hidden>
+          <p id="noticeText"></p>
+          <input
+            id="pairCode"
+            type="text"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="Eşleştirme kodu"
+            hidden
+          /><button id="pairButton" class="f-primary" hidden>Eşleştir</button
+          ><button id="launchButton" hidden>Uygulamayı aç</button>
+        </section>
+        <section id="settingsPanel" hidden>
+          <div class="settings-head">
+            <strong id="appearanceLabel">Görünüm</strong
+            ><button id="langToggle">TR</button>
+          </div>
+          <div class="f-modegroup">
+            <button data-mode="dark">Gece</button
+            ><button data-mode="light">Gündüz</button>
+          </div>
+          <div id="swatches" class="f-swatches"></div>
+          <label class="setting-row"
+            ><span id="customColorLabel">Özel renk</span
+            ><input id="customAccent" type="color" aria-label="Özel renk"
+          /></label>
+          <hr />
+          <label class="toggle"
+            ><input id="intercept" type="checkbox" /><span id="interceptLabel"
+              >İndirmeleri uygulamaya gönder</span
+            ></label
+          ><label class="toggle"
+            ><input id="sniff" type="checkbox" /><span id="sniffLabel"
+              >Videoları yakala</span
+            ></label
+          ><label class="toggle"
+            ><input id="autoLaunch" type="checkbox" /><span id="autoLaunchLabel"
+              >Uygulamayı gerektiğinde aç</span
+            ></label
+          >
+          <details>
+            <summary id="advancedLabel">Gelişmiş</summary>
+            <label class="setting-row"
+              ><span id="portLabel">Port</span
+              ><input id="port" type="number" min="1024" max="65535" /></label
+            ><label class="setting-row"
+              ><span id="minSizeLabel">En küçük dosya (MB)</span
+              ><input id="minSize" type="number" min="0" /></label
+            ><button id="pageFileButton" class="f-page-send">
+              Sayfa adresini dosya olarak indir
+            </button>
+          </details>
+        </section>
+        <div class="f-popup-body" id="capturePanel">
+          <p class="f-eyebrow">BU SAYFADA</p>
+          <h3 id="pageTitle">Medya aranıyor…</h3>
+          <p class="f-popup-meta" id="mediaSummary"></p>
+          <button
+            class="f-capture cursor-interaction"
+            data-select-stream="video"
+            aria-pressed="true"
+          >
+            <span class="f-fileicon"
+              ><i data-lucide="video" aria-hidden="true"></i></span
+            ><span
+              ><strong>Video</strong
+              ><small><span id="videoMeta">—</span></small></span
+            ><span class="f-check-dot">●</span>
+          </button>
+          <button
+            class="f-capture cursor-interaction"
+            data-select-stream="audio"
+            aria-pressed="false"
+          >
+            <span class="f-fileicon"
+              ><i data-lucide="audio-lines" aria-hidden="true"></i></span
+            ><span
+              ><strong>Ses</strong
+              ><small><span id="audioMeta">—</span></small></span
+            ><span class="f-check-dot">○</span>
+          </button>
+          <button
+            class="f-capture cursor-interaction"
+            data-select-stream="subtitle"
+            aria-pressed="false"
+          >
+            <span class="f-fileicon"
+              ><i data-lucide="captions" aria-hidden="true"></i></span
+            ><span
+              ><strong>Altyazı</strong
+              ><small><span id="subtitleMeta">—</span></small></span
+            ><span class="f-check-dot">○</span>
+          </button>
+          <button class="f-primary f-send cursor-interaction" data-send>
+            <i data-lucide="arrow-down-to-line" aria-hidden="true"></i>
+            Uygulamaya gönder
+          </button>
+          <button
+            class="f-quiet f-page-send cursor-interaction"
+            data-demo-action="Sayfa bağlantısı seçildi."
+          >
+            <i data-lucide="link" aria-hidden="true"></i> Sayfa bağlantısını
+            kullan
+          </button>
+        </div>
+        <p id="feedback" role="status" aria-live="polite" hidden></p>
+        <section id="transfers" hidden>
+          <p id="downloadsLabel">İndirmeler</p>
+          <div id="transferList"></div>
+        </section>
+        <footer>FM Download Manager · Windows</footer>
+      </div>
     </div>
-    <div class="header-actions">
-      <button id="themeToggle" class="pill-btn" title="Temayı Değiştir (Açık / Koyu) / Toggle Theme">🌙</button>
-      <button id="langToggle" class="pill-btn" title="Dili Değiştir / Switch Language">TR</button>
-      <div class="status"><span id="dot" class="dot"></span><span id="statusText" data-i18n="popupConnecting">Connecting…</span></div>
-    </div>
-  </header>
-
-  <div class="palette-bar" id="paletteBar">
-    <span class="palette-label" data-i18n="popupTheme">Tema:</span>
-    <div class="swatches" id="swatches"></div>
-  </div>
-
-  <div id="offline" class="box hidden">
-    <span data-i18n="popupOfflineBox">The app is not running. Open FM Download Manager.</span>
-    <button id="launch" class="hidden" data-i18n="popupLaunch">Open App</button>
-  </div>
-
-  <div id="pair" class="box hidden">
-    <span data-i18n="popupPairBox">Open FM Download Manager, choose "Copy pairing code", then paste the code here.</span>
-    <input id="pairCode" type="text" autocomplete="off" spellcheck="false" data-i18n-placeholder="popupPairPlaceholder" placeholder="Pairing code">
-    <button id="pairBtn" class="primary" data-i18n="popupPairButton">Pair</button>
-    <span id="pairMsg" class="muted"></span>
-  </div>
-
-  <section class="controls">
-    <label class="toggle"><input type="checkbox" id="intercept"> <span data-i18n="popupIntercept">Send downloads to the app</span></label>
-    <label class="toggle"><input type="checkbox" id="sniff"> <span data-i18n="popupSniff">Capture videos on pages</span></label>
-    <label class="toggle"><input type="checkbox" id="autoLaunch"> <span data-i18n="popupAutoLaunch">Open the app when a download arrives</span></label>
-  </section>
-
-  <section>
-    <button id="pageVideo" class="primary" data-i18n="popupPageVideo">Download video from this page (yt-dlp)</button>
-    <button id="pageLink" data-i18n="popupPageLink">Download page URL as a file</button>
-  </section>
-
-  <section>
-    <h3><span data-i18n="popupDownloadsTitle">Downloads</span></h3>
-    <ul id="dl"></ul>
-    <p id="noDl" class="muted" data-i18n="popupNoDownloads">No active downloads. Started downloads show their progress here and on the toolbar badge.</p>
-  </section>
-
-  <section>
-    <h3><span data-i18n="popupMediaTitle">Captured media</span> <span id="count"></span></h3>
-    <ul id="media"></ul>
-    <p id="noMedia" class="muted" data-i18n="popupNoMedia">No media captured in this tab yet. Start playing a video and it will appear here.</p>
-  </section>
-
-  <details>
-    <summary data-i18n="popupSettings">Settings</summary>
-    <label><span data-i18n="popupPort">App port</span> <input type="number" id="port" min="1024" max="65535"></label>
-    <label><span data-i18n="popupMinSize">Only capture downloads larger than (MB, 0 = all)</span> <input type="number" id="minSize" min="0"></label>
-  </details>
-  <script src="popup.js"></script>
-</body>
+    <script src="popup-media.js"></script>
+    <script src="popup.js"></script>
+  </body>
 </html>

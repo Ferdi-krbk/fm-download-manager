@@ -22,13 +22,10 @@ public partial class MainWindow : Window
     private readonly ICollectionView _view;
     private readonly DispatcherTimer _speedTimer;
     private bool _allowClose;
-
-    private static readonly HashSet<string> ImgExts = new(StringComparer.OrdinalIgnoreCase) { ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg", ".ico" };
-    private static readonly HashSet<string> MusicExts = new(StringComparer.OrdinalIgnoreCase) { ".mp3", ".flac", ".wav", ".aac", ".ogg", ".m4a", ".wma" };
-    private static readonly HashSet<string> VideoExts = new(StringComparer.OrdinalIgnoreCase) { ".mp4", ".mkv", ".webm", ".avi", ".mov", ".wmv", ".flv", ".m4v" };
-    private static readonly HashSet<string> AppExts = new(StringComparer.OrdinalIgnoreCase) { ".exe", ".msi", ".bat", ".cmd", ".ps1", ".apk", ".appx", ".iso" };
-    private static readonly HashSet<string> DocExts = new(StringComparer.OrdinalIgnoreCase) { ".pdf", ".epub", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".txt" };
-    private static readonly HashSet<string> ArcExts = new(StringComparer.OrdinalIgnoreCase) { ".zip", ".rar", ".7z", ".tar", ".gz", ".bz2", ".xz" };
+    private string _statusFilter = "all";
+    private (int Active, int Queued, int Done) _filterCounts;
+    private (bool Compact, bool Tiny, bool Narrow)? _layoutDensity;
+    private bool _entered;
 
     public MainWindow(DownloadManager manager, TokenStore tokenStore, AppSettings settings, BridgeServer? bridge = null)
     {
@@ -42,11 +39,34 @@ public partial class MainWindow : Window
         _view.Filter = FilterItem;
         Grid.ItemsSource = _view;
 
+        Grid.LoadingRow += (_, args) =>
+        {
+            FlowMotion.Reset(args.Row);
+            args.Row.MouseEnter -= RowMouseEnter;
+            args.Row.MouseLeave -= RowMouseLeave;
+            args.Row.MouseEnter += RowMouseEnter;
+            args.Row.MouseLeave += RowMouseLeave;
+        };
+        Grid.UnloadingRow += (_, args) => FlowMotion.Reset(args.Row);
+        Grid.SelectionChanged += (_, _) =>
+        {
+            if (FindName("FlowInlineDetails") is FrameworkElement panel && IsLoaded) FlowMotion.Reveal(panel, true);
+        };
         ApplyLocalization();
 
         _speedTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
         _speedTimer.Tick += (_, _) => UpdateTotalSpeed();
         _speedTimer.Start();
+        FlowMain.SizeChanged += (_, _) => UpdateLayoutDensity();
+        Loaded += (_, _) =>
+        {
+            WindowPlacement.Constrain(this, center: !_entered);
+            if (!_entered && Content is FrameworkElement content) FlowMotion.Reveal(content, translate: true);
+            if (!_entered) FlowMotion.RevealRows(Grid);
+            _entered = true;
+        };
+        DpiChanged += (_, _) => Dispatcher.BeginInvoke(new Action(() => WindowPlacement.Constrain(this)));
+        Closed += (_, _) => _speedTimer.Stop();
 
         // Enforce application icon on window and taskbar
         try
@@ -82,6 +102,7 @@ public partial class MainWindow : Window
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);
+        WindowPlacement.Constrain(this, center: true);
         try
         {
             var helper = new System.Windows.Interop.WindowInteropHelper(this);
@@ -150,7 +171,7 @@ public partial class MainWindow : Window
         ColHeaderError.Header = Strings.IsTurkish ? "Ayrıntılar" : "Details";
         if (ColHeaderEta != null) ColHeaderEta.Header = Strings.TimeLeft;
 
-        TxtBtnAdd.Text = Strings.AddFromClipboard;
+        TxtBtnAdd.Text = Strings.IsTurkish ? "Yeni indirme" : "New download";
         TxtBtnAddMulti.Text = Strings.AddUrls;
         TxtBtnFolder.Text = Strings.OpenFolder;
         TxtBtnExtension.Text = Strings.BrowserSetup;
@@ -176,16 +197,35 @@ public partial class MainWindow : Window
         CatOther.ToolTip = Strings.CategoryOther;
 
         bool isTr = Strings.IsTurkish;
-        LblCategories.Text = isTr ? "Kategoriler" : "Categories";
-        LblTotalSpeed.Text = isTr ? "Toplam Hız" : "Total Speed";
+        CatOtherText.Text = isTr ? "Dosyalar" : "Files";
+        CatMusicText.Text = isTr ? "Ses" : "Audio";
+        TxtSearchWatermark.Text = isTr ? "Dosya adıyla ara…" : "Search downloads…";
+        FlowWorkspaceLabel.Text = isTr ? "ÇALIŞMA ALANI" : "WORKSPACE";
+        FlowWorkspaceAll.Text = isTr ? "İndirmeler" : "Downloads";
+        FlowWorkspaceActive.Text = isTr ? "Aktif indirmeler" : "Active downloads";
+        FlowWorkspaceDone.Text = isTr ? "Tamamlananlar" : "Completed";
+        FlowListLabel.Text = isTr ? "İNDİRMELER" : "DOWNLOADS";
+        FlowSizeLabel.Text = isTr ? "İndirilen" : "Downloaded";
+        FlowEtaLabel.Text = isTr ? "Kalan süre" : "Time left";
+        FlowHeading.Text = isTr ? "Her şey akışında." : "Everything in flow.";
+        FlowEyebrow.Text = isTr ? "KİŞİSEL İNDİRME ALANIN" : "YOUR DOWNLOAD WORKSPACE";
+        FlowSubtitle.Text = isTr ? "İndirmelerini tek yerden yönet." : "Your downloads, all in one place.";
+        FlowSelectedLabel.Text = isTr ? "İNDİRME AYRINTILARI" : "DOWNLOAD DETAILS";
+        FlowDetailsButton.Content = isTr ? "Ayrıntılar" : "Details";
+        FilterAll.Content = isTr ? "Tümü" : "All";
+        FilterActive.Content = isTr ? "İndiriliyor" : "Downloading";
+        FilterPaused.Content = isTr ? "Duraklatılan" : "Paused";
+        FilterDone.Content = isTr ? "Tamamlanan" : "Completed";
+        LblCategories.Text = isTr ? "KİTAPLIK" : "LIBRARY";
+        LblTotalSpeed.Text = isTr ? "TOPLAM İNDİRME HIZI" : "TOTAL DOWNLOAD SPEED";
         LblBridgeConnected.Text = isTr ? "Yerel köprü hazır" : "Local bridge ready";
         if (LblTransferStatus != null) LblTransferStatus.Text = isTr ? "TRANSFER DURUMU" : "TRANSFER STATUS";
         if (LblMultiThreadOptimize != null) LblMultiThreadOptimize.Text = isTr ? "Paralel HTTP aktarımı" : "Parallel HTTP transfers";
         if (LblStorageBridge != null) LblStorageBridge.Text = isTr ? "DEPOLAMA & EKLENTİ" : "STORAGE & EXTENSION";
         if (LblNativeBridgeActive != null) LblNativeBridgeActive.Text = isTr ? "● Yerel tarayıcı köprüsü" : "● Local browser bridge";
         if (BtnEmptyAddUrl != null) BtnEmptyAddUrl.Content = isTr ? "URL Ekle" : "Add URL";
-        if (BtnThemeDark != null) BtnThemeDark.Content = isTr ? "🌙 Koyu" : "🌙 Dark";
-        if (BtnThemeLight != null) BtnThemeLight.Content = isTr ? "☀️ Açık" : "☀️ Light";
+        if (BtnThemeDark != null) BtnThemeDark.Content = isTr ? "Gece" : "Dark";
+        if (BtnThemeLight != null) BtnThemeLight.Content = isTr ? "Gündüz" : "Light";
         if (LblPaletteHeader != null) LblPaletteHeader.Text = Strings.PaletteHeader;
         if (BtnPaletteOpenSettings != null) BtnPaletteOpenSettings.Content = Strings.PaletteOpenAllSettings;
         TxtEmptyTitle.Text = Strings.NoDownloadsTitle;
@@ -265,11 +305,23 @@ public partial class MainWindow : Window
             ? $"{active} aktif / {queued} sırada / {done} tamamlandı"
             : $"{active} active / {queued} queued / {done} completed";
         EmptyStateOverlay.Visibility = _manager.Items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        if (_filterCounts != (active, queued, done))
+        {
+            _filterCounts = (active, queued, done);
+            if (_statusFilter != "all") _view.Refresh();
+        }
     }
 
     private bool FilterItem(object obj)
     {
         if (obj is not DownloadItem item) return false;
+        if (_statusFilter switch
+        {
+            "active" => item.Status != DownloadStatus.Downloading,
+            "paused" => item.Status != DownloadStatus.Paused,
+            "done" => item.Status != DownloadStatus.Completed,
+            _ => false
+        }) return false;
 
         // Search text
         string q = TxtSearch?.Text?.Trim() ?? "";
@@ -284,19 +336,19 @@ public partial class MainWindow : Window
         string cat = (LstCategories?.SelectedItem as ListBoxItem)?.Tag?.ToString() ?? "all";
         if (cat == "all") return true;
 
-        string ext = Path.GetExtension(item.FileName ?? "");
+        string category = item.Request is { } request
+            ? CategoryHelper.GetCategorySubfolder(request, item.FileName)
+            : CategoryHelper.GetCategorySubfolder(item.FileName, null, DownloadKind.File);
         return cat switch
         {
-            "images" => ImgExts.Contains(ext),
-            "music" => MusicExts.Contains(ext),
-            "video" => VideoExts.Contains(ext) || item.Request?.Kind == DownloadKind.Video,
-            "apps" => AppExts.Contains(ext),
-            "documents" => DocExts.Contains(ext),
-            "archives" => ArcExts.Contains(ext),
-            "torrents" => item.Request?.Kind == DownloadKind.Torrent || ext.Equals(".torrent", StringComparison.OrdinalIgnoreCase),
-            "other" => !ImgExts.Contains(ext) && !MusicExts.Contains(ext) && !VideoExts.Contains(ext) &&
-                       !AppExts.Contains(ext) && !DocExts.Contains(ext) && !ArcExts.Contains(ext) &&
-                       item.Request?.Kind != DownloadKind.Video && item.Request?.Kind != DownloadKind.Torrent,
+            "video" => category == "Videos",
+            "music" => category == "Music",
+            "torrents" => category == "Torrents",
+            "files" => category is not ("Videos" or "Music" or "Torrents"),
+            "images" => category == "Images",
+            "apps" => category == "Programs",
+            "documents" => category == "Documents",
+            "archives" => category == "Compressed",
             _ => true
         };
     }
@@ -310,7 +362,50 @@ public partial class MainWindow : Window
     private void Categories_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         _view?.Refresh();
+        if (Grid != null && IsLoaded) FlowMotion.RevealRows(Grid);
     }
+
+    private void StatusFilter_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.Primitives.ToggleButton selected) return;
+        _statusFilter = selected.Tag?.ToString() ?? "all";
+        foreach (var button in new[] { FilterAll, FilterActive, FilterPaused, FilterDone })
+            button.IsChecked = button == selected;
+        _view?.Refresh();
+        if (IsLoaded) FlowMotion.RevealRows(Grid);
+    }
+
+    private void UpdateLayoutDensity()
+    {
+        // Margins are included so density changes cannot shift the threshold.
+        bool compact = FlowMain.ActualHeight + FlowMain.Margin.Top + FlowMain.Margin.Bottom < 750;
+        bool tiny = FlowMain.ActualHeight + FlowMain.Margin.Top + FlowMain.Margin.Bottom < 480;
+        bool narrow = FlowMain.ActualWidth + FlowMain.Margin.Left + FlowMain.Margin.Right < 700;
+        var density = (compact, tiny, narrow);
+        if (_layoutDensity is { } previous && previous == density) return;
+        _layoutDensity = density;
+        FlowMain.Margin = narrow ? new Thickness(18, 16, 18, 14) : compact ? new Thickness(24, 20, 24, 16) : new Thickness(28, 29, 28, 20);
+        FlowPulseRow.Height = new GridLength(tiny ? 0 : compact ? 112 : 145);
+        FlowPulse.Visibility = tiny ? Visibility.Collapsed : Visibility.Visible;
+        FlowPulse.Padding = compact ? new Thickness(0, 14, 0, 18) : new Thickness(0, 25, 0, 24);
+        TotalSpeedText.FontSize = compact ? 34 : 43;
+        SidebarSpeedGraph.Height = compact ? 42 : 52;
+        FlowFiltersRow.Height = new GridLength(compact ? 54 : 64);
+        FlowHeading.FontSize = narrow ? 24 : compact ? 26 : 30;
+        FlowSearchHost.Width = narrow ? 140 : 180;
+        foreach (var filter in new[] { FilterAll, FilterActive, FilterPaused, FilterDone })
+        {
+            filter.FontSize = narrow ? 11 : 12;
+            filter.Padding = new Thickness(narrow ? 8 : 12, 7, narrow ? 8 : 12, 7);
+        }
+        FlowEyebrow.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
+        FlowSubtitle.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
+        FlowInlineDetails.MaxHeight = compact ? 0 : double.PositiveInfinity;
+        FlowInlineDetails.Margin = compact ? new Thickness(0) : new Thickness(0, 20, 0, 0);
+    }
+    private void WorkspaceAll_Click(object sender, RoutedEventArgs e) { LstCategories.SelectedItem = CatAll; StatusFilter_Click(FilterAll, e); }
+    private void WorkspaceActive_Click(object sender, RoutedEventArgs e) { LstCategories.SelectedItem = CatAll; StatusFilter_Click(FilterActive, e); }
+    private void WorkspaceDone_Click(object sender, RoutedEventArgs e) { LstCategories.SelectedItem = CatAll; StatusFilter_Click(FilterDone, e); }
 
     public void AllowClose() { _allowClose = true; Close(); }
 
@@ -515,7 +610,21 @@ public partial class MainWindow : Window
     private void Pause_Click(object s, RoutedEventArgs e) { foreach (var i in Selected) _manager.Pause(i.Id); }
     private void Resume_Click(object s, RoutedEventArgs e) { foreach (var i in Selected) _manager.Resume(i.Id); }
     private void Cancel_Click(object s, RoutedEventArgs e) { foreach (var i in Selected) _manager.Cancel(i.Id); }
-    private void Remove_Click(object s, RoutedEventArgs e) { foreach (var i in Selected) _manager.Remove(i.Id); }
+    private readonly HashSet<string> _removing = new();
+    private static void RowMouseEnter(object sender, MouseEventArgs e) => FlowMotion.Hover((FrameworkElement)sender, true);
+    private static void RowMouseLeave(object sender, MouseEventArgs e) => FlowMotion.Hover((FrameworkElement)sender, false);
+    private async void Remove_Click(object s, RoutedEventArgs e)
+    {
+        var items = Selected.Where(item => _removing.Add(item.Id)).ToList();
+        await Task.WhenAll(items.Select(async item =>
+        {
+            var row = Grid.ItemContainerGenerator.ContainerFromItem(item) as DataGridRow;
+            if (row != null) await FlowMotion.ExitAsync(row);
+            _manager.Remove(item.Id);
+            if (row != null && ReferenceEquals(row.Item, item)) FlowMotion.Reset(row);
+            _removing.Remove(item.Id);
+        }));
+    }
 
     private async void RemoveAndDelete_Click(object s, RoutedEventArgs e)
     {

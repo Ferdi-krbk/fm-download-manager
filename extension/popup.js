@@ -1,730 +1,508 @@
-'use strict';
-const api = typeof browser !== 'undefined' ? browser : chrome;
-const $ = (id) => document.getElementById(id);
-
-const I18N_DICTS = {
+"use strict";
+const api = typeof browser !== "undefined" ? browser : chrome;
+const $ = (id) => document.getElementById(id),
+  root = $("fm-flow");
+const IS_FIREFOX =
+  typeof browser !== "undefined" &&
+  String(browser.runtime.getURL("")).startsWith("moz-extension:");
+let tab = null,
+  current = null,
+  subs = [],
+  selected = "video",
+  language = "tr",
+  theme = "dark",
+  accent = "#C3AFFF",
+  online = false,
+  busy = false;
+const changed = new Set();
+const strings = {
   tr: {
-    popupConnecting: "Bağlanıyor…",
-    popupConnected: "Bağlı (v$1)",
-    popupActive: "$1 aktif",
-    popupOffline: "Uygulama kapalı",
-    popupNotPaired: "Eşleşme Gerekli",
-    popupOfflineBox: "Uygulama çalışmıyor. FM Download Manager uygulamasını açın.",
-    popupLaunch: "Uygulamayı Aç",
-    popupPairBox: "FM Download Manager'ı açın, 'Eşleşme kodunu kopyala' seçeneğini seçin ve kodu buraya yapıştırın.",
-    popupPairPlaceholder: "Eşleşme kodu",
-    popupPairButton: "Eşle",
-    popupPairOk: "Eşleşme başarılı!",
-    popupPairBad: "Geçersiz kod",
-    popupIntercept: "İndirmeleri FM'e gönder",
-    popupSniff: "Sayfalardaki videoları yakala",
-    popupAutoLaunch: "İndirme geldiğinde uygulamayı aç",
-    popupPageVideo: "Bu sayfadaki videoyu indir (yt-dlp)",
-    popupPageLink: "Sayfa URL'sini dosya olarak indir",
-    popupDownloadsTitle: "İndirmeler",
-    popupNoDownloads: "Aktif indirme yok. Başlatılan indirmeler burada görünür.",
-    popupMediaTitle: "Yakalanan Medya",
-    popupNoMedia: "Bu sekmede henüz yakalanan medya yok. Bir video oynatın.",
-    popupSettings: "Ayarlar",
-    popupPort: "Uygulama portu",
-    popupMinSize: "Yalnızca şundan büyük indirmeleri yakala (MB, 0 = tümü)",
-    popupTheme: "Tema:",
-    popupSent: "Gönderildi!",
-    popupStarted: "Başlatıldı!"
+    extension: "Tarayıcı eklentisi",
+    onPage: "BU SAYFADA",
+    video: "Video",
+    audio: "Ses",
+    subtitle: "Altyazı",
+    send: "Uygulamaya gönder",
+    page: "Sayfa bağlantısını kullan",
+    appearance: "Görünüm",
+    custom: "Özel renk",
+    dark: "Gece",
+    light: "Gündüz",
+    connected: "Uygulamaya bağlı",
+    offline: "Uygulama kapalı",
+    pairing: "Eşleştirme gerekli",
+    empty: "Henüz medya yok",
+    play: "Bir video oynatınca burada görünecek.",
+    audioFormat: "MP3 olarak çıkar",
+    noSubtitle: "Altyazı bulunamadı",
+    detected: "Yakalanan video",
+    available: "altyazı",
+    streams: "akış",
+    sent: "Uygulamaya gönderildi.",
+    failed: "Gönderilemedi. Bağlantıyı ve eşleştirmeyi kontrol et.",
+    sending: "Gönderiliyor…",
+    offlineHelp: "İndirmek için FM Download Manager’ı aç.",
+    pairHelp: "Uygulamadaki eşleştirme kodunu gir.",
+    pair: "Eşleştir",
+    openApp: "Uygulamayı aç",
+    intercept: "İndirmeleri uygulamaya gönder",
+    sniff: "Sayfalardaki videoları yakala",
+    autoLaunch: "Gerektiğinde uygulamayı aç",
+    advanced: "Gelişmiş",
+    port: "Uygulama portu",
+    minimum: "En küçük dosya (MB)",
+    pageFile: "Sayfa adresini dosya olarak indir",
+    downloads: "İndirmeler",
+    pause: "Duraklat",
+    resume: "Devam et",
+    cancel: "İptal et",
   },
   en: {
-    popupConnecting: "Connecting…",
-    popupConnected: "Connected (v$1)",
-    popupActive: "$1 active",
-    popupOffline: "App is offline",
-    popupNotPaired: "Pairing Required",
-    popupOfflineBox: "The app is not running. Open FM Download Manager.",
-    popupLaunch: "Open App",
-    popupPairBox: "Open FM Download Manager, choose 'Copy pairing code', then paste the code here.",
-    popupPairPlaceholder: "Pairing code",
-    popupPairButton: "Pair",
-    popupPairOk: "Pairing successful!",
-    popupPairBad: "Invalid code",
-    popupIntercept: "Send downloads to FM",
-    popupSniff: "Capture videos on pages",
-    popupAutoLaunch: "Open the app when a download arrives",
-    popupPageVideo: "Download video from this page (yt-dlp)",
-    popupPageLink: "Download page URL as a file",
-    popupDownloadsTitle: "Downloads",
-    popupNoDownloads: "No active downloads. Started downloads show here.",
-    popupMediaTitle: "Captured media",
-    popupNoMedia: "No media captured in this tab yet. Start playing a video.",
-    popupSettings: "Settings",
-    popupPort: "App port",
-    popupMinSize: "Only capture downloads larger than (MB, 0 = all)",
-    popupTheme: "Theme:",
-    popupSent: "Sent!",
-    popupStarted: "Started!"
-  }
+    extension: "Browser extension",
+    onPage: "ON THIS PAGE",
+    video: "Video",
+    audio: "Audio",
+    subtitle: "Subtitles",
+    send: "Send to app",
+    page: "Use page link",
+    appearance: "Appearance",
+    custom: "Custom color",
+    dark: "Dark",
+    light: "Light",
+    connected: "Connected to app",
+    offline: "App is offline",
+    pairing: "Pairing required",
+    empty: "No media yet",
+    play: "Play a video to see it here.",
+    audioFormat: "Extract as MP3",
+    noSubtitle: "No subtitles found",
+    detected: "Captured video",
+    available: "subtitles",
+    streams: "streams",
+    sent: "Sent to the app.",
+    failed: "Could not send. Check connection and pairing.",
+    sending: "Sending…",
+    offlineHelp: "Open FM Download Manager to download.",
+    pairHelp: "Enter the pairing code from the app.",
+    pair: "Pair",
+    openApp: "Open app",
+    intercept: "Send downloads to the app",
+    sniff: "Capture videos on pages",
+    autoLaunch: "Open the app when needed",
+    advanced: "Advanced",
+    port: "App port",
+    minimum: "Minimum file size (MB)",
+    pageFile: "Download page URL as a file",
+    downloads: "Downloads",
+    pause: "Pause",
+    resume: "Resume",
+    cancel: "Cancel",
+  },
 };
-
-let currentLang = 'tr';
-let currentAccent = '#E50914';
-let currentThemeMode = 'dark';
-let userToggledLang = false;
-let userToggledTheme = false;
-
-const PALETTE = [
-  { name: 'Crimson', hex: '#E50914' },
-  { name: 'Cyan', hex: '#00E5FF' },
-  { name: 'Emerald', hex: '#10B981' },
-  { name: 'Violet', hex: '#8B5CF6' },
-  { name: 'Orange', hex: '#FF6B00' },
-  { name: 'Gold', hex: '#F59E0B' },
-  { name: 'Pink', hex: '#EC4899' },
-  { name: 'Silver', hex: '#94A3B8' },
-];
-
-function t(k, subs) {
-  const dict = I18N_DICTS[currentLang] || I18N_DICTS.tr;
-  let text = dict[k] || (typeof api.i18n !== 'undefined' ? api.i18n.getMessage(k, subs) : '') || k;
-  if (subs) {
-    if (Array.isArray(subs)) {
-      subs.forEach((val, i) => { text = text.replace(new RegExp(`\\$${i+1}`, 'g'), val); });
-    } else {
-      text = text.replace(/\$1/g, subs);
-    }
-  }
-  return text;
-}
-
-function updateUiTexts() {
-  document.querySelectorAll('[data-i18n]').forEach((el) => {
-    el.textContent = t(el.dataset.i18n);
-  });
-  document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
-    el.placeholder = t(el.dataset.i18nPlaceholder);
-  });
-  const langBtn = $('langToggle');
-  if (langBtn) langBtn.textContent = currentLang.toUpperCase();
-  document.documentElement.lang = currentLang;
-}
-
-function applyAccentColor(hex) {
-  if (!hex) return;
-  currentAccent = hex;
-  const num = parseInt(hex.replace('#', ''), 16) || 0xE50914;
-  const r = (num >> 16) & 255;
-  const g = (num >> 8) & 255;
-  const b = num & 255;
-  const root = document.documentElement.style;
-  root.setProperty('--accent', hex);
-  root.setProperty('--accent-hover', `rgb(${Math.min(255, r + 25)}, ${Math.min(255, g + 25)}, ${Math.min(255, b + 25)})`);
-  root.setProperty('--accent-press', `rgb(${Math.max(0, r - 30)}, ${Math.max(0, g - 30)}, ${Math.max(0, b - 30)})`);
-  root.setProperty('--accent-dim', `rgba(${r}, ${g}, ${b}, 0.18)`);
-
-  document.querySelectorAll('.swatch').forEach(sw => {
-    sw.classList.toggle('active', sw.dataset.hex.toLowerCase() === hex.toLowerCase());
-  });
-}
-
-function applyThemeMode(mode) {
-  currentThemeMode = mode === 'light' ? 'light' : 'dark';
-  document.body.classList.toggle('theme-light', currentThemeMode === 'light');
-  const themeBtn = $('themeToggle');
-  if (themeBtn) themeBtn.textContent = currentThemeMode === 'light' ? '☀️' : '🌙';
-}
-
-function initPalette() {
-  const container = $('swatches');
-  if (!container) return;
-  container.innerHTML = '';
-  PALETTE.forEach(p => {
-    const sw = document.createElement('div');
-    sw.className = 'swatch';
-    sw.dataset.hex = p.hex;
-    sw.title = p.name;
-    sw.style.backgroundColor = p.hex;
-    sw.addEventListener('click', async () => {
-      applyAccentColor(p.hex);
-      await api.storage.local.set({ accentColor: p.hex });
-      send({ type: 'setAppConfig', accentColor: p.hex });
-    });
-    container.appendChild(sw);
-  });
-}
-
-// Firefox's browser.runtime.sendMessage only returns a promise (a callback argument is rejected).
-const IS_FIREFOX = typeof browser !== 'undefined' && String(browser.runtime.getURL('')).startsWith('moz-extension:');
-
+const t = (key) => strings[language][key] || key;
 function send(msg) {
+  if (IS_FIREFOX) return api.runtime.sendMessage(msg).catch(() => null);
   return new Promise((resolve) => {
     try {
-      if (IS_FIREFOX) browser.runtime.sendMessage(msg).then(resolve, () => resolve(null));
-      else api.runtime.sendMessage(msg, (r) => resolve(api.runtime.lastError ? null : r));
-    } catch { resolve(null); }
-  });
-}
-function fmtSize(n) {
-  if (!n) return '';
-  const u = ['B', 'KB', 'MB', 'GB'];
-  let i = 0; while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
-  return n.toFixed(i ? 1 : 0) + ' ' + u[i];
-}
-
-let tab = null;
-
-async function currentTab() {
-  const tabs = await api.tabs.query({ active: true, currentWindow: true });
-  return tabs && tabs[0];
-}
-
-async function sendTabMessageWithTimeout(tabId, msg, timeoutMs = 1200) {
-  if (!tabId) return null;
-  return new Promise((resolve) => {
-    let settled = false;
-    const timer = setTimeout(() => {
-      if (!settled) { settled = true; resolve(null); }
-    }, timeoutMs);
-    try {
-      api.tabs.sendMessage(tabId, msg, (r) => {
-        if (!settled) {
-          settled = true;
-          clearTimeout(timer);
-          resolve(api.runtime.lastError ? null : r);
-        }
-      });
+      api.runtime.sendMessage(msg, (value) =>
+        resolve(api.runtime.lastError ? null : value),
+      );
     } catch {
-      if (!settled) { settled = true; clearTimeout(timer); resolve(null); }
+      resolve(null);
     }
   });
 }
-
-async function getTabSubtitles(tabId) {
-  let subs = [];
-  if (tabId) {
-    try {
-      const resp = await sendTabMessageWithTimeout(tabId, { type: 'detectSubtitles' }, 1200);
-      if (resp && Array.isArray(resp.subtitles) && resp.subtitles.length > 0) {
-        subs = resp.subtitles;
-      }
-    } catch {}
+function feedback(message) {
+  $("feedback").textContent = message;
+  $("feedback").hidden = !message;
+}
+function installIcons() {
+  const paths = {
+    "sliders-horizontal": "M2 4h14M2 9h14M2 14h14M6 1v6M12 6v6M7 11v6",
+    video: "M2 4h10v11H2zM12 7l4-3v11l-4-3",
+    "audio-lines": "M2 7v4M5 4v10M9 1v16M13 4v10M16 7v4",
+    captions: "M2 3h14v12H2zM4 8h3M10 8h4M4 11h5M12 11h2",
+    "arrow-down-to-line": "M9 1v11M4 7l5 5 5-5M2 13v3h14v-3",
+    link: "M7 5l2-2a4 4 0 015 5l-3 3M11 13l-2 2a4 4 0 01-5-5l3-3M6 12l6-6",
+  };
+  document.querySelectorAll("[data-lucide]").forEach((node) => {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 18 18");
+    svg.setAttribute("aria-hidden", "true");
+    const path = document.createElementNS(svg.namespaceURI, "path");
+    path.setAttribute("d", paths[node.dataset.lucide] || paths.video);
+    svg.appendChild(path);
+    node.replaceWith(svg);
+  });
+}
+function luminance(rgb) {
+  const c = rgb.map((v) => {
+    v /= 255;
+    return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+}
+function applyAppearance() {
+  root.style.colorScheme = theme;
+  const rgb = accent.match(/[\da-f]{2}/gi).map((v) => parseInt(v, 16)),
+    l = luminance(rgb);
+  root.style.setProperty("--f-accent", accent);
+  root.style.setProperty(
+    "--f-onaccent",
+    (l + 0.05) / 0.05 > 1.05 / (l + 0.05) ? "#000000" : "#FFFFFF",
+  );
+  root.style.setProperty(
+    "--f-soft",
+    `color-mix(in srgb, ${accent} 13%, var(--f-panel))`,
+  );
+  let ink = [...rgb];
+  const bg = theme === "light" ? 1 : luminance([25, 25, 31]);
+  for (let n = 0; n < 32; n++) {
+    const v = luminance(ink);
+    if ((Math.max(v, bg) + 0.05) / (Math.min(v, bg) + 0.05) >= 4.5) break;
+    ink = ink.map((v) =>
+      Math.round(v * 0.9 + (theme === "light" ? 0 : 255) * 0.1),
+    );
   }
-
-  try {
-    const bgInfo = await send({ type: 'getBestMedia', tabId });
-    if (bgInfo && Array.isArray(bgInfo.subtitles)) {
-      for (const s of bgInfo.subtitles) {
-        if (s && s.url && !subs.some(x => x.url === s.url)) {
-          subs.push({
-            code: s.lang || s.code || 'und',
-            lang: s.lang || s.code || 'und',
-            label: s.label || 'Altyazı',
-            url: s.url
-          });
-        }
-      }
-    }
-  } catch {}
-
-  return subs;
+  root.style.setProperty("--f-accent-ink", `rgb(${ink.join(",")})`);
+  document.querySelectorAll("[data-mode]").forEach((b) => {
+    b.setAttribute("aria-pressed", String(b.dataset.mode === theme));
+    b.textContent = t(b.dataset.mode);
+  });
+  document
+    .querySelectorAll("[data-color]")
+    .forEach((b) =>
+      b.setAttribute(
+        "aria-pressed",
+        String(b.dataset.color.toUpperCase() === accent.toUpperCase()),
+      ),
+    );
+  $("customAccent").value = accent;
 }
-
-function chooseBestSubUrl(subs, targetLang = 'tr') {
-  if (!subs || !subs.length) return '';
-  const nonForcedTr = subs.find(s => (s.code === targetLang || s.lang === targetLang) && !/forced/i.test(s.url || '') && !/forced/i.test(s.label || ''));
-  if (nonForcedTr?.url) return nonForcedTr.url;
-  const anyTr = subs.find(s => s.code === targetLang || s.lang === targetLang);
-  if (anyTr?.url) return anyTr.url;
-  return subs[0]?.url || '';
+function localize() {
+  document.documentElement.lang = language;
+  document.querySelector(".f-popup-head small").textContent = t("extension");
+  document.querySelector(".f-popup-body .f-eyebrow").textContent = t("onPage");
+  for (const key of ["video", "audio", "subtitle"])
+    document.querySelector(`[data-select-stream="${key}"] strong`).textContent =
+      t(key);
+  document.querySelector("[data-send]").lastChild.textContent = " " + t("send");
+  document.querySelector("[data-demo-action]").lastChild.textContent =
+    " " + t("page");
+  for (const [id, key] of Object.entries({
+    appearanceLabel: "appearance",
+    customColorLabel: "custom",
+    interceptLabel: "intercept",
+    sniffLabel: "sniff",
+    autoLaunchLabel: "autoLaunch",
+    advancedLabel: "advanced",
+    portLabel: "port",
+    minSizeLabel: "minimum",
+    pageFileButton: "pageFile",
+    downloadsLabel: "downloads",
+    pairButton: "pair",
+    launchButton: "openApp",
+  }))
+    $(id).textContent = t(key);
+  document
+    .querySelector("[data-popup-settings]")
+    .setAttribute("aria-label", t("appearance"));
+  $("langToggle").textContent = language.toUpperCase();
+  applyAppearance();
 }
-
-async function refresh() {
-  const st = await send({ type: 'status' });
-  if (st && st.accentColor) applyAccentColor(st.accentColor);
-  if (st && st.themeMode && !userToggledTheme) applyThemeMode(st.themeMode);
-  if (st && st.language && !userToggledLang) {
-    currentLang = st.language;
-    updateUiTexts();
-  }
-  const online = !!(st && st.online);
-  const reachable = !!(st && st.reachable);
-  const paired = !!(st && st.paired);
-  $('dot').classList.toggle('on', online);
-  $('statusText').textContent = online
-    ? t('popupConnected', [String(st.app.version)]) + (st.app.active ? ` · ${t('popupActive', [String(st.app.active)])}` : '')
-    : (reachable && !paired ? t('popupNotPaired') : t('popupOffline'));
-  $('offline').classList.toggle('hidden', reachable);
-  $('pair').classList.toggle('hidden', !(reachable && !paired));
-  $('launch').classList.toggle('hidden', !(st && st.canLaunch));
-  if (reachable && !paired) {
-    try {
-      const res = await fetch(api.runtime.getURL('token.json'));
-      if (res.ok) {
-        const d = await res.json();
-        if (d && d.token) {
-          const r = await send({ type: 'setToken', token: d.token });
-          if (r && r.ok) { refresh(); return; }
-        }
-      }
-    } catch {}
-    try {
-      const clip = (await navigator.clipboard.readText()).trim().toLowerCase();
-      if (/^[0-9a-f]{64}$/.test(clip)) {
-        $('pairCode').value = clip;
-        const r = await send({ type: 'setToken', token: clip });
-        if (r && r.ok) { refresh(); }
-      }
-    } catch {}
-  }
-  if (st && st.settings) {
-    $('intercept').checked = !!st.settings.intercept;
-    $('sniff').checked = !!st.settings.sniff;
-    $('autoLaunch').checked = st.settings.autoLaunch !== false;
-    $('port').value = st.settings.port;
-    $('minSize').value = st.settings.minSizeMB || 0;
-  }
+function setSelection(format) {
+  selected = format;
+  document.querySelectorAll("[data-select-stream]").forEach((b) => {
+    const yes = b.dataset.selectStream === format;
+    b.setAttribute("aria-pressed", String(yes));
+    b.querySelector(".f-check-dot").textContent = yes ? "●" : "○";
+  });
 }
-
-function isGenericMediaName(raw) {
-  if (!raw) return true;
-  const s = raw.trim().toLowerCase().replace(/\.[a-z0-9]{2,5}$/i, '');
-  return /^(?:master|index|playlist|manifest|stream|video|audio|media|iframe|player|chunk|output|blob|embed|download|file|view|document)(?:[_-]?\d+)?$/i.test(s);
+function isYouTube() {
+  return /(?:youtube\.com|youtu\.be)/i.test(tab?.url || "");
 }
-
-function cleanMediaTitle(raw) {
-  if (!raw) return '';
-  let s = raw.replace(/[\\/:*?"<>|]/g, '').trim();
-  s = s.replace(/^(?:youtube\s*(?:video\s*player|frame)?|iframe)\s*[-–|•]?\s*/i, '');
-  s = s.replace(/\s*[-–|•]\s*(?:hdfilmcehennemi|filmmodu|dizipal|fullhdfilmizlesene|dizibox|sezonlukdizi|filmevreni|youtube|netflix|blutv|gain|disney\+?).*$/i, '');
-  s = s.replace(/\s+(?:izle|full izle|1080p|720p|türkçe dublaj|türkçe altyazılı|dublaj|altyazılı).*$/i, '');
-  s = s.replace(/\s*[-–|•]\s*$/, '').trim();
-  return s.slice(0, 60);
+function pickSubtitle() {
+  return (
+    subs.find(
+      (s) =>
+        (s.code === "tr" || s.lang === "tr") &&
+        !s.isForced &&
+        !/forced/i.test(s.url || ""),
+    ) ||
+    subs.find((s) => s.code === "tr" || s.lang === "tr") ||
+    subs.find((s) => s.code === "en" || s.lang === "en") ||
+    subs[0]
+  );
 }
-
-function formatReferer(raw, fallbackUrl) {
-  if (!raw || raw.startsWith('chrome-extension://')) return fallbackUrl || '';
-  try {
-    const u = new URL(raw);
-    if (!u.pathname || u.pathname === '/') {
-      return u.origin + '/';
-    }
-    return u.href;
-  } catch {
-    return raw;
-  }
+function renderMedia() {
+  $("pageTitle").textContent = current
+    ? cleanMediaTitle(current.name || tab?.title) || tab?.title || t("video")
+    : t("empty");
+  $("mediaSummary").textContent = current
+    ? `${1 + (current.audioTracks?.length || 0)} ${t("streams")} · ${subs.length} ${t("available")}`
+    : t("play");
+  $("videoMeta").textContent =
+    current?.videoQualities?.[0]?.label || current?.quality || t("detected");
+  $("audioMeta").textContent =
+    current?.audioTracks?.[0]?.label || t("audioFormat");
+  const sub = pickSubtitle();
+  $("subtitleMeta").textContent = sub
+    ? `${sub.label || sub.lang || sub.code || "—"} · SRT`
+    : t("noSubtitle");
+  document.querySelector('[data-select-stream="subtitle"]').disabled =
+    !sub && !isYouTube();
+  if (selected === "subtitle" && !sub && !isYouTube()) setSelection("video");
+  for (const key of ["video", "audio"])
+    document.querySelector(`[data-select-stream="${key}"]`).disabled = !current;
+  document.querySelector("[data-send]").disabled = !current || !online || busy;
 }
-
-async function getActiveMediaFromTab(tabId) {
-  if (!tabId) return null;
-  // 1. Check background.js registry first (reported directly by floating_bar.js from the active video player/iframe)
-  try {
-    const fromBg = await send({ type: 'getActiveMedia', tabId });
-    if (fromBg && fromBg.url && !/^https?:\/\/[^/]+\/?$/i.test(fromBg.url) && !/\.html?(\?|$)/i.test(fromBg.url)) {
-      if (isGenericMediaName(fromBg.name)) {
-        fromBg.name = cleanMediaTitle(tab?.title) || (tab?.title || 'Video').replace(/\s*-\s*YouTube$/i, '').trim();
-      }
-      return fromBg;
-    }
-  } catch {}
-
-  // 2. Query active tab fallback
-  try {
-    const fromAny = await sendTabMessageWithTimeout(tabId, { type: 'getActiveMedia' }, 1200);
-    if (fromAny && fromAny.url && !/^https?:\/\/[^/]+\/?$/i.test(fromAny.url) && !/\.html?(\?|$)/i.test(fromAny.url)) {
-      if (isGenericMediaName(fromAny.name)) {
-        fromAny.name = cleanMediaTitle(tab?.title) || (tab?.title || 'Video').replace(/\s*-\s*YouTube$/i, '').trim();
-      }
-      return fromAny;
-    }
-  } catch {}
-
-  return null;
-}
-
-async function loadMedia() {
+async function resolveMedia() {
   tab = await currentTab();
-  const list = (tab && (await send({ type: 'getMedia', tabId: tab.id }))) || [];
-
-  if (tab && tab.id) {
-    try {
-      const isYouTube = tab.url && /(youtube\.com|youtu\.be)/i.test(tab.url);
-      const ytMatch = isYouTube ? tab.url.match(/(?:v=|\/shorts\/)([a-zA-Z0-9_-]{11})/i) : null;
-      const active = await getActiveMediaFromTab(tab.id);
-
-      let canonicalUrl = '';
-      if (ytMatch) {
-        canonicalUrl = `https://www.youtube.com/watch?v=${ytMatch[1]}`;
-      } else if (active && active.url && !/persist_identity|googleads/i.test(active.url)) {
-        canonicalUrl = active.url;
-        const ytEmbed = canonicalUrl.match(/(?:youtube\.com|youtube-nocookie\.com)\/embed\/([a-zA-Z0-9_-]{11})/i);
-        if (ytEmbed) canonicalUrl = `https://www.youtube.com/watch?v=${ytEmbed[1]}`;
-      }
-
-      if (canonicalUrl) {
-        let cleanName = (active && active.name) || tab.title || '';
-        cleanName = cleanName.replace(/^(?:youtube\s*(?:video\s*player|frame)?|iframe)\s*[-–|•]?\s*/i, '').trim();
-        if (isGenericMediaName(cleanName) || cleanName.toLowerCase() === 'youtube') {
-          cleanName = cleanMediaTitle(tab?.title) || (tab?.title || 'Video').replace(/\s*-\s*YouTube$/i, '').trim();
-        }
-
-        const richItem = {
-          url: canonicalUrl,
-          name: cleanName,
-          kind: (active && active.kind) || 'video',
-          size: (active && active.size) || 0,
-          quality: active?.videoQualities?.[0]?.label || (active?.quality || 'HD'),
-          videoQualities: active?.videoQualities || [],
-          audioTracks: active?.audioTracks || [],
-          subtitles: active?.subtitles || [],
-          initiator: active?.referer || tab.url
-        };
-
-        const existingIdx = list.findIndex(m => m.url === canonicalUrl || (active && m.url === active.url) || (tab.url && m.url === tab.url));
-        if (existingIdx >= 0) {
-          list[existingIdx] = { ...list[existingIdx], ...richItem };
-        } else {
-          list.unshift(richItem);
-        }
-      }
-    } catch {}
+  if (!tab?.id) {
+    renderMedia();
+    return;
   }
-
-  const ul = $('media');
-  ul.innerHTML = '';
-  // Filter out redundant audio-only chunks, unplayable googlevideo chunks, or generic iframe placeholders
-  const hasVideo = list.some(m => /-v\d+|video/i.test(m.url) || (m.size && m.size > 20 * 1024 * 1024));
-  const filtered = list.filter(m => {
-    if (!m || !m.url) return false;
-    if (/googlevideo\.com\/videoplayback/i.test(m.url)) return false;
-    if (/persist_identity|googleads|doubleclick/i.test(m.url)) return false;
-    if (hasVideo && /sublist_aud|audio[_-]track|-a\d+\.m3u8/i.test(m.url) && !/-v\d+/i.test(m.url)) return false;
+  const [active, list, detected] = await Promise.all([
+    getActiveMediaFromTab(tab.id),
+    send({ type: "getMedia", tabId: tab.id }),
+    getTabSubtitles(tab.id),
+  ]);
+  current =
+    active ||
+    pickBestMedia(
+      (Array.isArray(list) ? list : []).filter(
+        (m) =>
+          m?.url &&
+          !/googlevideo|doubleclick|googleads|sublist_aud/i.test(m.url),
+      ),
+    ) ||
+    null;
+  if (isYouTube()) {
+    const m = tab.url.match(/(?:v=|\/shorts\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    if (m)
+      current = {
+        ...(current || {}),
+        url: "https://www.youtube.com/watch?v=" + m[1],
+        name: tab.title,
+        kind: "video",
+      };
+  }
+  const seen = new Set();
+  subs = [...(current?.subtitles || []), ...(detected || [])].filter((s) => {
+    const key = s.url || s.content;
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
     return true;
   });
-
-  $('count').textContent = filtered.length ? `(${filtered.length})` : '';
-  $('noMedia').classList.toggle('hidden', filtered.length > 0);
-  for (const m of filtered) {
-    const li = document.createElement('li');
-    const info = document.createElement('div'); info.className = 'info';
-    let cleanItemName = m.name || m.url;
-    cleanItemName = cleanItemName.replace(/^(?:youtube\s*(?:video\s*player|frame)?|iframe)\s*[-–|•]?\s*/i, '').trim();
-    if (isGenericMediaName(cleanItemName) || /^(?:youtube|video|iframe)$/i.test(cleanItemName.toLowerCase())) {
-      cleanItemName = cleanMediaTitle(tab?.title) || (tab?.title || 'Video').replace(/\s*-\s*YouTube$/i, '').trim();
-    }
-    const name = document.createElement('div'); name.className = 'name'; name.textContent = cleanItemName; name.title = cleanItemName;
-    const meta = document.createElement('div'); meta.className = 'meta';
-    const kind = m.kind === 'hls' ? t('kindHls') : m.kind === 'dash' ? t('kindDash') : (m.type || t('kindMedia'));
-    const metaText = [kind, fmtSize(m.size)].filter(Boolean).join(' · ');
-    if (m.quality) {
-      const qSpan = document.createElement('span');
-      qSpan.className = 'badge-q';
-      qSpan.textContent = m.quality;
-      meta.appendChild(qSpan);
-      meta.appendChild(document.createTextNode(' ' + metaText));
-    } else {
-      meta.textContent = metaText;
-    }
-    info.append(name, meta);
-    const btn = document.createElement('button'); btn.className = 'small'; btn.textContent = t('popupDownload');
-    btn.onclick = async () => {
-      btn.disabled = true; btn.textContent = '…';
-      const k = m.kind === 'video' || m.kind === 'hls' || m.kind === 'dash' || m.kind === 'media' ? 'video' : 'file';
-      const isVid = k === 'video';
-      const ref = formatReferer(m.initiator, tab.url);
-      let dlUrl = m.url;
-      const ytEmbed = dlUrl.match(/(?:youtube\.com|youtube-nocookie\.com)\/embed\/([a-zA-Z0-9_-]{11})/i);
-      if (ytEmbed) dlUrl = `https://www.youtube.com/watch?v=${ytEmbed[1]}`;
-      const subs = isVid ? ((m.subtitles && m.subtitles.length) ? m.subtitles : await getTabSubtitles(tab?.id)) : [];
-      const chosenSub = isVid ? chooseBestSubUrl(subs, 'tr') : '';
-
-      const r = await send({
-        type: 'download',
-        url: dlUrl,
-        filename: cleanItemName || '',
-        referer: ref,
-        kind: k,
-        writeSubtitles: isVid,
-        subtitles: subs,
-        subtitleUrl: chosenSub,
-        subtitleLangs: 'tr,en',
-        videoQualities: m.videoQualities || [],
-        audioTracks: m.audioTracks || []
-      });
-      if (r && r.ok) {
-        btn.textContent = '✓ ' + t('popupSent');
-        btn.classList.add('success');
-      } else {
-        btn.textContent = t('popupError');
-        btn.classList.add('error');
-        btn.disabled = false;
-      }
-    };
-    li.append(info, btn);
-    ul.appendChild(li);
+  renderMedia();
+}
+async function refreshStatus() {
+  const st = await send({ type: "status" });
+  online = !!st?.online;
+  if (!changed.has("accent") && /^#[\da-f]{6}$/i.test(st?.accentColor || ""))
+    accent = st.accentColor;
+  if (!changed.has("theme") && ["dark", "light"].includes(st?.themeMode))
+    theme = st.themeMode;
+  if (!changed.has("language") && ["tr", "en"].includes(st?.language))
+    language = st.language;
+  localize();
+  $("connectionText").textContent = online
+    ? t("connected")
+    : st?.reachable
+      ? t("pairing")
+      : t("offline");
+  $("connectionDot").style.background = online
+    ? "var(--f-success)"
+    : "var(--f-muted)";
+  $("notice").hidden = online;
+  $("noticeText").textContent = st?.reachable
+    ? t("pairHelp")
+    : t("offlineHelp");
+  $("pairCode").hidden = $("pairButton").hidden = !st?.reachable || online;
+  $("launchButton").hidden = !st?.canLaunch || online;
+  if (st?.settings) {
+    for (const key of ["intercept", "sniff", "autoLaunch"])
+      $(key).checked = !!st.settings[key];
+    $("port").value = st.settings.port || 48213;
+    $("minSize").value = st.settings.minSizeMB || 0;
   }
+  renderMedia();
 }
-
-// ---------- Downloads (progress list) ----------
-const seenActive = new Set();   // ids that were active while this popup was open → keep showing their final state
-const STATE_LABEL = { queued: 'stateQueued', paused: 'statePaused', probing: 'stateProbing', completed: 'stateCompleted', failed: 'stateFailed', cancelled: 'stateCancelled' };
-let dlTimer = null;
-
-async function loadDownloads() {
-  const all = (await send({ type: 'downloads' })) || [];
-  const shown = all.filter((d) => {
-    if (d.state === 'downloading' || d.state === 'probing') { seenActive.add(d.id); return true; }
-    if (d.state === 'queued' || d.state === 'paused') return true;
-    return seenActive.has(d.id);
-  });
-  const ul = $('dl');
-  $('noDl').classList.toggle('hidden', shown.length > 0);
-  // Rebuild only when the set of rows changes; otherwise update in place to keep buttons clickable.
-  const ids = shown.map((d) => d.id).join('|');
-  if (ul.dataset.ids !== ids) { ul.innerHTML = ''; ul.dataset.ids = ids; for (const d of shown) ul.appendChild(buildRow(d)); }
-  for (const d of shown) updateRow(d);
-}
-
-function buildRow(d) {
-  const li = document.createElement('li'); li.dataset.id = d.id;
-  const info = document.createElement('div'); info.className = 'info';
-  const name = document.createElement('div'); name.className = 'name';
-  const bar = document.createElement('div'); bar.className = 'bar'; bar.appendChild(Object.assign(document.createElement('div'), { className: 'fill' }));
-  const meta = document.createElement('div'); meta.className = 'meta';
-  info.append(name, bar, meta);
-  const actions = document.createElement('div'); actions.className = 'actions';
-  const toggle = document.createElement('button'); toggle.className = 'icon toggle';
-  toggle.onclick = () => send({ type: 'action', id: d.id, action: toggle.dataset.action }).then(loadDownloads);
-  const cancel = document.createElement('button'); cancel.className = 'icon cancel'; cancel.textContent = '✕'; cancel.title = t('popupCancel');
-  cancel.onclick = () => send({ type: 'action', id: d.id, action: cancel.dataset.action || 'cancel' }).then(loadDownloads);
-  actions.append(toggle, cancel);
-  li.append(info, actions);
-  return li;
-}
-
-function updateRow(d) {
-  const li = $('dl').querySelector(`li[data-id="${d.id}"]`); if (!li) return;
-  li.querySelector('.name').textContent = d.name; li.querySelector('.name').title = d.name;
-  const active = d.state === 'downloading' || d.state === 'probing';
-  const pct = d.total > 0 ? Math.min(100, Math.round((100 * d.received) / d.total)) : (d.state === 'completed' ? 100 : 0);
-  const bar = li.querySelector('.bar');
-  bar.className = 'bar' + (active && d.total <= 0 ? ' indeterminate' : '') + (d.state === 'completed' ? ' done' : '') + (d.state === 'failed' ? ' failed' : '');
-  bar.querySelector('.fill').style.width = (active && d.total <= 0) ? '' : pct + '%';
-  const parts = [];
-  if (d.state === 'downloading') {
-    if (d.total > 0) parts.push(pct + '%', fmtSize(d.received) + ' / ' + fmtSize(d.total));
-    if (d.speed > 0) parts.push(fmtSize(d.speed) + '/s');
-    if (d.stage) parts.push(d.stage);
-  } else {
-    parts.push(d.stage && active ? d.stage : t(STATE_LABEL[d.state] || d.state));
-    if (d.state === 'failed' && d.error) parts.push(d.error);
-  }
-  li.querySelector('.meta').textContent = parts.join(' · ');
-  const toggle = li.querySelector('.toggle'), cancel = li.querySelector('.cancel');
-  const terminal = d.state === 'completed' || d.state === 'failed' || d.state === 'cancelled';
-  toggle.classList.toggle('hidden', terminal);
-  if (active) { toggle.textContent = '❚❚'; toggle.title = t('popupPause'); toggle.dataset.action = 'pause'; }
-  else { toggle.textContent = '▶'; toggle.title = t('popupResume'); toggle.dataset.action = 'resume'; }
-  cancel.dataset.action = terminal ? 'remove' : 'cancel';
-  cancel.title = terminal ? t('popupRemove') : t('popupCancel');
-}
-
-function pickBestMedia(list) {
-  if (!list || !list.length) return null;
-  const masterHls = list.find((m) =>
-    m.kind === 'hls' &&
-    (/master|playlist|manifest|index\.m3u8/i.test(m.url) || !/sublist|chunk|aud|vid\d/i.test(m.url))
-  );
-  if (masterHls) return masterHls;
-  const directVideo = list.find((m) =>
-    (m.kind === 'video' || m.kind === 'media') &&
-    !/aud/i.test(m.url) &&
-    !/sublist/i.test(m.url)
-  );
-  if (directVideo) return directVideo;
-  const videoHls = list.find((m) => m.kind === 'hls' && !/aud|audio/i.test(m.url));
-  if (videoHls) return videoHls;
-  const nonAudio = list.find((m) => !/sublist_aud|audio[_-]track/i.test(m.url));
-  return nonAudio || list[0];
-}
-
-$('pageVideo').onclick = async () => {
-  tab = tab || (await currentTab());
-  if (!tab?.url) return;
-
-  const isYouTube = tab.url && /(youtube\.com|youtu\.be)/i.test(tab.url);
-  const ytMatch = isYouTube ? tab.url.match(/(?:v=|\/shorts\/)([a-zA-Z0-9_-]{11})/i) : null;
-
-  // 1. ALWAYS query the page / background active media first!
-  let activeMedia = null;
+async function dispatch(usePage = false) {
+  if (busy) return;
+  const media = usePage
+    ? { url: tab?.url, name: tab?.title, referer: tab?.url }
+    : current;
+  if (!media?.url || !/^https?:/i.test(media.url)) return;
+  const format = usePage
+      ? "video"
+      : selected === "subtitle"
+        ? "subtitles"
+        : selected,
+    sub = pickSubtitle();
+  busy = true;
+  renderMedia();
+  feedback(t("sending"));
   try {
-    activeMedia = await getActiveMediaFromTab(tab.id);
-  } catch {}
-
-  let targetUrl = '';
-  let filename = '';
-  let kind = 'video';
-  let referer = tab.url;
-  let qualities = [];
-  let audios = [];
-  let subs = [];
-  let best = null;
-
-  if (ytMatch) {
-    targetUrl = `https://www.youtube.com/watch?v=${ytMatch[1]}`;
-    filename = (activeMedia?.name || tab.title || 'YouTube Video').replace(/\s*-\s*YouTube$/i, '').trim();
-    qualities = activeMedia?.videoQualities || [];
-    audios = activeMedia?.audioTracks || [];
-    subs = activeMedia?.subtitles || [];
-    referer = targetUrl;
-  } else if (activeMedia && activeMedia.url && !/\.html?(\?|$)/i.test(activeMedia.url) && !/persist_identity|googleads|doubleclick/i.test(activeMedia.url)) {
-    targetUrl = activeMedia.url;
-    const ytEmbed = targetUrl.match(/(?:youtube\.com|youtube-nocookie\.com)\/embed\/([a-zA-Z0-9_-]{11})/i);
-    if (ytEmbed) {
-      targetUrl = `https://www.youtube.com/watch?v=${ytEmbed[1]}`;
-      referer = targetUrl;
-    } else {
-      referer = activeMedia.referer || tab.url;
-    }
-    filename = activeMedia.name || tab.title || 'Video';
-    kind = 'video';
-    qualities = activeMedia.videoQualities || [];
-    audios = activeMedia.audioTracks || [];
-    subs = activeMedia.subtitles || [];
-  } else {
-    // Non-YouTube sites (e.g. HDFilmcehennemi, movie embeds)
-    const mediaList = (await send({ type: 'getMedia', tabId: tab.id })) || [];
-    best = pickBestMedia(mediaList);
-    if (best && best.url && !/\.html?(\?|$)/i.test(best.url)) {
-      targetUrl = best.url;
-      const ytEmbed = targetUrl.match(/(?:youtube\.com|youtube-nocookie\.com)\/embed\/([a-zA-Z0-9_-]{11})/i);
-      if (ytEmbed) {
-        targetUrl = `https://www.youtube.com/watch?v=${ytEmbed[1]}`;
-        referer = targetUrl;
-      } else {
-        referer = formatReferer(best.initiator, tab.url);
-      }
-      filename = best.name || tab.title || 'Video';
-      kind = 'video';
-      qualities = best.videoQualities || [];
-      audios = best.audioTracks || [];
-      subs = best.subtitles || [];
-    } else {
-      const isKnownVideoHost = /(tiktok\.com|twitter\.com|x\.com|vimeo\.com|dailymotion\.com|instagram\.com|twitch\.tv|reddit\.com)/i.test(tab.url);
-      if (isKnownVideoHost) {
-        targetUrl = tab.url;
-        filename = tab.title || 'Video';
-        kind = 'video';
-        referer = tab.url;
-      } else {
-        const direct = await sendTabMessageWithTimeout(tab.id, { type: 'getDirectMediaUrl' }, 1200);
-        if (direct && direct.url && !direct.url.startsWith('blob:') && !/\.html?(\?|$)/i.test(direct.url)) {
-          targetUrl = direct.url;
-          filename = direct.name || tab.title || 'Video';
-          kind = 'video';
-          referer = tab.url;
-        } else {
-          $('pageVideo').textContent = t('popupPlayFirst') || 'Önce medyayı oynatın';
-          setTimeout(() => ($('pageVideo').textContent = t('popupPageVideo')), 2500);
-          return;
-        }
-      }
-    }
-  }
-
-  filename = filename.replace(/^(?:youtube\s*(?:video\s*player|frame)?|iframe)\s*[-–|•]?\s*/i, '').trim();
-  if (isGenericMediaName(filename) || /^(?:youtube|video|iframe)$/i.test(filename.toLowerCase())) {
-    filename = cleanMediaTitle(tab?.title) || (tab?.title || 'Video').replace(/\s*-\s*YouTube$/i, '').trim();
-  }
-
-  $('pageVideo').textContent = t('popupSending');
-  try {
-    const finalSubs = (subs && subs.length) ? subs : ((activeMedia?.subtitles && activeMedia.subtitles.length) ? activeMedia.subtitles : await getTabSubtitles(tab?.id));
-    const chosenSub = chooseBestSubUrl(finalSubs, 'tr');
-    const finalAudios = (audios && audios.length) ? audios : ((activeMedia?.audioTracks && activeMedia.audioTracks.length) ? activeMedia.audioTracks : (best?.audioTracks || []));
-    const finalQualities = (qualities && qualities.length) ? qualities : ((activeMedia?.videoQualities && activeMedia.videoQualities.length) ? activeMedia.videoQualities : (best?.videoQualities || []));
-
     const r = await send({
-      type: 'download',
-      url: targetUrl,
-      filename,
-      referer,
-      kind: 'video',
-      writeSubtitles: true,
-      subtitles: finalSubs,
-      subtitleUrl: chosenSub,
-      subtitleLangs: 'tr,en',
-      videoQualities: finalQualities,
-      audioTracks: finalAudios
+      type: "download",
+      url: media.url,
+      filename: cleanMediaTitle(media.name || tab?.title) || "",
+      referer: formatReferer(media.referer || media.initiator, tab?.url),
+      kind: "video",
+      format,
+      audioOnly: format === "audio",
+      subtitlesOnly: format === "subtitles",
+      writeSubtitles: format === "video",
+      subtitleLangs: sub?.code || sub?.lang || "tr,en",
+      subtitleUrl: sub?.url || "",
+      subtitles: subs,
+      videoQualities: media.videoQualities || [],
+      audioTracks: media.audioTracks || [],
+      audioStreamUrl: media.audioStreamUrl,
     });
-    if (r && r.ok) {
-      $('pageVideo').textContent = t('popupStarted');
-    } else if (r && r.cancelled) {
-      $('pageVideo').textContent = t('popupPageVideo');
-      return;
-    } else {
-      const isUnauth = r && r.error && r.error.toLowerCase().includes('unauthorized');
-      $('pageVideo').textContent = isUnauth ? t('popupNotPaired') : t('popupFailed');
-      if (isUnauth) refresh();
-    }
-  } catch (err) {
-    $('pageVideo').textContent = t('popupFailed');
+    feedback(r?.ok ? t("sent") : r?.cancelled ? "" : t("failed"));
+  } finally {
+    busy = false;
+    renderMedia();
+    await loadTransfers();
   }
-  loadDownloads();
-  setTimeout(() => ($('pageVideo').textContent = t('popupPageVideo')), 2500);
-};
-$('pageLink').onclick = async () => {
-  tab = tab || (await currentTab());
-  if (!tab?.url) return;
-  await send({ type: 'download', url: tab.url, referer: tab.url, kind: 'file' });
-  window.close();
-};
-$('launch').onclick = async () => {
-  await send({ type: 'launchApp' });
-  setTimeout(refresh, 1500);
-};
-$('intercept').onchange = (e) => send({ type: 'setSettings', settings: { intercept: e.target.checked } });
-$('sniff').onchange = (e) => send({ type: 'setSettings', settings: { sniff: e.target.checked } });
-$('autoLaunch').onchange = (e) => send({ type: 'setSettings', settings: { autoLaunch: e.target.checked } });
-$('port').onchange = (e) => send({ type: 'setSettings', settings: { port: parseInt(e.target.value, 10) || 48213 } }).then(refresh);
-$('minSize').onchange = (e) => send({ type: 'setSettings', settings: { minSizeMB: parseInt(e.target.value, 10) || 0 } });
-
-$('pairBtn').onclick = async () => {
-  let val = $('pairCode').value.trim();
-  if (!val) {
-    try {
-      val = (await navigator.clipboard.readText()).trim();
-      $('pairCode').value = val;
-    } catch {}
-  }
-  const r = await send({ type: 'setToken', token: val });
-  $('pairMsg').textContent = r && r.ok ? t('popupPairOk') : t('popupPairBad');
-  if (r && r.ok) { $('pairCode').value = ''; refresh(); }
-};
-
-initPalette();
-if ($('themeToggle')) {
-  $('themeToggle').onclick = async () => {
-    userToggledTheme = true;
-    const nextTheme = currentThemeMode === 'light' ? 'dark' : 'light';
-    applyThemeMode(nextTheme);
-    await api.storage.local.set({ themeMode: nextTheme });
-    send({ type: 'setAppConfig', themeMode: nextTheme });
-  };
 }
-$('langToggle').onclick = async () => {
-  userToggledLang = true;
-  currentLang = currentLang === 'tr' ? 'en' : 'tr';
-  updateUiTexts();
-  await api.storage.local.set({ language: currentLang });
-  send({ type: 'setAppConfig', language: currentLang });
-  refresh();
-};
-
-api.storage.local.get(['accentColor', 'language', 'themeMode'], (res) => {
-  if (res) {
-    if (res.accentColor) applyAccentColor(res.accentColor);
-    if (res.themeMode) applyThemeMode(res.themeMode);
-    if (res.language) { currentLang = res.language; updateUiTexts(); }
+async function savePreference(key, value) {
+  changed.add(key);
+  const field = {
+    accent: "accentColor",
+    theme: "themeMode",
+    language: "language",
+  }[key];
+  await api.storage.local.set({ [field]: value });
+  await send({ type: "setAppConfig", [field]: value });
+}
+async function loadTransfers() {
+  const data = await send({ type: "downloads" }),
+    rows = (Array.isArray(data) ? data : []).filter((d) =>
+      ["downloading", "probing", "queued", "paused"].includes(d.state),
+    );
+  $("transfers").hidden = !rows.length;
+  const list = $("transferList");
+  list.replaceChildren();
+  for (const d of rows) {
+    const row = document.createElement("div"),
+      name = document.createElement("p");
+    name.className = "transfer-title";
+    name.textContent = d.name || "";
+    row.appendChild(name);
+    for (const action of [
+      d.state === "paused" ? "resume" : "pause",
+      "cancel",
+    ]) {
+      const b = document.createElement("button");
+      b.textContent = t(action);
+      b.onclick = () =>
+        send({ type: "action", id: d.id, action }).then(loadTransfers);
+      row.appendChild(b);
+    }
+    list.appendChild(row);
   }
-});
-
-refresh();
-loadMedia();
-loadDownloads();
-dlTimer = setInterval(loadDownloads, 1000);
+}
+async function initialize() {
+  installIcons();
+  for (const [name, color] of [
+    ["Lavanta", "#C3AFFF"],
+    ["Pembe", "#EC4899"],
+    ["Gri", "#94A3B8"],
+    ["Kırmızı", "#E50914"],
+    ["Mavi", "#00E5FF"],
+    ["Yeşil", "#10B981"],
+    ["Turuncu", "#FF6B00"],
+    ["Altın", "#F59E0B"],
+  ]) {
+    const b = document.createElement("button");
+    b.className = "f-swatch";
+    b.dataset.color = color;
+    b.style.setProperty("--chip", color);
+    b.setAttribute("aria-label", name);
+    b.title = name;
+    b.onclick = () => {
+      accent = color;
+      applyAppearance();
+      savePreference("accent", color);
+    };
+    $("swatches").appendChild(b);
+  }
+  $("customAccent").oninput = (e) => {
+    accent = e.target.value;
+    applyAppearance();
+    savePreference("accent", accent);
+  };
+  document.querySelectorAll("[data-mode]").forEach(
+    (b) =>
+      (b.onclick = () => {
+        theme = b.dataset.mode;
+        applyAppearance();
+        savePreference("theme", theme);
+      }),
+  );
+  document
+    .querySelectorAll("[data-select-stream]")
+    .forEach((b) => (b.onclick = () => setSelection(b.dataset.selectStream)));
+  document.querySelector("[data-send]").onclick = () => dispatch();
+  document.querySelector("[data-demo-action]").onclick = () => dispatch(true);
+  document.querySelector("[data-popup-settings]").onclick = () => {
+    const open = $("settingsPanel").hidden;
+    $("settingsPanel").hidden = !open;
+    $("capturePanel").hidden = open;
+    document
+      .querySelector("[data-popup-settings]")
+      .setAttribute("aria-expanded", String(open));
+  };
+  $("langToggle").onclick = () => {
+    language = language === "tr" ? "en" : "tr";
+    localize();
+    renderMedia();
+    savePreference("language", language);
+  };
+  for (const key of ["intercept", "sniff", "autoLaunch"])
+    $(key).onchange = (e) =>
+      send({ type: "setSettings", settings: { [key]: e.target.checked } });
+  $("port").onchange = (e) =>
+    send({
+      type: "setSettings",
+      settings: {
+        port: Math.max(1024, Math.min(65535, Number(e.target.value) || 48213)),
+      },
+    });
+  $("minSize").onchange = (e) =>
+    send({
+      type: "setSettings",
+      settings: { minSizeMB: Math.max(0, Number(e.target.value) || 0) },
+    });
+  $("pageFileButton").onclick = () =>
+    tab?.url &&
+    send({ type: "download", url: tab.url, referer: tab.url, kind: "file" });
+  $("pairButton").onclick = async () => {
+    const r = await send({
+      type: "setToken",
+      token: $("pairCode").value.trim(),
+    });
+    if (r?.ok) {
+      $("pairCode").value = "";
+      await refreshStatus();
+    } else feedback(t("failed"));
+  };
+  $("launchButton").onclick = () =>
+    send({ type: "launchApp" }).then(() => setTimeout(refreshStatus, 1200));
+  const st = await api.storage.local.get([
+    "accentColor",
+    "themeMode",
+    "language",
+  ]);
+  if (/^#[\da-f]{6}$/i.test(st?.accentColor || "")) accent = st.accentColor;
+  if (["dark", "light"].includes(st?.themeMode)) theme = st.themeMode;
+  if (["tr", "en"].includes(st?.language)) language = st.language;
+  localize();
+  await Promise.all([refreshStatus(), resolveMedia(), loadTransfers()]);
+  setInterval(loadTransfers, 1500);
+  setInterval(refreshStatus, 4000);
+}
+initialize().catch(() => feedback(t("failed")));

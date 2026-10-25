@@ -41,42 +41,58 @@ public static class UpdateChecker
             if (!response.IsSuccessStatusCode) return null;
 
             var json = await response.Content.ReadAsStringAsync(ct);
-            using var doc = JsonDocument.Parse(json);
-            var root = doc.RootElement;
-
-            var tag = root.TryGetProperty("tag_name", out var t) ? t.GetString() ?? "" : "";
-            var cleanTag = tag.TrimStart('v', 'V').Trim();
-            var releaseUrl = root.TryGetProperty("html_url", out var h) ? h.GetString() ?? "" : $"https://github.com/{RepoOwner}/{RepoName}/releases";
-            var body = root.TryGetProperty("body", out var b) ? b.GetString() ?? "" : "";
-
-            string downloadUrl = "";
-            if (root.TryGetProperty("assets", out var assets) && assets.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var asset in assets.EnumerateArray())
-                {
-                    var name = asset.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
-                    if (name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
-                    {
-                        downloadUrl = asset.TryGetProperty("browser_download_url", out var dl) ? dl.GetString() ?? "" : "";
-                        break;
-                    }
-                }
-            }
-
-            bool isNewer = IsNewer(cleanTag, CurrentVersion);
-            return new UpdateInfo
-            {
-                HasUpdate = isNewer,
-                LatestVersion = !string.IsNullOrEmpty(cleanTag) ? cleanTag : CurrentVersion,
-                ReleaseUrl = releaseUrl,
-                ReleaseNotes = body,
-                DownloadUrl = !string.IsNullOrEmpty(downloadUrl) ? downloadUrl : releaseUrl
-            };
+            return ParseRelease(json, CurrentVersion);
         }
         catch
         {
             return null;
         }
+    }
+
+    public static UpdateInfo? ParseRelease(string json, string currentVersion)
+    {
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+
+        var tag = root.TryGetProperty("tag_name", out var t) ? t.GetString() ?? "" : "";
+        var cleanTag = tag.TrimStart('v', 'V').Trim();
+        var releaseUrl = root.TryGetProperty("html_url", out var h) ? h.GetString() ?? "" : $"https://github.com/{RepoOwner}/{RepoName}/releases";
+        var body = root.TryGetProperty("body", out var b) ? b.GetString() ?? "" : "";
+
+        string downloadUrl = "";
+        if (root.TryGetProperty("assets", out var assets) && assets.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var asset in assets.EnumerateArray())
+            {
+                var name = asset.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
+                if (name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                {
+                    downloadUrl = asset.TryGetProperty("browser_download_url", out var dl) ? dl.GetString() ?? "" : "";
+                    break;
+                }
+            }
+        }
+
+        // v3.8.0 is a machine-readable bridge for installed numeric-only updaters.
+        // Only this reserved tag accepts an explicit stable target from this repository.
+        if (cleanTag == "3.8.0")
+        {
+            const string prefix = "FM_STABLE_TARGET=";
+            var marker = body.Split('\n').Select(line => line.Trim()).FirstOrDefault(line => line.StartsWith(prefix, StringComparison.Ordinal));
+            if (marker == null || !Version.TryParse(marker[prefix.Length..], out var target) || target.Major is < 1 or >= 3 || target.Build < 0)
+                return null; // Never offer the compatibility tag itself as a stable version.
+            cleanTag = target.ToString(3);
+            releaseUrl = $"https://github.com/{RepoOwner}/{RepoName}/releases/tag/v{cleanTag}";
+        }
+        bool isNewer = IsNewer(cleanTag, currentVersion);
+        return new UpdateInfo
+        {
+            HasUpdate = isNewer,
+            LatestVersion = !string.IsNullOrEmpty(cleanTag) ? cleanTag : currentVersion,
+            ReleaseUrl = releaseUrl,
+            ReleaseNotes = body,
+            DownloadUrl = !string.IsNullOrEmpty(downloadUrl) ? downloadUrl : releaseUrl
+        };
     }
 
     public static bool IsNewer(string latest, string current)

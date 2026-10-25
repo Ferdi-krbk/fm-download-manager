@@ -51,5 +51,18 @@
       "all_frames": true
     }
   ],
-  "default_locale": "en"
+  "default_locale": "en",
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "fonts/Inter-Regular.ttf",
+        "fonts/Inter-Medium.ttf",
+        "fonts/Inter-SemiBold.ttf"
+      ],
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ]
+    }
+  ]
 }

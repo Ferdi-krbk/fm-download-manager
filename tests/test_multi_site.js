@@ -30,7 +30,7 @@ function it(name, fn) {
 
 // Read background.js and popup.js logic
 const bgCode = fs.readFileSync(path.join(__dirname, '../extension/background.js'), 'utf8');
-const popupCode = fs.readFileSync(path.join(__dirname, '../extension/popup.js'), 'utf8');
+const popupCode = fs.readFileSync(path.join(__dirname, '../extension/popup-media.js'), 'utf8');
 
 // Extract classify function from background.js
 const classifyMatch = bgCode.match(/function classify\(url, ct\) \{([\s\S]*?)\n\}/);

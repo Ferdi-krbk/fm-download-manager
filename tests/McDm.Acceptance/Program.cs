@@ -36,6 +36,11 @@ internal static class Program
 
     private static void Run(string[] args)
     {
+        if (args.FirstOrDefault() == "--ui-only")
+        {
+            FlowUiChecks.Run(args.ElementAtOrDefault(1) ?? "dist/flow-ui-checks");
+            return;
+        }
         var repository = new DirectoryInfo(AppContext.BaseDirectory);
         while (repository != null && !File.Exists(Path.Combine(repository.FullName, "McDownloadManager.sln"))) repository = repository.Parent;
         if (repository == null) throw new DirectoryNotFoundException("Run this acceptance test from the source checkout");
@@ -95,8 +100,8 @@ internal static class Program
         // desktop input, browser control or user-profile data is used for these captures.
         Strings.SetLanguage("en");
         ThemeManager.ApplyThemeMode("dark");
-        ThemeManager.ApplyAccentColor("#E50914");
-        var settings = new AppSettings { DownloadDirectory = downloads, Language = "en", AppTheme = "dark", SpeedLimitKbps = 1024, ClipboardWatcherEnabled = false, NotificationsEnabled = false };
+        ThemeManager.ApplyAccentColor("#C3AFFF");
+        var settings = new AppSettings { DownloadDirectory = downloads, Language = "en", AppTheme = "dark", AccentColor = "#C3AFFF", SpeedLimitKbps = 1024, ClipboardWatcherEnabled = false, NotificationsEnabled = false };
         var video = new VideoDownloader(ytDlp: () => new ToolLauncher(ytDlp), ffmpeg: () => ffmpeg,
             options: () => new VideoOptions { Container = "mp4", MaxHeight = 720 });
         var manager = new DownloadManager(Path.Combine(root, "data"), downloads,
@@ -139,13 +144,15 @@ internal static class Program
             Require(manager.Resume(large.Id), "resume was refused");
             Wait(() => large.DownloadedBytes > pausedAt + 2 * 1024 * 1024, 30);
             Pump(500);
-            Capture(window, 1280, 760, Path.Combine(screenshots, "downloads-dark.png"));
+            ((System.Windows.Controls.DataGrid)window.FindName("Grid")).SelectedItem = large;
+            Capture(window, 1024, 1000, Path.Combine(screenshots, "downloads-dark.png"));
             var details = new DownloadDetailWindow(large);
             Capture(details, 760, 680, Path.Combine(screenshots, "download-details.png"));
             ThemeManager.ApplyThemeMode("light");
             settings.AppTheme = "light";
             Pump(200);
-            Capture(window, 1280, 760, Path.Combine(screenshots, "downloads-light.png"));
+            ((System.Windows.Controls.DataGrid)window.FindName("Grid")).SelectedItem = large;
+            Capture(window, 1024, 1000, Path.Combine(screenshots, "downloads-light.png"));
             ThemeManager.ApplyThemeMode("dark");
             settings.AppTheme = "dark";
             Wait(() => Terminal(large), 90);
@@ -217,12 +224,12 @@ internal static class Program
         content.Measure(new Size(width, height));
         content.Arrange(new Rect(0, 0, width, height));
         content.UpdateLayout();
-        Pump(180);
+        Pump(600);
         content.InvalidateMeasure();
         content.Measure(new Size(width, height));
         content.Arrange(new Rect(0, 0, width, height));
         content.UpdateLayout();
-        var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
+        var bitmap = new RenderTargetBitmap(width * 2, height * 2, 192, 192, PixelFormats.Pbgra32);
         bitmap.Render(content);
         var encoder = new PngBitmapEncoder();
         encoder.Frames.Add(BitmapFrame.Create(bitmap));

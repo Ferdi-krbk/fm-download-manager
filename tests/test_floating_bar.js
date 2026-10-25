@@ -44,7 +44,7 @@ assert(code.includes('triggerDownload(\'video\')'), 'Supports highest quality vi
 
 // 5. Visual States
 assert(code.includes('fm-success') && code.includes('Gönderildi! ✓'), 'Includes smooth micro-interaction success feedback state');
-assert(code.includes('backdrop-filter: blur'), 'Uses glassmorphic dark blur styling');
+// The compact geometry and menu interactions are checked in tests/ui/extension-flow.cjs.
 
 console.log('====================================================');
 console.log(`📊 RESULTS: ${passed} / ${passed + failed} TESTS PASSED (${Math.round((passed / (passed + failed)) * 100)}%)`);

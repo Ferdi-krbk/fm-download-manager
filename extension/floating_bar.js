@@ -51,11 +51,11 @@
       downloadVideo: 'Videoyu İndir',
       downloadOptions: 'İndirme Seçenekleri',
       close: 'Kapat',
-      optVideoText: 'Video Olarak İndir',
-      optVideoSub: 'En Yüksek',
-      optAudioText: 'Sadece Ses İndir',
+      optVideoText: 'Video',
+      optVideoSub: 'MP4',
+      optAudioText: 'Ses',
       optAudioSub: 'MP3',
-      optSubsText: 'Altyazı İndir',
+      optSubsText: 'Altyazı',
       optSubsSub: 'SRT ›',
       subsBack: '‹ Geri',
       subsTitle: 'Altyazı Dili Seçin',
@@ -71,11 +71,11 @@
       downloadVideo: 'Download Video',
       downloadOptions: 'Download Options',
       close: 'Close',
-      optVideoText: 'Download Video',
-      optVideoSub: 'Highest',
-      optAudioText: 'Download Audio Only',
+      optVideoText: 'Video',
+      optVideoSub: 'MP4',
+      optAudioText: 'Audio',
       optAudioSub: 'MP3',
-      optSubsText: 'Download Subtitles',
+      optSubsText: 'Subtitles',
       optSubsSub: 'SRT ›',
       subsBack: '‹ Back',
       subsTitle: 'Select Subtitle Language',
@@ -135,8 +135,10 @@
     }
     const arrow = shadowRoot?.getElementById('fm-arrow-btn');
     if (arrow) arrow.title = t('downloadOptions');
+    const action = shadowRoot?.getElementById('fm-btn-action');
+    if (action) { action.title = t('mainBtnTitle'); action.setAttribute('aria-label', t('downloadOptions')); }
     const closeB = shadowRoot?.getElementById('fm-close-btn');
-    if (closeB) closeB.title = t('close');
+    if (closeB) { closeB.title = t('close'); closeB.setAttribute('aria-label', t('close')); }
 
     const vItem = shadowRoot?.getElementById('fm-opt-video');
     if (vItem) {
@@ -201,347 +203,54 @@
     }
   } catch {}
 
+  // Use the bundled static font files, not fonts installed on the website visitor's PC.
+  if (typeof FontFace === 'function' && document.fonts && api.runtime?.getURL) {
+    const weights = [['Regular', '400'], ['Medium', '500'], ['SemiBold', '600']];
+    Promise.all(weights.map(async ([name, weight]) => {
+      const response = await fetch(api.runtime.getURL('fonts/Inter-' + name + '.ttf'));
+      if (!response.ok) return;
+      const face = new FontFace('FM Inter', await response.arrayBuffer(), { weight, style: 'normal', display: 'swap' });
+      document.fonts.add(await face.load());
+    })).catch(() => {});
+  }
+
   const barStyles = `
-    :host {
-      --fm-accent: #E50914;
-      --fm-accent-glow: rgba(229, 9, 20, 0.45);
-      --fm-accent-dim: rgba(229, 9, 20, 0.15);
-      --fm-accent-hover: #ff2d46;
-    }
+:host{--fm-accent:#c3afff;--fm-panel:#19191f;--fm-text:#f3f1fa;--fm-muted:#a7a3b8;--fm-line:#303038;--fm-hover:#25242e;--fm-accent-dim:#292237}
+:host(.fm-light){--fm-panel:#fff;--fm-text:#22212c;--fm-muted:#6c687d;--fm-line:#dedce9;--fm-hover:#ebe8f4}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;font-family:"FM Inter",sans-serif;font-weight:400}
+.fm-wrap{position:absolute;display:flex;flex-direction:column;align-items:flex-end;pointer-events:none;opacity:0;transform:translateX(-100%);transition:opacity .12s}
+.fm-wrap.fm-visible{opacity:1;pointer-events:auto}
+.fm-bar{width:32px;height:32px;border:1px solid #57596680;border-radius:7px;background:#1b1c23ed;box-shadow:0 2px 6px #0002}
+.fm-btn-action{width:30px;height:30px;border:0;background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:6px;color:#eeedf7;padding:0}
+.fm-btn-action:hover{background:var(--fm-accent-dim)}
+.fm-logo-badge{display:block;font:700 18px/1 'Segoe UI',sans-serif;letter-spacing:-1.4px;color:#f3f1fa;white-space:nowrap}
+.fm-logo-dot{color:var(--fm-accent)}
+.fm-title{position:absolute;width:1px;height:1px;clip-path:inset(50%);overflow:hidden;white-space:nowrap}
+.fm-arrow-btn{display:none}
+.fm-menu{display:none;margin-top:7px;width:192px;max-width:calc(100vw - 24px);max-height:min(360px,calc(100vh - 76px));overflow-y:auto;border:1px solid var(--fm-line);border-radius:9px;background:var(--fm-panel);color:var(--fm-text);padding:6px;box-shadow:0 8px 25px #0003}
+.fm-wrap.fm-open .fm-menu{display:flex;flex-direction:column;animation:fm-menu-in .26s cubic-bezier(.2,.8,.2,1)}@keyframes fm-menu-in{from{opacity:.3;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.fm-menu-heading{display:flex;align-items:center;justify-content:space-between;color:var(--fm-muted);font-size:11px;padding:6px 7px}
+.fm-item{display:flex;align-items:center;gap:8px;width:100%;border:0;background:transparent;color:var(--fm-text);padding:8px;text-align:left;font-size:12px;line-height:1.5;border-radius:6px;cursor:pointer}
+.fm-item:hover,.fm-sub-item:hover{background:var(--fm-hover)}
+.fm-item-icon{display:flex;align-items:center;flex-shrink:0;color:var(--fm-muted)}
+.fm-item-icon svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+.fm-item-sub{font-size:11px;color:var(--fm-muted);margin-left:auto}
+.fm-close-btn{width:18px;height:18px;background:transparent;border:0;color:var(--fm-muted);font-size:12px;cursor:pointer;display:grid;place-items:center}
+.fm-subs-panel{display:none;flex-direction:column}
+.fm-subs-header{display:flex;align-items:center;gap:9px;padding:7px;border-bottom:1px solid var(--fm-line)}
+.fm-subs-back{font-size:11px;color:var(--fm-muted);border:0;background:none;cursor:pointer}
+.fm-subs-title{font-size:11px;color:var(--fm-text)}
+.fm-subs-list{display:flex;flex-direction:column;max-height:220px;overflow-y:auto}
+.fm-sub-item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 8px;color:var(--fm-text);font-size:11px;border:0;background:transparent;text-align:left;cursor:pointer;border-radius:6px}
+.fm-sub-code{font-size:10px;color:var(--fm-muted)}
+.fm-no-subs{padding:10px 8px;font-size:11px;color:var(--fm-muted)}
+.fm-no-subs-hint{font-size:10px;margin-top:6px}
+.fm-success{border-color:#9bd5bd}
+.fm-success .fm-logo-dot{color:#9bd5bd}
+button:focus-visible{outline:2px solid var(--fm-accent);outline-offset:2px}
+@media(prefers-reduced-motion:reduce){.fm-wrap{transition:none}.fm-wrap.fm-open .fm-menu{animation:none}}
 
-    *, *::before, *::after {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      user-select: none;
-    }
-
-    .fm-wrap {
-      position: absolute;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      pointer-events: none;
-      transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
-      opacity: 0;
-      transform: translateX(-100%) translateY(-6px) scale(0.96);
-      will-change: transform, opacity;
-    }
-
-    .fm-wrap.fm-visible {
-      opacity: 1;
-      transform: translateX(-100%) translateY(0) scale(1);
-      pointer-events: auto;
-    }
-
-    /* Glassmorphic Pill Button */
-    .fm-bar {
-      display: inline-flex;
-      align-items: center;
-      gap: 2px;
-      background: rgba(15, 17, 23, 0.90);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      border: 1px solid var(--fm-accent, #E50914);
-      border-radius: 20px;
-      padding: 3px 5px 3px 4px;
-      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45), 0 0 12px var(--fm-accent-glow, rgba(229, 9, 20, 0.25));
-      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .fm-bar:hover {
-      background: rgba(22, 25, 35, 0.96);
-      border-color: var(--fm-accent-hover, #ff2d46);
-      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6), 0 0 18px var(--fm-accent-glow, rgba(229, 9, 20, 0.45));
-    }
-
-    .fm-btn-action {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 3px 6px 3px 3px;
-      cursor: pointer;
-      border-radius: 14px;
-      transition: background 0.15s;
-    }
-
-    .fm-btn-action:hover {
-      background: rgba(255, 255, 255, 0.08);
-    }
-
-    .fm-logo-badge {
-      width: 20px;
-      height: 20px;
-      border-radius: 6px;
-      background: var(--fm-accent, #E50914);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #fff;
-      font-weight: 800;
-      font-size: 10px;
-      letter-spacing: -0.5px;
-      box-shadow: 0 2px 6px var(--fm-accent-glow, rgba(229, 9, 20, 0.5));
-    }
-
-    .fm-title {
-      font-size: 12px;
-      font-weight: 600;
-      color: #f1f5f9;
-      letter-spacing: 0.1px;
-      white-space: nowrap;
-    }
-
-    .fm-arrow-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 4px 5px;
-      cursor: pointer;
-      border-radius: 6px;
-      transition: background 0.15s;
-    }
-
-    .fm-arrow-btn:hover {
-      background: rgba(255, 255, 255, 0.12);
-    }
-
-    .fm-arrow {
-      width: 12px;
-      height: 12px;
-      color: #94a3b8;
-      transition: transform 0.2s ease;
-    }
-
-    .fm-wrap.fm-open .fm-arrow {
-      transform: rotate(180deg);
-    }
-
-    .fm-close-btn {
-      width: 17px;
-      height: 17px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #64748b;
-      font-size: 11px;
-      cursor: pointer;
-      margin-left: 2px;
-      transition: background 0.15s, color 0.15s;
-    }
-
-    .fm-close-btn:hover {
-      background: rgba(255, 255, 255, 0.2);
-      color: #cbd5e1;
-    }
-
-    /* Success State */
-    .fm-bar.fm-success {
-      background: rgba(6, 78, 59, 0.94);
-      border-color: rgba(16, 185, 129, 0.85);
-      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4), 0 0 16px rgba(16, 185, 129, 0.4);
-    }
-
-    .fm-bar.fm-success .fm-title {
-      color: #6ee7b7;
-    }
-
-    /* Dropdown Menu */
-    .fm-menu {
-      margin-top: 6px;
-      background: rgba(15, 17, 23, 0.95);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border: 1px solid rgba(45, 52, 70, 0.85);
-      border-radius: 12px;
-      padding: 5px;
-      min-width: 195px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.65), 0 0 15px var(--fm-accent-dim, rgba(229, 9, 20, 0.15));
-      display: none;
-      flex-direction: column;
-      gap: 3px;
-    }
-
-    .fm-wrap.fm-open .fm-menu {
-      display: flex;
-      animation: fmFadeDown 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    }
-
-    @keyframes fmFadeDown {
-      from { opacity: 0; transform: translateY(-4px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .fm-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 7px 10px;
-      border-radius: 8px;
-      font-size: 12px;
-      font-weight: 500;
-      color: #e2e8f0;
-      cursor: pointer;
-      transition: background 0.15s, color 0.15s;
-    }
-
-    .fm-item:hover {
-      background: var(--fm-accent-dim, rgba(229, 9, 20, 0.25));
-      color: #ffffff;
-    }
-
-    .fm-item-icon {
-      font-size: 14px;
-    }
-
-    .fm-item-sub {
-      font-size: 10px;
-      color: #94a3b8;
-      margin-left: auto;
-    }
-
-    .fm-subs-panel {
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-    }
-
-    .fm-subs-header {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 3px 6px 6px 6px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-      margin-bottom: 4px;
-    }
-
-    .fm-subs-back {
-      font-size: 11px;
-      color: var(--fm-accent, #E50914);
-      cursor: pointer;
-      font-weight: 700;
-      padding: 2px 4px;
-      border-radius: 4px;
-    }
-
-    .fm-subs-back:hover {
-      color: var(--fm-accent-hover, #ff2d46);
-      background: var(--fm-accent-dim, rgba(229, 9, 20, 0.15));
-    }
-
-    .fm-subs-title {
-      font-size: 11px;
-      color: #94a3b8;
-      font-weight: 600;
-    }
-
-    .fm-subs-list {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      max-height: 180px;
-      overflow-y: auto;
-    }
-
-    .fm-sub-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 5px 8px;
-      border-radius: 6px;
-      font-size: 11.5px;
-      color: #e2e8f0;
-      cursor: pointer;
-      transition: background 0.15s;
-    }
-
-    .fm-sub-item:hover {
-      background: var(--fm-accent-dim, rgba(229, 9, 20, 0.25));
-      color: #ffffff;
-    }
-
-    .fm-sub-code {
-      font-size: 9.5px;
-      color: #94a3b8;
-      background: rgba(255, 255, 255, 0.08);
-      padding: 1px 5px;
-      border-radius: 4px;
-    }
-
-    /* Light / White Theme Overrides for Floating Hover Bar */
-    :host(.fm-light) .fm-bar {
-      background: rgba(255, 255, 255, 0.94);
-      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.16), 0 0 12px var(--fm-accent-glow, rgba(229, 9, 20, 0.22));
-    }
-
-    :host(.fm-light) .fm-bar:hover {
-      background: rgba(248, 250, 252, 0.98);
-      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.22), 0 0 18px var(--fm-accent-glow, rgba(229, 9, 20, 0.35));
-    }
-
-    :host(.fm-light) .fm-btn-action:hover,
-    :host(.fm-light) .fm-arrow-btn:hover {
-      background: rgba(15, 23, 42, 0.07);
-    }
-
-    :host(.fm-light) .fm-title {
-      color: #0f172a;
-    }
-
-    :host(.fm-light) .fm-arrow {
-      color: #475569;
-    }
-
-    :host(.fm-light) .fm-close-btn {
-      color: #64748b;
-    }
-
-    :host(.fm-light) .fm-close-btn:hover {
-      background: rgba(15, 23, 42, 0.12);
-      color: #0f172a;
-    }
-
-    :host(.fm-light) .fm-menu {
-      background: rgba(255, 255, 255, 0.97);
-      border: 1px solid rgba(203, 213, 225, 0.95);
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18), 0 0 15px var(--fm-accent-dim, rgba(229, 9, 20, 0.12));
-    }
-
-    :host(.fm-light) .fm-item {
-      color: #1e293b;
-    }
-
-    :host(.fm-light) .fm-item:hover {
-      background: var(--fm-accent-dim, rgba(229, 9, 20, 0.16));
-      color: #0f172a;
-    }
-
-    :host(.fm-light) .fm-item-sub,
-    :host(.fm-light) .fm-subs-title {
-      color: #475569;
-    }
-
-    :host(.fm-light) .fm-subs-header {
-      border-bottom: 1px solid rgba(15, 23, 42, 0.1);
-    }
-
-    :host(.fm-light) .fm-sub-item {
-      color: #1e293b;
-    }
-
-    :host(.fm-light) .fm-sub-item:hover {
-      background: var(--fm-accent-dim, rgba(229, 9, 20, 0.16));
-      color: #0f172a;
-    }
-
-    :host(.fm-light) .fm-sub-code {
-      color: #475569;
-      background: rgba(15, 23, 42, 0.08);
-    }
   `;
-
   // Subtitle track detection across network sniff, DOM <track>, and page script JSON
   function resolveSubtitleMetadata(url, rawCode, rawLabel) {
     const u = (url || '').toLowerCase();
@@ -906,18 +615,29 @@
       mainBtn.id = 'fm-main-btn';
       mainBtn.title = t('mainBtnTitle');
 
-      const btnAction = document.createElement('div');
+      const btnAction = document.createElement('button');
+      btnAction.type = 'button';
+      btnAction.setAttribute('aria-label', t('downloadOptions'));
+      btnAction.setAttribute('aria-expanded', 'false');
+      btnAction.setAttribute('aria-controls', 'fm-menu');
+      btnAction.title = t('mainBtnTitle');
       btnAction.className = 'fm-btn-action';
       btnAction.id = 'fm-btn-action';
 
       const logoBadge = document.createElement('div');
       logoBadge.className = 'fm-logo-badge';
-      logoBadge.textContent = 'FM';
+      logoBadge.textContent = 'fm';
+      const logoDot = document.createElement('span');
+      logoDot.className = 'fm-logo-dot';
+      logoDot.textContent = '.';
+      logoBadge.appendChild(logoDot);
 
       statusText = document.createElement('span');
       statusText.className = 'fm-title';
       statusText.id = 'fm-title';
       statusText.textContent = t('downloadVideo');
+      statusText.setAttribute('role', 'status');
+      statusText.setAttribute('aria-live', 'polite');
 
       btnAction.appendChild(logoBadge);
       btnAction.appendChild(statusText);
@@ -940,15 +660,15 @@
       svgArrow.appendChild(polyline);
       arrowBtn.appendChild(svgArrow);
 
-      const closeBtn = document.createElement('div');
+      const closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
       closeBtn.className = 'fm-close-btn';
       closeBtn.id = 'fm-close-btn';
       closeBtn.title = t('close');
-      closeBtn.textContent = '✕';
+      closeBtn.textContent = '×';
+      closeBtn.setAttribute('aria-label', t('close'));
 
       mainBtn.appendChild(btnAction);
-      mainBtn.appendChild(arrowBtn);
-      mainBtn.appendChild(closeBtn);
       barContainer.appendChild(mainBtn);
 
       dropdownMenu = document.createElement('div');
@@ -959,12 +679,19 @@
       mainMenuEl.id = 'fm-main-menu';
 
       function createMenuItem(id, icon, text, sub) {
-        const item = document.createElement('div');
+        const item = document.createElement('button');
+        item.type = 'button';
         item.className = 'fm-item';
         item.id = id;
         const ic = document.createElement('span');
         ic.className = 'fm-item-icon';
-        ic.textContent = icon;
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('viewBox', '0 0 18 18');
+        svg.setAttribute('aria-hidden', 'true');
+        const shape = document.createElementNS(svg.namespaceURI || 'http://www.w3.org/2000/svg', 'path');
+        shape.setAttribute('d', id === 'fm-opt-video' ? 'M2 4h10v11H2zM12 7l4-3v11l-4-3' : id === 'fm-opt-audio' ? 'M2 7v4M5 4v10M9 1v16M13 4v10M16 7v4' : 'M2 3h14v12H2zM4 8h3M10 8h4M4 11h5M12 11h2');
+        svg.appendChild(shape);
+        ic.appendChild(svg);
         const tx = document.createElement('span');
         tx.textContent = text;
         const sb = document.createElement('span');
@@ -980,6 +707,13 @@
       const optAudio = createMenuItem('fm-opt-audio', '🎵', t('optAudioText'), t('optAudioSub'));
       const optSubs = createMenuItem('fm-opt-subs', '💬', t('optSubsText'), t('optSubsSub'));
 
+      const menuHeading = document.createElement('div');
+      menuHeading.className = 'fm-menu-heading';
+      const menuLabel = document.createElement('span');
+      menuLabel.textContent = t('downloadOptions');
+      menuHeading.appendChild(menuLabel);
+      menuHeading.appendChild(closeBtn);
+      mainMenuEl.appendChild(menuHeading);
       mainMenuEl.appendChild(optVideo);
       mainMenuEl.appendChild(optAudio);
       mainMenuEl.appendChild(optSubs);
@@ -1016,41 +750,47 @@
       barContainer.appendChild(dropdownMenu);
       shadowRoot.appendChild(barContainer);
 
-      // 1. Direct Download on Action Click
-      btnAction.addEventListener('click', (e) => {
-        e.stopPropagation();
-        barContainer.classList.remove('fm-open');
-        triggerDownload('video');
-      });
-
-      // 2. Toggle Dropdown on Arrow Click
-      arrowBtn.addEventListener('click', (e) => {
+      // The compact brand mark opens choices rather than starting a download.
+      function toggleOptions(e) {
         e.stopPropagation();
         barContainer.classList.toggle('fm-open');
-        if (!barContainer.classList.contains('fm-open')) {
-          mainMenuEl.style.display = 'block';
-          subsPanelEl.style.display = 'none';
-        }
-      });
+        btnAction.setAttribute('aria-expanded', String(barContainer.classList.contains('fm-open')));
+        mainMenuEl.style.display = 'block';
+        subsPanelEl.style.display = 'none';
+        updatePosition();
+      }
+      btnAction.addEventListener('click', toggleOptions);
+      arrowBtn.addEventListener('click', toggleOptions);
 
       // 3. Main pill body click
       mainBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         if (e.target === closeBtn || closeBtn.contains(e.target)) return;
         if (e.target === arrowBtn || arrowBtn.contains(e.target)) return;
+        toggleOptions(e);
+      });
+      barContainer.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return;
         barContainer.classList.remove('fm-open');
-        triggerDownload('video');
+        btnAction.setAttribute('aria-expanded', 'false');
+        btnAction.focus();
+      });
+      barContainer.addEventListener('focusin', () => clearTimeout(hideTimer));
+      barContainer.addEventListener('focusout', (e) => {
+        if (!barContainer.contains(e.relatedTarget)) scheduleHide();
       });
 
       optVideo.addEventListener('click', (e) => {
         e.stopPropagation();
         barContainer.classList.remove('fm-open');
+        btnAction.setAttribute('aria-expanded', 'false');
         triggerDownload('video');
       });
 
       optAudio.addEventListener('click', (e) => {
         e.stopPropagation();
         barContainer.classList.remove('fm-open');
+        btnAction.setAttribute('aria-expanded', 'false');
         triggerDownload('audio');
       });
 
@@ -1128,7 +868,8 @@
     });
 
     choices.forEach(c => {
-      const row = document.createElement('div');
+      const row = document.createElement('button');
+      row.type = 'button';
       row.className = 'fm-sub-item';
       const lbl = document.createElement('span');
       lbl.textContent = c.label;
@@ -1439,7 +1180,7 @@
       '[class*="player"]',
       '[id*="player"]',
       '[data-player]'
-    ].join(',')) || v.parentElement || v;
+    ].join(',')) || v;
   }
 
   // 4. Smooth Positioning Logic
@@ -1467,7 +1208,8 @@
     // Position at top-right corner of the video
     // Anchor left coordinate to (rect.right - 14px), with transform: translateX(-100%)
     // perfectly aligns the right edge inside the video boundaries!
-    const topPos = Math.max(10, Math.min(window.innerHeight - 50, rect.top + 14));
+    const barHeight = barContainer.classList.contains('fm-open') ? Math.max(50, barContainer.getBoundingClientRect().height) : 50;
+    const topPos = Math.max(10, Math.min(window.innerHeight - barHeight - 10, rect.top + 14));
     const leftPos = Math.max(10, Math.min(window.innerWidth - 10, rect.right - 14));
 
     barContainer.style.top = `${topPos}px`;
@@ -1509,6 +1251,7 @@
       barContainer.classList.remove('fm-visible');
       barContainer.classList.remove('fm-open');
     }
+    shadowRoot?.getElementById('fm-btn-action')?.setAttribute('aria-expanded', 'false');
     currentVideo = null;
   }
 

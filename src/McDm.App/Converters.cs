@@ -4,6 +4,22 @@ using System.Windows.Media;
 
 namespace McDm.App;
 
+public sealed class DownloadStatusConverter : IValueConverter
+{
+    public object Convert(object value, Type t, object p, CultureInfo c) => value is McDm.Core.DownloadStatus status
+        ? (Resources.Strings.IsTurkish ? status switch
+        {
+            McDm.Core.DownloadStatus.Downloading => "İndiriliyor",
+            McDm.Core.DownloadStatus.Completed => "Tamamlandı",
+            McDm.Core.DownloadStatus.Paused => "Duraklatıldı",
+            McDm.Core.DownloadStatus.Queued => "Sırada",
+            McDm.Core.DownloadStatus.Failed => "Başarısız",
+            McDm.Core.DownloadStatus.Cancelled => "İptal edildi",
+            _ => status.ToString()
+        } : status.ToString()) : "";
+    public object ConvertBack(object v, Type t, object p, CultureInfo c) => throw new NotSupportedException();
+}
+
 public sealed class BytesConverter : IValueConverter
 {
     public object Convert(object value, Type t, object p, CultureInfo c) => Format(value is long l ? l : -1);

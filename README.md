@@ -22,7 +22,7 @@
 
 <picture>
   <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/downloads-light.png">
-  <img src="docs/screenshots/downloads-dark.png" alt="FM Download Manager 1.0.0 — download queue, live transfer graph and connection progress" width="1160">
+  <img src="docs/screenshots/downloads-dark.png" alt="FM Download Manager 1.0.0 — compact queue, multipart archive groups and visible time left" width="1160">
 </picture>
 
 <p align="center"><sub>Current 1.0.0 WPF interface, rendered with real isolated test downloads. Transfer progress and speeds are not simulated.</sub></p>
@@ -34,7 +34,8 @@
 | File downloads | Parallel HTTP connections, queue controls, speed limits and resumable transfers when the server supplies a reliable validator. |
 | Media | yt-dlp and FFmpeg integration for supported video sites, HLS/DASH streams, audio extraction and available subtitle tracks. |
 | Torrents | Magnet links and `.torrent` files through MonoTorrent, with pause/resume and a download speed limit. |
-| Browser integration | A Chromium extension for file handoff, media detection and a floating download bar. |
+| Multipart archives | Numbered archive volumes share an expandable group with aggregate progress and batch selection. Files stay separate on disk. |
+| Browser integration | A Chromium extension for file handoff, media detection and a compact fm. menu on videos. |
 | Desktop | Light and dark themes, accent colors, English/Turkish UI, tray controls and scheduling. |
 
 Transfer speed depends on the host, your connection and storage. Media formats and authentication requirements depend on the source; support for every website is not guaranteed.
@@ -46,11 +47,16 @@ Transfer speed depends on the host, your connection and storage. Media formats a
 
 ![FM Download Manager 1.0.0 light theme](docs/screenshots/downloads-light.png)
 
+### Browser extension
+
+<img src="docs/screenshots/extension-popup-dark.png" alt="Compact FM browser popup with video, audio and subtitle choices" width="302">
+<img src="docs/screenshots/extension-overlay.png" alt="Small fm. video trigger and media menu" width="470">
+
 ### Transfer details
 
 ![Live byte ranges and per-segment progress](docs/screenshots/download-details.png)
 
-These views use local acceptance-test files rather than a personal download history. They are rendered from the application's production XAML controls.
+These views use actual local acceptance-test downloads, including a split ZIP archive. They are rendered from the application's production controls; progress and transfer speeds are not fabricated.
 
 </details>
 

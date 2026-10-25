@@ -150,7 +150,7 @@ public sealed class VideoOptions
 }
 
 /// <summary>One parsed --progress-template line.</summary>
-public sealed record VideoProgress(string Status, long Downloaded, long? Total, double Speed, int? Fragment, int? FragmentCount, bool IsTotalEstimated = false);
+public sealed record VideoProgress(string Status, long Downloaded, long? Total, double Speed, int? Fragment, int? FragmentCount, bool IsTotalEstimated = false, double? EtaSeconds = null);
 
 /// <summary>
 /// Runs yt-dlp as a child process (ArgumentList only, never a shell string) and maps its output onto a DownloadItem.
@@ -347,7 +347,7 @@ public sealed class VideoDownloader
         }
         a.Add("--progress-template");
         a.Add("download:" + ProgressPrefix + "|%(progress.status)s|%(progress.downloaded_bytes)s|%(progress.total_bytes)s|" +
-              "%(progress.total_bytes_estimate)s|%(progress.speed)s|%(progress.fragment_index)s|%(progress.fragment_count)s");
+              "%(progress.total_bytes_estimate)s|%(progress.speed)s|%(progress.fragment_index)s|%(progress.fragment_count)s|%(progress.eta)s");
         a.Add("--print"); a.Add("before_dl:" + TitlePrefix + "|%(title)s");
         a.Add("--print"); a.Add("after_move:" + FilePrefix + "|%(filepath)s");
         a.Add("--no-simulate");
@@ -367,8 +367,10 @@ public sealed class VideoDownloader
             : double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var d) && !double.IsNaN(d) ? (long)d : null;
         static int? I(string s) => int.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v) ? v : null;
         double speed = double.TryParse(p[5], NumberStyles.Float, CultureInfo.InvariantCulture, out var sp) && !double.IsNaN(sp) ? sp : 0;
+        double? eta = p.Length > 8 && double.TryParse(p[8], NumberStyles.Float, CultureInfo.InvariantCulture, out var seconds)
+            && double.IsFinite(seconds) && seconds is >= 0 and <= 2592000 ? seconds : null;
         long? exactTotal = L(p[3]);
-        return new VideoProgress(p[1], L(p[2]) ?? 0, exactTotal ?? L(p[4]), speed, I(p[6]), I(p[7]), exactTotal is not > 0);
+        return new VideoProgress(p[1], L(p[2]) ?? 0, exactTotal ?? L(p[4]), speed, I(p[6]), I(p[7]), exactTotal is not > 0, eta);
     }
 
     /// <summary>Accumulates progress across yt-dlp's separate video/audio streams into one running total.</summary>
@@ -796,6 +798,12 @@ public sealed class VideoDownloader
         string? mergerTarget = null;
         var downloadedDestinations = new List<string>();
         string? lastError = null;
+        var errorLines = new System.Collections.Concurrent.ConcurrentQueue<string>();
+        void RememberError(string line)
+        {
+            errorLines.Enqueue(line.Trim());
+            while (errorLines.Count > 24) errorLines.TryDequeue(out _);
+        }
         var acc = new ProgressAccumulator();
         if (Directory.Exists(item.WorkDir))
         {
@@ -828,6 +836,7 @@ public sealed class VideoDownloader
             if (VideoDownloader.ParseProgress(line) is { } p)
             {
                 var (done, total) = acc.Apply(p);
+                item.ReportedEtaSeconds = p.Status == "finished" ? null : p.EtaSeconds;
                 item.IsTotalEstimated = p.IsTotalEstimated;
                 item.TotalBytes = total;
                 item.DownloadedBytes = done;
@@ -954,6 +963,7 @@ public sealed class VideoDownloader
             else if (line.StartsWith("ERROR:", StringComparison.Ordinal))
             {
                 lastError = line[6..].Trim();
+                RememberError(line);
             }
             else
             {
@@ -965,6 +975,7 @@ public sealed class VideoDownloader
         {
             if (string.IsNullOrWhiteSpace(e.Data)) return;
             lastError = e.Data.Trim();
+            RememberError(e.Data);
             if (e.Data.Contains("Retrying fragment", StringComparison.OrdinalIgnoreCase) || e.Data.Contains("HTTP Error 429", StringComparison.OrdinalIgnoreCase))
                 OnLine(e.Data);
         };
@@ -989,7 +1000,7 @@ public sealed class VideoDownloader
             throw new OperationCanceledException(ct);
 
         if (proc.ExitCode != 0)
-            throw new FatalDownloadException("yt-dlp failed" + (lastError != null ? ": " + Trim(lastError) : $" (exit code {proc.ExitCode})"));
+            throw new FatalDownloadException(DescribeToolFailure(errorLines.Append(lastError ?? ""), proc.ExitCode));
 
         if (!opt.SubtitlesOnly && !opt.AudioOnly && _ffmpeg() is { } muxFfmpeg && File.Exists(muxFfmpeg))
         {
@@ -1699,7 +1710,8 @@ public sealed class VideoDownloader
                 if (ParseProgress(line) is { } p)
                 {
                     var (done, total) = acc.Apply(p);
-                    item.IsTotalEstimated = p.IsTotalEstimated;
+                    item.ReportedEtaSeconds = p.Status == "finished" ? null : p.EtaSeconds;
+                item.IsTotalEstimated = p.IsTotalEstimated;
                     item.TotalBytes = total > 0 ? videoBytes + total : -1;
                     item.DownloadedBytes = videoBytes + done;
                     item.Speed = p.Status == "finished" ? 0 : p.Speed;
@@ -1738,6 +1750,24 @@ public sealed class VideoDownloader
         {
             return null;
         }
+    }
+
+    public static string DescribeToolFailure(IEnumerable<string> output, int exitCode)
+    {
+        var lines = output.Where(line => !string.IsNullOrWhiteSpace(line)).Select(line => line.Trim()).ToArray();
+        // PyInstaller prints its generic crash banner last; retain the Python cause before it.
+        var cause = lines.LastOrDefault(line => Regex.IsMatch(line, @"^[A-Za-z_][A-Za-z_0-9.]*(?:Error|Exception):"));
+        cause ??= lines.LastOrDefault(line => line.StartsWith("ERROR:", StringComparison.OrdinalIgnoreCase));
+        bool runtimeCrash = lines.Any(line => line.Contains("Failed to execute script", StringComparison.OrdinalIgnoreCase));
+        cause ??= lines.LastOrDefault(line => !line.Contains("Failed to execute script", StringComparison.OrdinalIgnoreCase)
+            && !line.StartsWith("Traceback", StringComparison.Ordinal) && !line.StartsWith("File ", StringComparison.Ordinal));
+        if (runtimeCrash)
+        {
+            var heading = IsTurkish ? "yt-dlp beklenmedik bi\u00e7imde kapand\u0131" : "yt-dlp exited unexpectedly";
+            var next = IsTurkish ? "Yeniden deneyin; tekrarlarsa Ara\u00e7lar\u0131 g\u00fcncelle'yi kullan\u0131n." : "Retry; if it repeats, use Update tools.";
+            return heading + $" ({exitCode})" + (cause != null ? ": " + Trim(cause) : ".") + " " + next;
+        }
+        return "yt-dlp failed" + (cause != null ? ": " + Trim(cause) : $" (exit code {exitCode})");
     }
 
     private static string Trim(string s) => s.Length > 300 ? s[..300] + "…" : s;

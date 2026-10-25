@@ -41,6 +41,11 @@ packages. Browser setup creates the per-user pairing file after installation.
 Reload the installed unpacked extension after updating so the new manifest takes
 effect. The pairing code remains available in Browser setup.
 
+For a forced refresh of the existing official tag, CI builds and verifies the
+artifacts, while the maintainer publishes them with an authenticated release
+upload. The default integration token cannot always edit a release created by
+another actor. The workflow does not silently report that edit as successful.
+
 ## Validation
 
 ```powershell

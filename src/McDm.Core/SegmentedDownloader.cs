@@ -467,6 +467,7 @@ public sealed class SegmentedDownloader
         long pos = chunk.Start + chunk.Done;
         long? rangeEnd = c.UseRange && chunk.End >= 0 ? chunk.End : null;
         var (resp, _) = await SendAsync(c.Item, c.Url, c.UseRange ? pos : null, rangeEnd, ct, c.UseRange ? c.Validator : null);
+        long? responseEnd = null;
         using (resp)
         {
             if (!resp.IsSuccessStatusCode) ThrowForStatus(resp);
@@ -475,8 +476,14 @@ public sealed class SegmentedDownloader
                 if (resp.StatusCode != HttpStatusCode.PartialContent)
                     throw new FatalDownloadException("Server stopped honoring Range requests");
                 var cr = resp.Content.Headers.ContentRange;
-                if (cr is { From: { } crFrom } && (crFrom != pos || (cr.To is { } crTo && crTo < pos) || (cr.Length is { } crLen && c.Total > 0 && crLen != c.Total)))
+                // Servers may cap a requested range or return its entire remaining tail.
+                // The starting offset and entity identity must still be trustworthy.
+                if (cr is not { HasRange: true, From: { } crFrom, To: { } crTo }
+                    || !string.Equals(cr.Unit, "bytes", StringComparison.OrdinalIgnoreCase)
+                    || crFrom != pos || crTo < pos
+                    || (cr.Length is { } crLen && c.Total > 0 && crLen != c.Total))
                     throw new FatalDownloadException("Server returned an unexpected byte range");
+                responseEnd = crTo;
                 if (c.Validator != null && !ValidatorsMatch(c.Validator, ResponseValidator(resp)))
                     throw new FatalDownloadException("Remote file changed during download; restart the download");
             }
@@ -490,6 +497,7 @@ public sealed class SegmentedDownloader
                 {
                     int want = buf.Length;
                     if (chunk.End >= 0) want = (int)Math.Min(want, chunk.Length - chunk.Done);
+                    if (responseEnd.HasValue) want = (int)Math.Min(want, responseEnd.Value - (chunk.Start + chunk.Done) + 1);
                     if (want <= 0) break;
 
                     readCts.CancelAfter(_opt.ReadTimeout);

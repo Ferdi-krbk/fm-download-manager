@@ -19,6 +19,22 @@ public static class RepairRegressionTests
 {
     public static async Task RunAsync(Func<string, Func<Task>, Task> test, Action<bool, string> check, Func<string> tmp)
     {
+        await test("repair: multipart names group only explicit sibling volumes", () =>
+        {
+            var first = MultipartFiles.Describe("Game.part01.rar", @"C:\Downloads");
+            var second = MultipartFiles.Describe("Game.part02.rar", @"c:\downloads");
+            check(first != null && first.Key == second?.Key && first.Label == "Game.rar", "RAR sibling parts did not group");
+            check(first.Key != MultipartFiles.Describe("Game.part02.zip", @"C:\Downloads")?.Key, "different archive formats grouped");
+            check(first.Key != MultipartFiles.Describe("Game.part02.rar", @"C:\Other")?.Key, "different target folders grouped");
+            check(MultipartFiles.Describe("Game.7z.001", @"C:\Downloads")?.Key == MultipartFiles.Describe("Game.7z.002", @"C:\Downloads")?.Key, "split 7z volumes did not group");
+            check(MultipartFiles.Describe("Game.r00", @"C:\Downloads")?.Key == MultipartFiles.BaseArchive("Game.rar", @"C:\Downloads")?.Key, "legacy first archive did not match volumes");
+            check(CategoryHelper.GetCategorySubfolder("Game.r00", null, DownloadKind.File) == "Compressed"
+                && CategoryHelper.GetCategorySubfolder("Game.7z.001", null, DownloadKind.File) == "Compressed",
+                "automatic folders would separate archive volumes from their base archive");
+            check(MultipartFiles.Describe("Game.rar", @"C:\Downloads") == null && MultipartFiles.Describe("fg-01.bin", @"C:\Downloads") == null, "unrelated single files were guessed into a group");
+            return Task.CompletedTask;
+        });
+
         foreach (bool unknown in new[] { false, true })
         await test($"repair: interrupted non-range stream restarts byte-exact (unknown length={unknown})", async () =>
         {
@@ -45,6 +61,42 @@ public static class RepairRegressionTests
             check(!SegmentedDownloader.ValidatorsMatch("W/\"ABC\"", "W/\"ABC\""), "weak ETags cannot resume");
             check(SegmentedDownloader.ValidatorsMatch("\"ABC\"", "\"ABC\""), "unchanged strong ETag must resume");
             return Task.CompletedTask;
+        });
+
+        foreach (string mode in new[] { "capped", "extended", "missing", "wrong-start", "wrong-total", "wrong-unit" })
+        await test($"repair: Content-Range validation ({mode})", async () =>
+        {
+            byte[] payload = "ABCDEFGHIJKLMNOP"u8.ToArray();
+            int calls = 0;
+            using var http = new HttpClient(new Handler((request, _) =>
+            {
+                bool probe = Interlocked.Increment(ref calls) == 1;
+                var range = request.Headers.Range!.Ranges.Single();
+                int from = (int)range.From!.Value, to = (int)range.To!.Value;
+                if (!probe && mode == "capped") to = Math.Min(to, from + 1);
+                if (!probe && mode == "extended") to = payload.Length - 1;
+                if (!probe && mode == "wrong-start") from++;
+                var response = new HttpResponseMessage(HttpStatusCode.PartialContent)
+                    { Content = new ByteArrayContent(payload[from..(to + 1)]) };
+                if (probe || mode != "missing")
+                    response.Content.Headers.ContentRange = new ContentRangeHeaderValue(from, to,
+                        !probe && mode == "wrong-total" ? payload.Length + 1 : payload.Length);
+                if (!probe && mode == "wrong-unit") response.Content.Headers.ContentRange!.Unit = "items";
+                return response;
+            }));
+            var item = new DownloadItem { Directory = tmp(), Request = new() { Url = "https://example.test/range.bin" } };
+            bool accepted = mode is "capped" or "extended";
+            try
+            {
+                await new SegmentedDownloader(http, new EngineOptions { MinSplitBytes = 1, MinChunkBytes = 4, MaxChunkBytes = 4 }).RunAsync(item, 2, CancellationToken.None);
+                check(accepted, "unsafe range response was accepted");
+                check(File.ReadAllBytes(item.SavePath).SequenceEqual(payload), "valid server subrange/tail corrupted the output");
+            }
+            catch (FatalDownloadException)
+            {
+                check(!accepted, "valid capped/extended server range was rejected");
+                check(!File.Exists(item.SavePath), "unsafe response was finalized");
+            }
         });
 
         await test("repair: changed entity during transfer is rejected and If-Range is sent", async () =>

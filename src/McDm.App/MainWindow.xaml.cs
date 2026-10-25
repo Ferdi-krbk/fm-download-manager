@@ -26,9 +26,12 @@ public partial class MainWindow : Window
     private (int Active, int Queued, int Done) _filterCounts;
     private (bool Compact, bool Tiny, bool Narrow)? _layoutDensity;
     private bool _entered;
+    private readonly bool _constrainToWorkArea;
+    private readonly MultipartGroups _multipartGroups = new();
 
-    public MainWindow(DownloadManager manager, TokenStore tokenStore, AppSettings settings, BridgeServer? bridge = null)
+    public MainWindow(DownloadManager manager, TokenStore tokenStore, AppSettings settings, BridgeServer? bridge = null, bool constrainToWorkArea = true)
     {
+        _constrainToWorkArea = constrainToWorkArea;
         InitializeComponent();
         _manager = manager;
         _tokenStore = tokenStore;
@@ -37,6 +40,8 @@ public partial class MainWindow : Window
 
         _view = CollectionViewSource.GetDefaultView(_manager.Items);
         _view.Filter = FilterItem;
+        _multipartGroups.Refresh(_view.Cast<DownloadItem>());
+        _view.GroupDescriptions.Add(new PropertyGroupDescription { Converter = _multipartGroups });
         Grid.ItemsSource = _view;
 
         Grid.LoadingRow += (_, args) =>
@@ -48,10 +53,16 @@ public partial class MainWindow : Window
             args.Row.MouseLeave += RowMouseLeave;
         };
         Grid.UnloadingRow += (_, args) => FlowMotion.Reset(args.Row);
+        Grid.PreviewMouseLeftButtonDown += CardPointerDown;
         Grid.SelectionChanged += (_, _) =>
         {
+            UpdateActionButtons();
             if (FindName("FlowInlineDetails") is FrameworkElement panel && IsLoaded) FlowMotion.Reveal(panel, true);
         };
+        AddHandler(System.Windows.Controls.Primitives.ButtonBase.ClickEvent, new RoutedEventHandler((_, args) =>
+        {
+            if (args.OriginalSource is Button button) FlowMotion.Tap(button);
+        }));
         ApplyLocalization();
 
         _speedTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
@@ -60,12 +71,19 @@ public partial class MainWindow : Window
         FlowMain.SizeChanged += (_, _) => UpdateLayoutDensity();
         Loaded += (_, _) =>
         {
-            WindowPlacement.Constrain(this, center: !_entered);
-            if (!_entered && Content is FrameworkElement content) FlowMotion.Reveal(content, translate: true);
+            if (_constrainToWorkArea) WindowPlacement.Constrain(this, center: !_entered);
+            if (!_entered)
+            {
+                FlowMotion.Reveal(FlowHeading, true);
+                FlowMotion.Reveal(FlowPulse, true, 90);
+                FlowMotion.Reveal(FlowSearchHost, true, 150);
+                FlowMotion.Reveal(BtnAddUrls, true, 70);
+                FlowMotion.Reveal(BtnAddFromClipboard, true, 130);
+            }
             if (!_entered) FlowMotion.RevealRows(Grid);
             _entered = true;
         };
-        DpiChanged += (_, _) => Dispatcher.BeginInvoke(new Action(() => WindowPlacement.Constrain(this)));
+        DpiChanged += (_, _) => { if (_constrainToWorkArea) Dispatcher.BeginInvoke(new Action(() => WindowPlacement.Constrain(this))); };
         Closed += (_, _) => _speedTimer.Stop();
 
         // Enforce application icon on window and taskbar
@@ -102,7 +120,7 @@ public partial class MainWindow : Window
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);
-        WindowPlacement.Constrain(this, center: true);
+        if (_constrainToWorkArea) WindowPlacement.Constrain(this, center: true);
         try
         {
             var helper = new System.Windows.Interop.WindowInteropHelper(this);
@@ -171,7 +189,13 @@ public partial class MainWindow : Window
         ColHeaderError.Header = Strings.IsTurkish ? "Ayrıntılar" : "Details";
         if (ColHeaderEta != null) ColHeaderEta.Header = Strings.TimeLeft;
 
-        TxtBtnAdd.Text = Strings.IsTurkish ? "Yeni indirme" : "New download";
+        TxtBtnAdd.Text = Strings.IsTurkish ? "Panodan indir" : "From clipboard";
+        TxtAddLinks.Text = Strings.IsTurkish ? "Bağlantı ekle" : "Add links";
+        Resources["FlowEtaCaption"] = Strings.IsTurkish ? "Kalan:" : "Left:";
+        Resources["FlowEtaHelp"] = Strings.IsTurkish ? "Boyut ve hız belli olduğunda kalan süre hesaplanır." : "Time left is calculated when size and speed are known.";
+        BtnSelectAll.ToolTip = Strings.IsTurkish ? "Görünenlerin tümünü seç (Ctrl+A)" : "Select all visible downloads (Ctrl+A)";
+        BtnToolbarDetails.ToolTip = Strings.Details;
+        Resources["FlowGroupSelect"] = Strings.IsTurkish ? "Gruptaki par\u00e7alar\u0131 se\u00e7" : "Select all parts in this group";
         TxtBtnAddMulti.Text = Strings.AddUrls;
         TxtBtnFolder.Text = Strings.OpenFolder;
         TxtBtnExtension.Text = Strings.BrowserSetup;
@@ -299,6 +323,8 @@ public partial class MainWindow : Window
 
         TotalSpeedText.Text = active > 0 ? $"{BytesConverter.Format(totalSpeed)}/s" : "0 B/s";
         SidebarSpeedGraph.PushSample(totalSpeed);
+        UpdateActionButtons();
+        if (_multipartGroups.Refresh(_view.Cast<DownloadItem>())) _view.Refresh();
         bool isTr = Strings.IsTurkish;
         ActiveCountText.Text = isTr ? $"{active} aktif indirme" : $"{active} active download{(active == 1 ? "" : "s")}";
         StatusCountsText.Text = isTr
@@ -384,13 +410,14 @@ public partial class MainWindow : Window
         var density = (compact, tiny, narrow);
         if (_layoutDensity is { } previous && previous == density) return;
         _layoutDensity = density;
-        FlowMain.Margin = narrow ? new Thickness(18, 16, 18, 14) : compact ? new Thickness(24, 20, 24, 16) : new Thickness(28, 29, 28, 20);
-        FlowPulseRow.Height = new GridLength(tiny ? 0 : compact ? 112 : 145);
+        FlowMain.Margin = tiny ? new Thickness(12, 2, 12, 2) : narrow ? new Thickness(18, 16, 18, 14) : compact ? new Thickness(24, 20, 24, 16) : new Thickness(28, 29, 28, 20);
+        FlowPulseRow.Height = new GridLength(tiny ? 0 : compact ? 82 : 116);
         FlowPulse.Visibility = tiny ? Visibility.Collapsed : Visibility.Visible;
-        FlowPulse.Padding = compact ? new Thickness(0, 14, 0, 18) : new Thickness(0, 25, 0, 24);
+        FlowPulse.Padding = compact ? new Thickness(0, 4, 0, 4) : new Thickness(0, 12, 0, 12);
         TotalSpeedText.FontSize = compact ? 34 : 43;
         SidebarSpeedGraph.Height = compact ? 42 : 52;
-        FlowFiltersRow.Height = new GridLength(compact ? 54 : 64);
+        FlowFiltersRow.Height = new GridLength(tiny ? 38 : compact ? 48 : 58);
+        BtnAddUrls.Height = BtnAddFromClipboard.Height = tiny ? 32 : 38;
         FlowHeading.FontSize = narrow ? 24 : compact ? 26 : 30;
         FlowSearchHost.Width = narrow ? 140 : 180;
         foreach (var filter in new[] { FilterAll, FilterActive, FilterPaused, FilterDone })
@@ -400,8 +427,10 @@ public partial class MainWindow : Window
         }
         FlowEyebrow.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
         FlowSubtitle.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
-        FlowInlineDetails.MaxHeight = compact ? 0 : double.PositiveInfinity;
-        FlowInlineDetails.Margin = compact ? new Thickness(0) : new Thickness(0, 20, 0, 0);
+        FlowInlineDetails.MaxHeight = double.PositiveInfinity;
+        FlowInlineDetails.Margin = new Thickness(0, compact ? 8 : 12, 0, 0);
+        FlowDetailsBody.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
+        FlowCompactErrorHost.Visibility = compact ? Visibility.Visible : Visibility.Collapsed;
     }
     private void WorkspaceAll_Click(object sender, RoutedEventArgs e) { LstCategories.SelectedItem = CatAll; StatusFilter_Click(FilterAll, e); }
     private void WorkspaceActive_Click(object sender, RoutedEventArgs e) { LstCategories.SelectedItem = CatAll; StatusFilter_Click(FilterActive, e); }
@@ -417,6 +446,70 @@ public partial class MainWindow : Window
             Dispatcher.BeginInvoke(new Action(Hide));
         }
         base.OnClosing(e);
+    }
+
+    private object? _selectionAnchor;
+    private void CardPointerDown(object sender, MouseButtonEventArgs e)
+    {
+        var source = e.OriginalSource as DependencyObject;
+        DataGridRow? row = null;
+        for (var node = source; node != null; node = node is Visual ? VisualTreeHelper.GetParent(node) : LogicalTreeHelper.GetParent(node))
+        {
+            if (node is System.Windows.Controls.Primitives.ScrollBar) return;
+            // Cells keep WPF's native keyboard/range selection and double-click handling.
+            if (node is DataGridCell) { if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) _selectionAnchor = Grid.SelectedItem; return; }
+            if (node is DataGridRow found) { row = found; break; }
+        }
+        if (row == null || e.ClickCount > 1) return;
+        Grid.Focus();
+        Grid.CurrentCell = new DataGridCellInfo(row.Item, Grid.Columns[0]);
+        bool control = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) && _selectionAnchor != null)
+        {
+            int from = Grid.Items.IndexOf(_selectionAnchor), to = Grid.Items.IndexOf(row.Item);
+            if (!control) Grid.SelectedItems.Clear();
+            if (from < 0) from = to;
+            for (int i = Math.Min(from, to); i <= Math.Max(from, to); i++)
+                if (!Grid.SelectedItems.Contains(Grid.Items[i])) Grid.SelectedItems.Add(Grid.Items[i]);
+        }
+        else
+        {
+            if (!control && !Grid.SelectedItems.Contains(row.Item)) Grid.SelectedItems.Clear();
+            if (control && Grid.SelectedItems.Contains(row.Item)) Grid.SelectedItems.Remove(row.Item);
+            else if (!Grid.SelectedItems.Contains(row.Item)) Grid.SelectedItems.Add(row.Item);
+            _selectionAnchor = row.Item;
+        }
+        e.Handled = true;
+    }
+
+    private void SelectMultipart_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not CollectionViewGroup group) return;
+        if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) Grid.SelectedItems.Clear();
+        foreach (var item in group.Items.OfType<DownloadItem>())
+            if (!Grid.SelectedItems.Contains(item)) Grid.SelectedItems.Add(item);
+        e.Handled = true;
+    }
+
+    private void Multipart_Expanded(object sender, RoutedEventArgs e)
+    {
+        if (IsLoaded && ReferenceEquals(e.OriginalSource, sender) && sender is Expander { Content: FrameworkElement children })
+            FlowMotion.RevealGroup(children);
+    }
+
+    private void SelectAll_Click(object sender, RoutedEventArgs e) => Grid.SelectAll();
+    private void UpdateActionButtons()
+    {
+        var selected = Selected.ToList();
+        FlowListLabel.Text = Strings.IsTurkish
+            ? (selected.Count > 0 ? $"\u0130ND\u0130RMELER \u00b7 {selected.Count} SE\u00c7\u0130L\u0130" : "\u0130ND\u0130RMELER")
+            : (selected.Count > 0 ? $"DOWNLOADS \u00b7 {selected.Count} SELECTED" : "DOWNLOADS");
+        BtnPause.IsEnabled = selected.Any(i => i.Status is DownloadStatus.Downloading or DownloadStatus.Queued);
+        BtnResume.IsEnabled = selected.Any(i => i.Status is DownloadStatus.Paused or DownloadStatus.Failed);
+        BtnCancel.IsEnabled = selected.Any(i => i.Status is DownloadStatus.Downloading or DownloadStatus.Queued or DownloadStatus.Paused);
+        BtnRemove.IsEnabled = selected.Count > 0;
+        BtnToolbarDetails.IsEnabled = selected.Count > 0;
+        BtnSelectAll.IsEnabled = Grid.Items.Count > 0 && selected.Count < Grid.Items.Count;
     }
 
     private IEnumerable<DownloadItem> Selected => Grid.SelectedItems.Cast<DownloadItem>().ToList();
@@ -611,8 +704,8 @@ public partial class MainWindow : Window
     private void Resume_Click(object s, RoutedEventArgs e) { foreach (var i in Selected) _manager.Resume(i.Id); }
     private void Cancel_Click(object s, RoutedEventArgs e) { foreach (var i in Selected) _manager.Cancel(i.Id); }
     private readonly HashSet<string> _removing = new();
-    private static void RowMouseEnter(object sender, MouseEventArgs e) => FlowMotion.Hover((FrameworkElement)sender, true);
-    private static void RowMouseLeave(object sender, MouseEventArgs e) => FlowMotion.Hover((FrameworkElement)sender, false);
+    private void RowMouseEnter(object sender, MouseEventArgs e) { if (!SmoothScroll.IsScrolling(Grid)) FlowMotion.Hover((FrameworkElement)sender, true); }
+    private void RowMouseLeave(object sender, MouseEventArgs e) { if (!SmoothScroll.IsScrolling(Grid)) FlowMotion.Hover((FrameworkElement)sender, false); }
     private async void Remove_Click(object s, RoutedEventArgs e)
     {
         var items = Selected.Where(item => _removing.Add(item.Id)).ToList();

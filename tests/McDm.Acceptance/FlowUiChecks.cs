@@ -58,6 +58,15 @@ internal static class FlowUiChecks
             // Layout fixtures are confined to this test's manager; no user history is loaded.
             for (int n = 0; n < 24; n++)
                 manager.Items.Add(new DownloadItem { FileName = $"Layout fixture {n:00}.txt", Request = new DownloadRequest { Url = "https://example.invalid/layout" }, Status = DownloadStatus.Completed, TotalBytes = 256, DownloadedBytes = 256 });
+            var selectionGrid = (DataGrid)window.FindName("Grid");
+            selectionGrid.SelectedIndex = 0;
+            var held = manager.Items.Skip(3).ToList();
+            foreach (var heldItem in held) manager.Items.Remove(heldItem);
+            Layout(content, new Size(1160, 800));
+            var shortRow = (DataGridRow)selectionGrid.ItemContainerGenerator.ContainerFromIndex(0)!;
+            Require(Descendants<TextBlock>(shortRow).Any(text => text.Text == "Layout fixture 00.txt" && text.ActualWidth > 100),
+                "few-row card content disappeared");
+            foreach (var heldItem in held) manager.Items.Add(heldItem);
             foreach (var size in new[] { new Size(1024, 700), new Size(900, 600), new Size(800, 520), new Size(616, 336), new Size(1280, 900), new Size(1024, 700) })
             {
                 Layout(content, size);
@@ -65,11 +74,38 @@ internal static class FlowUiChecks
                 Require(VirtualizingPanel.GetScrollUnit(list) == ScrollUnit.Pixel, "list still scrolls in whole rows");
                 Require(SmoothScroll.GetIsEnabled(list), "smooth scrolling was not attached");
                 Require(list.ActualHeight >= 85, $"compact layout leaves too little space for the download list at {size}: {list.ActualHeight}");
+                var detailsPanel = (FrameworkElement)window.FindName("FlowInlineDetails");
+                Require(detailsPanel.IsVisible || detailsPanel.Visibility == Visibility.Visible, "details panel was hidden");
+                Require(detailsPanel.ActualHeight >= 30 && detailsPanel.MaxHeight > 0, "selected details disappeared in compact mode");
                 var bar = Descendants<ScrollBar>(content).FirstOrDefault(b => b.Orientation == Orientation.Vertical);
                 if (bar != null) Require(bar.Width <= 10, "legacy wide scrollbar returned");
             }
             Console.WriteLine("PASS compact/full layouts and pixel scrolling without layout oscillation");
             var grid = (DataGrid)window.FindName("Grid");
+            var firstRow = (DataGridRow)grid.ItemContainerGenerator.ContainerFromIndex(0)!;
+            Require(Descendants<TextBlock>(firstRow).Any(text => text.Text == "Layout fixture 00.txt" && text.ActualWidth > 100),
+                "download filename was not laid out inside the card");
+            Require(firstRow.ActualHeight <= 68, "completed download cards are still oversized");
+            var changing = (DownloadItem)firstRow.Item;
+            Task.Run(() => { changing.TotalBytes = 1000; changing.DownloadedBytes = 750; changing.Speed = 100; changing.Status = DownloadStatus.Downloading; }).GetAwaiter().GetResult();
+            Pump(120);
+            var changingBar = Descendants<ProgressBar>(firstRow).First();
+            Require(Math.Abs(FlowMotion.GetProgress(changingBar) - .75) < .01, "background download progress did not update its actual card binding");
+            var remaining = Descendants<TextBlock>(firstRow).First(text => System.Windows.Data.BindingOperations.GetBindingExpression(text, TextBlock.TextProperty)?.ParentBinding.Path?.Path == "EtaFormatted");
+            Require(remaining.Text.Any(char.IsDigit), "actual card did not show the remaining-time estimate");
+            changing.Status = DownloadStatus.Completed; changing.TotalBytes = changing.DownloadedBytes = 256; changing.Speed = 0;
+            Pump(80);
+            Console.WriteLine("PASS background progress and remaining-time updates in actual card bindings");
+            grid.SelectedItems.Clear();
+            grid.RaiseEvent(new System.Windows.Input.MouseButtonEventArgs(System.Windows.Input.Mouse.PrimaryDevice, 0, System.Windows.Input.MouseButton.Left)
+                { RoutedEvent = UIElement.PreviewMouseLeftButtonDownEvent, Source = firstRow });
+            Require(grid.SelectedItems.Contains(firstRow.Item), "clicking card whitespace did not select it");
+            ((Button)window.FindName("BtnSelectAll")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Require(grid.SelectedItems.Count == grid.Items.Count, "select-all did not select visible downloads");
+            Require(!((Button)window.FindName("BtnPause")).IsEnabled, "pause is enabled for completed files");
+            Require(((Button)window.FindName("BtnRemove")).IsEnabled, "remove is disabled for selected files");
+            grid.SelectedIndex = 0;
+            Console.WriteLine("PASS compact selected details, full-card selection, select-all and action availability");
             var gridViewer = SmoothScroll.FindViewer(grid)!;
             Require(gridViewer.ScrollableHeight > 200, "download list extent is still expressed in rows");
             grid.RaiseEvent(new System.Windows.Input.MouseWheelEventArgs(System.Windows.Input.Mouse.PrimaryDevice, 0, -120)
@@ -78,12 +114,43 @@ internal static class FlowUiChecks
             if (SystemParameters.ClientAreaAnimation) Require(gridViewer.VerticalOffset > 0 && gridViewer.VerticalOffset < 80, "the real download list still jumps by whole rows");
             Pump(260);
             Require(gridViewer.VerticalOffset > 0, "download list did not handle wheel input");
+            double beforeTouchpad = gridViewer.VerticalOffset;
+            grid.RaiseEvent(new System.Windows.Input.MouseWheelEventArgs(System.Windows.Input.Mouse.PrimaryDevice, 0, -30)
+                { RoutedEvent = System.Windows.Input.Mouse.PreviewMouseWheelEvent });
+            Pump(35);
+            Require(gridViewer.VerticalOffset > beforeTouchpad, "high-resolution touchpad input was swallowed");
             Console.WriteLine("PASS actual download-list wheel routing and pixel offset animation");
 
+            var parts = new[] {
+                new DownloadItem { FileName = "Archive.part01.rar", Status = DownloadStatus.Completed, TotalBytes = 1000, DownloadedBytes = 1000 },
+                new DownloadItem { FileName = "Archive.part02.rar", Status = DownloadStatus.Completed, TotalBytes = 2000, DownloadedBytes = 2000 }
+            };
+            foreach (var part in parts) manager.Items.Add(part);
+            Pump(650);
+            Layout(content, new Size(1024, 700));
+            gridViewer.ScrollToEnd();
+            Pump(180);
+            var expander = Descendants<Expander>(content).FirstOrDefault(item => item.DataContext is System.Windows.Data.CollectionViewGroup { Name: MultipartGroup { IsMultipart: true } });
+            Require(expander != null && !expander.IsExpanded, "multipart volumes were not collapsed into one group");
+            var group = (System.Windows.Data.CollectionViewGroup)expander!.DataContext;
+            var summary = ((MultipartGroup)group.Name).Summary;
+            Require(group.ItemCount == 2 && summary.TotalBytes == 3000 && summary.Progress == 1, "multipart aggregate did not reflect its actual jobs");
+            expander.IsExpanded = true;
+            Layout(content, new Size(1024, 700));
+            var selectGroup = Descendants<Button>(expander).First(button => Equals(button.Tag, "multipart-select"));
+            selectGroup.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Require(grid.SelectedItems.Count == 2 && parts.All(part => grid.SelectedItems.Contains(part)), "group selection did not select both underlying jobs");
+            foreach (var part in parts) manager.Items.Remove(part);
+            grid.SelectedItems.Clear();
+            Console.WriteLine("PASS multipart aggregate, collapsed/expanded groups, group selection and row virtualization");
+
             var viewer = new ScrollViewer { Height = 180, Width = 300, Content = new Border { Height = 2400 }, CanContentScroll = false };
-            var motionWindow = new Window { Content = viewer };
+            var motionWindow = new Window { Content = viewer, WindowStartupLocation = WindowStartupLocation.Manual,
+                Left = -32000, Top = -32000, Width = 300, Height = 180, ShowInTaskbar = false, ShowActivated = false };
             try
             {
+                motionWindow.Show();
+                Pump(80);
                 Layout(viewer, new Size(300, 180));
                 SmoothScroll.ScrollTo(viewer, 420);
                 Pump(45);
@@ -124,6 +191,11 @@ internal static class FlowUiChecks
                 Console.WriteLine("PASS scroll/reveal animation: intermediate frames, interruption and final position");
             }
             finally { motionWindow.Close(); }
+            for (int n = 0; n < 300; n++) manager.Items.Add(new DownloadItem { FileName = $"Scroll stress {n}.txt", Status = DownloadStatus.Completed });
+            Layout(content, new Size(1024, 700));
+            Require(Descendants<DataGridRow>(grid).Count() < 60, "grouping disabled row virtualization and made scrolling expensive");
+            Console.WriteLine("PASS grouped row virtualization with 300 downloads");
+
         }
         finally
         {
@@ -132,7 +204,7 @@ internal static class FlowUiChecks
         }
     }
     private static void Require(bool condition, string message) { if (!condition) throw new Exception(message); }
-    private static IEnumerable<T> Descendants<T>(DependencyObject root) where T : DependencyObject
+    internal static IEnumerable<T> Descendants<T>(DependencyObject root) where T : DependencyObject
     {
         for (int i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
         {
@@ -152,7 +224,7 @@ internal static class FlowUiChecks
         while (watch.ElapsedMilliseconds < milliseconds)
         {
             var frame = new DispatcherFrame();
-            Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() => frame.Continue = false));
+            Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.SystemIdle, new Action(() => frame.Continue = false));
             Dispatcher.PushFrame(frame); Thread.Sleep(5);
         }
     }

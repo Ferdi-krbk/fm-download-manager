@@ -1,7 +1,6 @@
 # Flow interface preview
 
-This is an unpublished interface rebuild. The existing stable GitHub release is
-unchanged. The main WPF window uses `Themes/FlowControls.xaml`; its control
+This documents the Flow interface included in the refreshed stable build. The main WPF window uses `Themes/FlowControls.xaml`; its control
 templates are separate from the older dialog styles. The browser popup was
 rebuilt from the approved preview markup. Media discovery remains in the
 background/content scripts and the popup's separate `popup-media.js` helper.
@@ -16,11 +15,12 @@ selected color remains the stored setting. Existing saved preferences persist.
 Static Inter font files are bundled with the app, popup and hover menu. Their
 actual glyph resources are checked so a silent system-font fallback is caught.
 The startup window fits its monitor work area. Compact layouts, a slim scrollbar,
-eased pixel scrolling and short reveal/hover transitions are included. Motion
+eased wheel scrolling, native high-resolution touchpad deltas, staggered startup,
+card interactions and theme/accent transitions are included. Motion
 respects the system animation preference.
 Rendering engines and DPI settings can produce visible differences from the
-in-conversation preview. Exported UI checks use 192 DPI for native WPF and a
-device scale of 2 for Chromium; these are real controls, not redesigned pictures.
+in-conversation preview. Exported UI checks use a real off-screen WPF window and 192 DPI for native captures and a
+device scale of 2 for Chromium; these are real controls, not redesigned pictures. Dispatcher tests drain idle-priority binding work so background progress updates are actually verified.
 
 ## Verification
 
@@ -41,6 +41,12 @@ and generated sample media in a separate headless browser. It checks the compact
 trigger, keyboard dismissal, video/audio/subtitle dispatch, theme selection,
 custom colors and accent text contrast. This does not establish compatibility
 with every live streaming provider or replace an installed-extension check.
+
+Numbered archive volumes (part01.rar, 7z.001 and legacy r00/z01 patterns) share
+an expandable group scoped to their target folder and archive name. Headers show
+actual aggregate progress and select the underlying jobs for batch actions.
+Ordinary same-named files are not grouped by guesswork. Grouping is presentation
+only; no archive extraction or concatenation runs automatically.
 
 Unknown file formats remain in Files; no attempt is made to guess all possible
 formats. Audio-only and subtitle-only requests have explicit classifications.

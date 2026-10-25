@@ -55,6 +55,7 @@ public static class ThemeManager
         IsLightTheme = light;
         var res = Application.Current?.Resources;
         if (res == null) return;
+        var previousColors = FlowMotion.CaptureBrushColors(res);
         res["UiFont"] = FontCatalog.Interface;
 
         if (light)
@@ -115,6 +116,7 @@ public static class ThemeManager
         }
 
         ApplyAccentColor(CurrentAccentHex);
+        FlowMotion.TransitionBrushColors(res, previousColors);
         ThemeModeChanged?.Invoke(CurrentThemeMode);
     }
 
@@ -253,6 +255,7 @@ public static class ThemeManager
         speedGraphFill.Freeze();
 
         var res = Application.Current?.Resources;
+        var previousColors = res != null ? FlowMotion.CaptureBrushColors(res) : new Dictionary<object, Color>();
         if (res != null)
         {
             res["ColorAccent"] = c;
@@ -280,6 +283,7 @@ public static class ThemeManager
             res["SpeedGraphFillBrush"] = speedGraphFill;
         }
 
+        if (res != null) FlowMotion.TransitionBrushColors(res, previousColors);
         AccentColorChanged?.Invoke(CurrentAccentHex);
     }
 }

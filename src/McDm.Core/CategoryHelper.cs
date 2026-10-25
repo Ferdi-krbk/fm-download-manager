@@ -50,6 +50,15 @@ public static class CategoryHelper
             }
         }
 
+        string? candidate = fileName;
+        if (string.IsNullOrWhiteSpace(candidate) && Uri.TryCreate(url, UriKind.Absolute, out var source)) candidate = Path.GetFileName(source.AbsolutePath);
+        if (MultipartFiles.Describe(candidate ?? "", "") is { } volume)
+        {
+            string family = Path.GetExtension(volume.Label);
+            if (ArchiveExts.Contains(family)) return "Compressed";
+            if (AppExts.Contains(family)) return "Programs";
+        }
+
         if (string.IsNullOrEmpty(ext)) return "";
 
         if (VideoExts.Contains(ext)) return "Videos";

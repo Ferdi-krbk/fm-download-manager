@@ -45,6 +45,30 @@ internal static class Program
         while (repository != null && !File.Exists(Path.Combine(repository.FullName, "McDownloadManager.sln"))) repository = repository.Parent;
         if (repository == null) throw new DirectoryNotFoundException("Run this acceptance test from the source checkout");
         Directory.SetCurrentDirectory(repository.FullName);
+        if (args.FirstOrDefault() == "--capture-history")
+        {
+            string source = Path.GetFullPath(args[1]);
+            string target = Path.GetFullPath(args[2]);
+            Require(File.Exists(Path.Combine(source, "results.txt")), "only a completed acceptance run can supply capture history");
+            string data = Path.Combine(source, "capture-data");
+            Directory.CreateDirectory(data);
+            Directory.CreateDirectory(target);
+            File.Copy(Path.Combine(source, "data", "downloads.json"), Path.Combine(data, "downloads.json"), true);
+            using var captureManager = new DownloadManager(data, Path.Combine(source, "downloads"), uiContext: new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher)) { MaxConcurrentDownloads = 0 };
+            Require(captureManager.Items.All(item => item.Status == DownloadStatus.Completed), "capture history contains unfinished downloads");
+            Strings.SetLanguage("en");
+            ThemeManager.ApplyThemeMode("dark");
+            ThemeManager.ApplyAccentColor("#C3AFFF");
+            var captureWindow = new MainWindow(captureManager, new TokenStore(Path.Combine(data, "bridge.token")), new AppSettings { ClipboardWatcherEnabled = false });
+            try
+            {
+                Capture(captureWindow, 1160, 800, Path.Combine(target, "downloads-dark.png"));
+                ThemeManager.ApplyThemeMode("light");
+                Capture(captureWindow, 1160, 800, Path.Combine(target, "downloads-light.png"));
+            }
+            finally { captureWindow.AllowClose(); }
+            return;
+        }
         string root = Path.GetFullPath(args.ElementAtOrDefault(0) ?? "dist/acceptance");
         string screenshots = Path.GetFullPath(args.ElementAtOrDefault(1) ?? "docs/screenshots");
         Directory.CreateDirectory(root);
@@ -61,6 +85,12 @@ internal static class Program
         Console.WriteLine("Preparing real media fixtures…");
         RunTool(ffmpeg, ["-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i", "testsrc2=size=1280x720:rate=24", "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000", "-t", "6", "-c:v", "libx264", "-preset", "ultrafast", "-b:v", "1500k", "-c:a", "aac", movie]);
         RunTool(ffmpeg, ["-hide_banner", "-loglevel", "error", "-y", "-i", movie, "-c", "copy", "-hls_time", "2", "-hls_list_size", "0", Path.Combine(fixtures, "master.m3u8")]);
+        string bundle = Path.Combine(fixtures, "sample-bundle.zip");
+        using (var zip = new System.IO.Compression.ZipArchive(File.Create(bundle), System.IO.Compression.ZipArchiveMode.Create))
+            System.IO.Compression.ZipFileExtensions.CreateEntryFromFile(zip, movie, "sample-clip.mp4");
+        byte[] bundleBytes = File.ReadAllBytes(bundle);
+        File.WriteAllBytes(Path.Combine(fixtures, "sample-bundle.zip.001"), bundleBytes[..(bundleBytes.Length / 2)]);
+        File.WriteAllBytes(Path.Combine(fixtures, "sample-bundle.zip.002"), bundleBytes[(bundleBytes.Length / 2)..]);
         byte[] transfer = new byte[24 * 1024 * 1024];
         new Random(42).NextBytes(transfer);
         File.WriteAllBytes(Path.Combine(fixtures, "transfer-test.bin"), transfer);
@@ -115,7 +145,12 @@ internal static class Program
         var tokens = new TokenStore(Path.Combine(root, "data", "bridge.token"));
         var bridge = new BridgeServer(manager, tokens);
         bridge.StartAsync(0).GetAwaiter().GetResult();
-        var window = new MainWindow(manager, tokens, settings, bridge);
+        // A real off-screen host exercises Loaded bindings/animations without desktop input or focus.
+        var window = new MainWindow(manager, tokens, settings, bridge, constrainToWorkArea: false)
+        { WindowStartupLocation = WindowStartupLocation.Manual, Left = -32000, Top = -32000,
+          Width = 1160, Height = 800, ShowInTaskbar = false, ShowActivated = false };
+        window.Show();
+        Pump(700);
         var reports = new List<string>();
         try
         {
@@ -134,6 +169,13 @@ internal static class Program
             }
             else reports.Add("SKIP real antivirus: MCDM_TEST_AV was not supplied");
 
+            var volumes = new[] { "sample-bundle.zip.001", "sample-bundle.zip.002" }
+                .Select(name => manager.Add(new() { Url = address + "/samples/" + name, FileName = name })).ToArray();
+            Wait(() => volumes.All(Terminal), 40);
+            Require(volumes.All(item => item.Status == DownloadStatus.Completed), "archive volume downloads failed");
+            byte[] joined = volumes.SelectMany(item => File.ReadAllBytes(item.SavePath)).ToArray();
+            Require(SHA256.HashData(joined).SequenceEqual(SHA256.HashData(bundleBytes)), "downloaded archive volumes do not reconstruct the original ZIP");
+            reports.Add("PASS multipart archive: two actual HTTP volume downloads reconstruct the source ZIP byte-exactly");
             var large = manager.Add(new() { Url = address + "/samples/transfer-test.bin", FileName = "transfer-test.bin", Segments = 8 });
             Console.WriteLine("Testing pause/resume and capturing the production XAML views…");
             Wait(() => large.DownloadedBytes > 3 * 1024 * 1024, 30);
@@ -145,14 +187,14 @@ internal static class Program
             Wait(() => large.DownloadedBytes > pausedAt + 2 * 1024 * 1024, 30);
             Pump(500);
             ((System.Windows.Controls.DataGrid)window.FindName("Grid")).SelectedItem = large;
-            Capture(window, 1024, 1000, Path.Combine(screenshots, "downloads-dark.png"));
+            Capture(window, 1160, 800, Path.Combine(screenshots, "downloads-dark.png"));
             var details = new DownloadDetailWindow(large);
             Capture(details, 760, 680, Path.Combine(screenshots, "download-details.png"));
             ThemeManager.ApplyThemeMode("light");
             settings.AppTheme = "light";
             Pump(200);
             ((System.Windows.Controls.DataGrid)window.FindName("Grid")).SelectedItem = large;
-            Capture(window, 1024, 1000, Path.Combine(screenshots, "downloads-light.png"));
+            Capture(window, 1160, 800, Path.Combine(screenshots, "downloads-light.png"));
             ThemeManager.ApplyThemeMode("dark");
             settings.AppTheme = "dark";
             Wait(() => Terminal(large), 90);
@@ -185,6 +227,7 @@ internal static class Program
         }
         finally
         {
+            window.AllowClose();
             Task.Run(async () =>
             {
                 await manager.DisposeAsync();
@@ -213,13 +256,14 @@ internal static class Program
         do
         {
             var frame = new DispatcherFrame();
-            Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() => frame.Continue = false));
+            Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.SystemIdle, new Action(() => frame.Continue = false));
             Dispatcher.PushFrame(frame);
             Thread.Sleep(5);
         } while (clock.ElapsedMilliseconds < milliseconds);
     }
     private static void Capture(Window window, int width, int height, string file)
     {
+        new System.Windows.Interop.WindowInteropHelper(window).EnsureHandle();
         var content = (FrameworkElement)window.Content;
         content.Measure(new Size(width, height));
         content.Arrange(new Rect(0, 0, width, height));
@@ -229,6 +273,18 @@ internal static class Program
         content.Measure(new Size(width, height));
         content.Arrange(new Rect(0, 0, width, height));
         content.UpdateLayout();
+        if (window is MainWindow main && ((System.Windows.Controls.DataGrid)main.FindName("Grid")).SelectedItem is DownloadItem { Status: DownloadStatus.Downloading } active)
+        {
+            var visibleProgress = FlowUiChecks.Descendants<System.Windows.Controls.ProgressBar>(content).FirstOrDefault(bar => ReferenceEquals(bar.DataContext, active));
+            Require(visibleProgress != null && FlowMotion.GetProgress(visibleProgress) > 0,
+                "the active card's actual progress binding did not refresh");
+            if (active.Eta.HasValue)
+            {
+                var etaText = FlowUiChecks.Descendants<System.Windows.Controls.TextBlock>(content).FirstOrDefault(text => ReferenceEquals(text.DataContext, active)
+                    && System.Windows.Data.BindingOperations.GetBindingExpression(text, System.Windows.Controls.TextBlock.TextProperty)?.ParentBinding.Path?.Path == "EtaFormatted");
+                Require(etaText != null && etaText.Text.Any(char.IsDigit), "the active card did not display its real remaining-time estimate");
+            }
+        }
         var bitmap = new RenderTargetBitmap(width * 2, height * 2, 192, 192, PixelFormats.Pbgra32);
         bitmap.Render(content);
         var encoder = new PngBitmapEncoder();

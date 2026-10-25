@@ -8,7 +8,12 @@ historical alpha/beta prereleases; their tags and downloadable files remain inta
 - Rebuilt desktop workspace, compact extension popup and small fm. video overlay.
 - Bundled Inter Regular/Medium/SemiBold fonts; no separate font installation.
 - Light/dark modes, preset and custom accent colors across the interface.
-- Monitor-aware window bounds, compact layouts and a thin scrollbar.
+- Monitor-aware window bounds, compact selectable cards and a thin scrollbar.
+- Expandable multipart archive groups with actual aggregate progress and batch selection.
+- Select-all and context-aware action buttons; separate Add links and Clipboard actions.
+- Selected details remain accessible in smaller windows; approximate media time left is marked ~.
+- Valid server-capped byte ranges are supported without weakening start/identity validation.
+- Python crash diagnostics retain the underlying error instead of only a generic banner.
 - Smooth pixel scrolling, staggered card entrance, hover lift, removal transitions,
   selection details and interpolated progress. Windows/browser reduced-motion settings are respected.
 - Unified file categories and clearer audio/subtitle classification.

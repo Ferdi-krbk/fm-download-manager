@@ -15,8 +15,16 @@
   classification with destination folders and distinguish audio/subtitle exports.
 - Report separate audio download progress and fragment retries, clear stale speed
   during processing, and terminate the audio subprocess when paused or cancelled.
-- Omit the remaining-time countdown when media size is only an HLS estimate;
-  continue showing fragment progress instead.
+- Display the tool's remaining-time estimate, including unknown-size media;
+  mark approximate HLS estimates with ~ and hide stale estimates while stalled.
+- Group numbered archive volumes under an expandable aggregate, with group selection for batch actions.
+- Add full-card selection, select-all, distinct action icons, two compact add
+  actions and selected details that remain accessible in smaller windows.
+- Reduce card spacing, distinguish touchpad scrolling from wheel easing, and
+  animate startup sections, buttons and theme/accent transitions.
+- Preserve the actual Python exception behind generic yt-dlp crash banners.
+- Accept valid capped/extended range responses while rejecting missing, shifted,
+  changed-length and non-byte Content-Range headers before writing data.
 
 ## 1.0.0 — 2026-10-24
 

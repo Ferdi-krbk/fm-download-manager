@@ -10,6 +10,19 @@ public static class VideoTests
 {
     public static async Task RunAsync(Func<string, Func<Task>, Task> test, Action<bool, string> check, Func<string> tmp)
     {
+        await test("video: Python runtime failure retains its actual cause", () =>
+        {
+            var message = VideoDownloader.DescribeToolFailure(new[] {
+                "Traceback (most recent call last):", "PermissionError: access denied",
+                "[PYI-26004:ERROR] Failed to execute script '__main__' due to unhandled exception!"
+            }, 1);
+            check(message.Contains("PermissionError: access denied"), "generic PyInstaller banner hid actual cause");
+            check(!message.Contains("unhandled exception"), "raw runtime banner leaked instead of useful diagnostic");
+            var ordinary = VideoDownloader.DescribeToolFailure(new[] { "ERROR: HTTP Error 403: Forbidden" }, 1);
+            check(ordinary.Contains("403"), "provider error was lost");
+            return Task.CompletedTask;
+        });
+
         await test("video: VideoDownloader argument construction, format sorting and cookies", () =>
         {
             var opt = new VideoOptions { Container = "mp4", MaxHeight = 720 };
@@ -155,7 +168,18 @@ Son sahne metni.
             var etaItem = new DownloadItem { Status = DownloadStatus.Downloading, DownloadedBytes = 1000000, TotalBytes = 3000000, Speed = 1000000 };
             check(etaItem.Eta != null, "known size should provide ETA");
             etaItem.IsTotalEstimated = estimated.IsTotalEstimated;
-            check(etaItem.Eta == null, "estimated HLS size must not produce a repeating seconds countdown");
+            check(etaItem.Eta != null && etaItem.EtaFormatted.StartsWith("~"), "estimated HLS ETA must be visible and marked approximate");
+            var reported = VideoDownloader.ParseProgress("MCDM_PROGRESS|downloading|1000|NA|NA|500|1|30|58.5")!;
+            check(reported.EtaSeconds == 58.5, "tool ETA was discarded");
+            etaItem.ReportedEtaSeconds = reported.EtaSeconds;
+            etaItem.TotalBytes = -1;
+            check(etaItem.Eta?.TotalSeconds == 58.5, "tool ETA must work without a known total size");
+            etaItem.Speed = 0;
+            check(etaItem.Eta == null, "stalled transfer should not display a stale countdown");
+            etaItem.Speed = 500;
+            etaItem.ReportedEtaSeconds = null;
+            etaItem.TotalBytes = 2000000;
+            check(etaItem.Eta != null, "slow transfer ETA was hidden by the old speed threshold");
 
             var acc = new VideoDownloader.ProgressAccumulator();
             var r1 = acc.Apply(p1);
@@ -307,7 +331,7 @@ Son sahne metni.
             audioItem.PropertyChanged += (_, e) =>
             {
                 if (e.PropertyName == nameof(DownloadItem.Speed) && audioItem.Speed == 800000)
-                    sawAudioProgress = audioItem.DownloadedBytes == 11000000 && audioItem.TotalBytes == 12200000 && audioItem.Eta == null;
+                    sawAudioProgress = audioItem.DownloadedBytes == 11000000 && audioItem.TotalBytes == 12200000 && audioItem.Eta != null && audioItem.EtaFormatted.StartsWith("~");
                 if (e.PropertyName == nameof(DownloadItem.Stage) && audioItem.Stage?.Contains("Retrying audio") == true)
                     sawRetry = audioItem.Speed == 0;
             };

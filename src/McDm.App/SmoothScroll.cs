@@ -11,7 +11,7 @@ namespace McDm.App;
 /// <summary>Pixel scrolling with a short eased transition; recycling stays enabled.</summary>
 public static class SmoothScroll
 {
-    private sealed class ScrollState { public double Target; public bool Active; public int Generation; }
+    private sealed class ScrollState { public double Target; public bool Active; public int Generation; public long LastInput; }
     private static readonly ConditionalWeakTable<ScrollViewer, ScrollState> States = new();
     public static readonly DependencyProperty IsEnabledProperty = DependencyProperty.RegisterAttached(
         "IsEnabled", typeof(bool), typeof(SmoothScroll), new PropertyMetadata(false, Changed));
@@ -20,6 +20,8 @@ public static class SmoothScroll
         { if (o is ScrollViewer viewer) viewer.ScrollToVerticalOffset((double)e.NewValue); }));
     public static void SetIsEnabled(DependencyObject o, bool value) => o.SetValue(IsEnabledProperty, value);
     public static bool GetIsEnabled(DependencyObject o) => (bool)o.GetValue(IsEnabledProperty);
+
+    public static bool IsScrolling(DependencyObject element) => FindViewer(element) is { } viewer && States.TryGetValue(viewer, out var state) && (state.Active || Environment.TickCount64 - state.LastInput < 170);
 
     private static void Changed(DependencyObject o, DependencyPropertyChangedEventArgs e)
     {
@@ -57,7 +59,9 @@ public static class SmoothScroll
         double distance = SystemParameters.WheelScrollLines < 0 ? viewer.ViewportHeight : SystemParameters.WheelScrollLines * 24d;
         double target = Math.Clamp((state.Active ? state.Target : viewer.VerticalOffset) - e.Delta / 120d * distance, 0, viewer.ScrollableHeight);
         if (!state.Active && Math.Abs(target - viewer.VerticalOffset) < .1) return;
-        ScrollTo(viewer, target);
+        // High-resolution touchpads already supply small smooth deltas; do not queue easing behind them.
+        ScrollTo(viewer, target, animate: Math.Abs(e.Delta) >= 120);
+        state.LastInput = Environment.TickCount64;
         e.Handled = true;
     }
 
@@ -76,7 +80,7 @@ public static class SmoothScroll
         int generation = state.Generation;
         double finalTarget = state.Target;
         viewer.SetValue(OffsetProperty, start);
-        var animation = new DoubleAnimation(start, state.Target, TimeSpan.FromMilliseconds(180))
+        var animation = new DoubleAnimation(start, state.Target, TimeSpan.FromMilliseconds(145))
         { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
         animation.Completed += (_, _) =>
         {

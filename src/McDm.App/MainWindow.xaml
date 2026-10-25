@@ -10,20 +10,36 @@
 <local:BytesConverter x:Key="Bytes"/>
 <local:SpeedConverter x:Key="Speed"/>
 <local:DownloadStatusConverter x:Key="StatusLabel"/>
+<BooleanToVisibilityConverter x:Key="BoolVisibility"/>
+<Style x:Key="MultipartExpander" TargetType="Expander">
+<Setter Property="IsExpanded" Value="True"/>
+<Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Expander">
+<StackPanel>
+<ToggleButton x:Name="GroupToggle" IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" Visibility="{Binding Name.IsMultipart, Converter={StaticResource BoolVisibility}}" Background="Transparent" BorderThickness="0" HorizontalContentAlignment="Stretch">
+<ToggleButton.Template><ControlTemplate TargetType="ToggleButton"><Border x:Name="GroupSurface" Background="{DynamicResource CardBgBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="10" Padding="12,10"><ContentPresenter/></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="GroupSurface" Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}"/></Trigger></ControlTemplate.Triggers></ControlTemplate></ToggleButton.Template>
+<Grid><Grid.ColumnDefinitions><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+<Path Data="M2 2 L7 7 L2 12" Stroke="{DynamicResource TextDimBrush}" StrokeThickness="1.5" Width="8" Height="12" VerticalAlignment="Center" RenderTransformOrigin=".5,.5"><Path.Style><Style TargetType="Path"><Style.Triggers><DataTrigger Binding="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=ToggleButton}}" Value="True"><Setter Property="RenderTransform"><Setter.Value><RotateTransform Angle="90"/></Setter.Value></Setter></DataTrigger></Style.Triggers></Style></Path.Style></Path>
+<ContentPresenter Grid.Column="1" Content="{TemplateBinding Header}"/>
+</Grid></ToggleButton>
+<ContentPresenter x:Name="GroupChildren" Content="{TemplateBinding Content}"/>
+</StackPanel><ControlTemplate.Triggers><Trigger Property="IsExpanded" Value="False"><Setter TargetName="GroupChildren" Property="Visibility" Value="Collapsed"/></Trigger></ControlTemplate.Triggers>
+</ControlTemplate></Setter.Value></Setter>
+<Style.Triggers><DataTrigger Binding="{Binding Name.IsMultipart}" Value="True"><Setter Property="IsExpanded" Value="False"/><Setter Property="Margin" Value="0,0,0,6"/></DataTrigger></Style.Triggers>
+</Style>
 <DataTemplate x:Key="DownloadCard">
-<Grid Margin="16,14">
+<Grid Margin="13,9" Background="Transparent">
 <Grid.RowDefinitions>
 <RowDefinition Height="Auto"/>
 <RowDefinition Height="Auto"/>
 </Grid.RowDefinitions>
 <Grid>
 <Grid.ColumnDefinitions>
-<ColumnDefinition Width="34"/>
+<ColumnDefinition Width="30"/>
 <ColumnDefinition Width="12"/>
 <ColumnDefinition Width="*"/>
 <ColumnDefinition Width="Auto"/>
 </Grid.ColumnDefinitions>
-<Border Width="34" Height="38" Background="{DynamicResource Bg3Brush}" CornerRadius="7">
+<Border Width="30" Height="32" Background="{DynamicResource Bg3Brush}" CornerRadius="7">
 <Path Style="{StaticResource FlowStroke}" Data="{StaticResource FlowFile}" HorizontalAlignment="Center"/>
 </Border>
 <StackPanel Grid.Column="2" Margin="0,0,14,0" VerticalAlignment="Center">
@@ -32,7 +48,7 @@
 </StackPanel>
 <TextBlock Grid.Column="3" Text="{Binding Status, Converter={StaticResource StatusLabel}}" Style="{StaticResource FlowState}" VerticalAlignment="Center"/>
 </Grid>
-<StackPanel Grid.Row="1" Margin="0,15,0,0">
+<StackPanel Grid.Row="1" Margin="0,9,0,0">
 <StackPanel.Style>
 <Style TargetType="StackPanel">
 <Style.Triggers>
@@ -45,7 +61,7 @@
 <ProgressBar Style="{StaticResource FlowProgress}" Minimum="0" Maximum="1" local:FlowMotion.Progress="{Binding Progress, Mode=OneWay}"/>
 <DockPanel Margin="0,9,0,0">
 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-<TextBlock Text="{Binding EtaFormatted}" FontSize="11" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,18,0"/>
+<TextBlock Text="{DynamicResource FlowEtaCaption}" FontSize="11" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,5,0"/><TextBlock Text="{Binding EtaFormatted}" FontSize="11" Foreground="{DynamicResource TextBrush}" Margin="0,0,16,0" ToolTip="{DynamicResource FlowEtaHelp}"/>
 <TextBlock Text="{Binding Speed, Converter={StaticResource Speed}}" FontSize="11"/>
 </StackPanel>
 <StackPanel Orientation="Horizontal">
@@ -229,9 +245,12 @@
 <Button x:Name="BtnUpdateAvailable" Style="{StaticResource FlowButton}" Visibility="Collapsed" Click="UpdateAvailable_Click" Margin="0,0,10,0">
 <TextBlock x:Name="TxtUpdateVersion"/>
 </Button>
-<Button x:Name="BtnAddFromClipboard" Style="{StaticResource FlowPrimary}" Click="PasteUrl_Click">
+<Button x:Name="BtnAddUrls" Style="{StaticResource FlowButton}" Click="AddUrls_Click" Height="38" Padding="12,0" Margin="0,0,8,0">
+<StackPanel Orientation="Horizontal"><Path Style="{StaticResource FlowStroke}" Data="M8 1 V15 M1 8 H15" Width="13" Height="13" Margin="0,0,7,0"/><TextBlock x:Name="TxtAddLinks" VerticalAlignment="Center"/></StackPanel>
+</Button>
+<Button x:Name="BtnAddFromClipboard" Style="{StaticResource FlowPrimary}" Click="PasteUrl_Click" Height="38" Padding="12,0">
 <StackPanel Orientation="Horizontal">
-<Path Style="{StaticResource FlowStroke}" Data="M8 1 V15 M1 8 H15" Stroke="{DynamicResource OnAccentBrush}" Width="14" Height="14" Margin="0,0,8,0"/>
+<Path Style="{StaticResource FlowStroke}" Data="M5 3 H2 V17 H15 V3 H12 M5 1 H12 V5 H5 Z M5 10 H12 M5 13 H10" Stroke="{DynamicResource OnAccentBrush}" Width="14" Height="14" Margin="0,0,8,0"/>
 <TextBlock x:Name="TxtBtnAdd" Foreground="{DynamicResource OnAccentBrush}" VerticalAlignment="Center"/>
 </StackPanel>
 </Button>
@@ -291,6 +310,7 @@
 <DockPanel>
 <TextBlock x:Name="FlowListLabel" FontSize="10" Foreground="{DynamicResource TextDimBrush}"/>
 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+<Button x:Name="BtnSelectAll" Style="{StaticResource FlowIcon}" Click="SelectAll_Click" Height="28"><Path Style="{StaticResource FlowStroke}" Data="M2 2 H16 V16 H2 Z M5 9 L8 12 13 6" Width="14" Height="14"/></Button>
 <Button x:Name="BtnPause" Style="{StaticResource FlowIcon}" Click="Pause_Click" Height="25">
 <StackPanel Orientation="Horizontal">
 <Path Style="{StaticResource FlowStroke}" Data="{StaticResource FlowPause}" Width="14" Height="14"/>
@@ -308,7 +328,7 @@
 </Button>
 <Button x:Name="BtnRemove" Style="{StaticResource FlowIcon}" Click="Remove_Click" Height="25">
 <StackPanel Orientation="Horizontal">
-<Path Style="{StaticResource FlowStroke}" Data="{StaticResource FlowClose}" Width="14" Height="14"/>
+<Path Style="{StaticResource FlowStroke}" Data="M2 4 H16 M6 4 V1 H12 V4 M4 4 L5 17 H13 L14 4 M7 7 V14 M11 7 V14" Width="14" Height="14"/>
 </StackPanel>
 </Button>
 <Button x:Name="BtnOpenFolder" Style="{StaticResource FlowIcon}" Click="OpenFolder_Click" Height="25">
@@ -316,14 +336,19 @@
 <Path Style="{StaticResource FlowStroke}" Data="{StaticResource FlowFolder}" Width="14" Height="14"/>
 </StackPanel>
 </Button>
-<Button x:Name="BtnAddUrls" Style="{StaticResource FlowIcon}" Click="AddUrls_Click" Height="25">
-<StackPanel Orientation="Horizontal">
-<Path Style="{StaticResource FlowStroke}" Data="{StaticResource FlowDownload}" Width="14" Height="14"/>
-</StackPanel>
-</Button>
+<Button x:Name="BtnToolbarDetails" Style="{StaticResource FlowIcon}" Click="Details_Click" Height="25"><Path Style="{StaticResource FlowStroke}" Data="M8 1 A7 7 0 1 1 8 15 A7 7 0 1 1 8 1 M8 7 V12 M8 4 V5" Width="14" Height="14"/></Button>
 </StackPanel>
 </DockPanel>
-<DataGrid local:SmoothScroll.IsEnabled="True" VirtualizingPanel.ScrollUnit="Pixel" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" ScrollViewer.CanContentScroll="True" ScrollViewer.PanningMode="VerticalOnly" x:Name="Grid" Grid.Row="1" Background="Transparent" BorderThickness="0" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="None" GridLinesVisibility="None" RowStyle="{StaticResource FlowRow}" CellStyle="{StaticResource FlowCell}" RowHeight="NaN" CanUserAddRows="False" CanUserResizeRows="False" CanUserResizeColumns="False" SelectionMode="Extended" SelectionUnit="FullRow" MouseDoubleClick="Grid_DoubleClick" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto">
+<DataGrid local:SmoothScroll.IsEnabled="True" VirtualizingPanel.ScrollUnit="Pixel" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.IsVirtualizingWhenGrouping="True" VirtualizingPanel.VirtualizationMode="Recycling" ScrollViewer.CanContentScroll="True" ScrollViewer.PanningMode="VerticalOnly" x:Name="Grid" Grid.Row="1" Background="Transparent" BorderThickness="0" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="None" GridLinesVisibility="None" RowStyle="{StaticResource FlowRow}" CellStyle="{StaticResource FlowCell}" RowHeight="NaN" CanUserAddRows="False" CanUserResizeRows="False" CanUserResizeColumns="False" SelectionMode="Extended" SelectionUnit="FullRow" MouseDoubleClick="Grid_DoubleClick" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto">
+<DataGrid.GroupStyle><GroupStyle HidesIfEmpty="True"><GroupStyle.Panel><ItemsPanelTemplate><VirtualizingStackPanel/></ItemsPanelTemplate></GroupStyle.Panel><GroupStyle.ContainerStyle><Style TargetType="GroupItem"><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="GroupItem">
+<Expander Style="{StaticResource MultipartExpander}" Expanded="Multipart_Expanded">
+<Expander.Header><Grid Margin="7,0,0,0"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="30"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+<Button Style="{StaticResource FlowIcon}" Tag="multipart-select" Click="SelectMultipart_Click" ToolTip="{DynamicResource FlowGroupSelect}" Width="26" Height="28" Padding="4" Margin="0,0,5,0"><Path Style="{StaticResource FlowStroke}" Data="M2 2 H16 V16 H2 Z M5 9 L8 12 13 6" Width="14" Height="14"/></Button>
+<StackPanel Grid.Column="1" Margin="0,0,10,0"><TextBlock Text="{Binding Name.Summary.DisplayName}" FontSize="13" FontWeight="Medium" TextTrimming="CharacterEllipsis"/><TextBlock Text="{Binding Name.Summary.Stage}" FontSize="10" Foreground="{DynamicResource TextDimBrush}" Margin="0,4,0,0"/></StackPanel>
+<StackPanel Grid.Column="2" VerticalAlignment="Center"><TextBlock DataContext="{Binding Name.Summary}" Text="{Binding Status, Converter={StaticResource StatusLabel}}" Style="{StaticResource FlowState}" HorizontalAlignment="Right"/><TextBlock Text="{Binding Name.Summary.Speed, Converter={StaticResource Speed}}" FontSize="10" Foreground="{DynamicResource TextDimBrush}" HorizontalAlignment="Right" Margin="0,4,0,0"/></StackPanel>
+<ProgressBar Grid.Row="1" Grid.ColumnSpan="3" Style="{StaticResource FlowProgress}" Maximum="1" local:FlowMotion.Progress="{Binding Name.Summary.Progress}" Margin="0,9,0,0"/>
+</Grid></Expander.Header><ItemsPresenter Margin="0,4,0,0"/>
+</Expander></ControlTemplate></Setter.Value></Setter></Style></GroupStyle.ContainerStyle></GroupStyle></DataGrid.GroupStyle>
 <DataGrid.ContextMenu>
 <ContextMenu>
 <MenuItem x:Name="CtxOpen" Click="Open_Click"/>
@@ -372,14 +397,15 @@
 <RowDefinition Height="Auto"/>
 <RowDefinition Height="Auto"/>
 </Grid.RowDefinitions>
-<DockPanel Margin="16,14">
+<DockPanel Margin="13,9">
 <Button x:Name="FlowDetailsButton" DockPanel.Dock="Right" Style="{StaticResource FlowButton}" Click="Details_Click"/>
 <StackPanel>
 <TextBlock x:Name="FlowSelectedLabel" FontSize="10" Foreground="{DynamicResource TextDimBrush}"/>
 <TextBlock Text="{Binding DisplayName}" FontSize="13" Margin="0,5,0,0" TextTrimming="CharacterEllipsis"/>
+<StackPanel x:Name="FlowCompactErrorHost"><TextBlock Text="{Binding Error}" ToolTip="{Binding Error}" FontSize="11" Foreground="{DynamicResource DangerBrush}" TextTrimming="CharacterEllipsis" Margin="0,3,0,0"><TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers><DataTrigger Binding="{Binding Error}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger><DataTrigger Binding="{Binding Error}" Value=""><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock></StackPanel>
 </StackPanel>
 </DockPanel>
-<Border Grid.Row="1" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="16,15">
+<Border x:Name="FlowDetailsBody" Grid.Row="1" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="13,9">
 <Grid>
 <Grid.ColumnDefinitions>
 <ColumnDefinition Width="2*"/>
@@ -389,7 +415,7 @@
 <StackPanel Margin="0,0,16,0">
 <TextBlock Text="{Binding Status, Converter={StaticResource StatusLabel}}" FontSize="11" Foreground="{DynamicResource TextDimBrush}"/>
 <TextBlock Text="{Binding Stage}" Foreground="{DynamicResource AccentTextBrush}" FontSize="12" Margin="0,6,0,0" TextTrimming="CharacterEllipsis"/>
-<TextBlock Text="{Binding Error}" Foreground="{DynamicResource TextDimBrush}" FontSize="11" TextTrimming="CharacterEllipsis"/>
+<TextBlock Text="{Binding Error}" ToolTip="{Binding Error}" Foreground="{DynamicResource TextDimBrush}" FontSize="11" TextTrimming="CharacterEllipsis"/>
 </StackPanel>
 <StackPanel Grid.Column="1">
 <TextBlock x:Name="FlowSizeLabel" FontSize="11" Foreground="{DynamicResource TextDimBrush}"/>

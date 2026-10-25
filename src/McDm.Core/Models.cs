@@ -190,11 +190,18 @@ public sealed class DownloadItem : ObservableBase
     /// <summary>Free-form phase text for video downloads ("Merging…"); null for plain files.</summary>
     [JsonIgnore] public string? Stage { get => _stage; set => Set(ref _stage, value); }
     private bool _isTotalEstimated;
-    /// <summary>Fragment-based size estimates cannot provide a reliable countdown.</summary>
+    /// <summary>Whether the total size is estimated from media fragments.</summary>
     [JsonIgnore] public bool IsTotalEstimated
     {
         get => _isTotalEstimated;
         set { if (Set(ref _isTotalEstimated, value)) Raise(nameof(EtaFormatted)); }
+    }
+    private double? _reportedEtaSeconds;
+    /// <summary>Tool estimate for the current transfer phase; never persisted.</summary>
+    [JsonIgnore] public double? ReportedEtaSeconds
+    {
+        get => _reportedEtaSeconds;
+        set { if (Set(ref _reportedEtaSeconds, value)) Raise(nameof(EtaFormatted)); }
     }
     [JsonIgnore]
     public double Speed
@@ -216,8 +223,10 @@ public sealed class DownloadItem : ObservableBase
     {
         get
         {
-            if (_status != DownloadStatus.Downloading || IsTotalEstimated || _speed <= 1024 || _total <= 0 || _downloaded >= _total)
-                return null;
+            if (_status != DownloadStatus.Downloading || _speed <= 0 || !double.IsFinite(_speed)) return null;
+            if (_reportedEtaSeconds is >= 0 and <= 2592000 && double.IsFinite(_reportedEtaSeconds.Value))
+                return TimeSpan.FromSeconds(_reportedEtaSeconds.Value);
+            if (_total <= 0 || _downloaded >= _total) return null;
             long remaining = _total - _downloaded;
             double secs = remaining / _speed;
             if (secs > 86400 * 30 || double.IsInfinity(secs) || double.IsNaN(secs))
@@ -237,19 +246,20 @@ public sealed class DownloadItem : ObservableBase
             var eta = Eta;
             if (!eta.HasValue) return "—";
             var ts = eta.Value;
+            string prefix = IsTotalEstimated || ReportedEtaSeconds.HasValue ? "~" : "";
             if (isEn)
             {
-                if (ts.TotalDays >= 1) return $"{(int)ts.TotalDays}d {ts.Hours}h";
-                if (ts.TotalHours >= 1) return $"{(int)ts.TotalHours}h {ts.Minutes}m";
-                if (ts.TotalMinutes >= 1) return $"{ts.Minutes}m {ts.Seconds}s";
-                return $"{Math.Max(1, ts.Seconds)}s";
+                if (ts.TotalDays >= 1) return prefix + $"{(int)ts.TotalDays}d {ts.Hours}h";
+                if (ts.TotalHours >= 1) return prefix + $"{(int)ts.TotalHours}h {ts.Minutes}m";
+                if (ts.TotalMinutes >= 1) return prefix + $"{ts.Minutes}m {ts.Seconds}s";
+                return prefix + $"{Math.Max(1, ts.Seconds)}s";
             }
             else
             {
-                if (ts.TotalDays >= 1) return $"{(int)ts.TotalDays}g {ts.Hours}sa";
-                if (ts.TotalHours >= 1) return $"{(int)ts.TotalHours}sa {ts.Minutes}dk";
-                if (ts.TotalMinutes >= 1) return $"{ts.Minutes}dk {ts.Seconds}sn";
-                return $"{Math.Max(1, ts.Seconds)}sn";
+                if (ts.TotalDays >= 1) return prefix + $"{(int)ts.TotalDays}g {ts.Hours}sa";
+                if (ts.TotalHours >= 1) return prefix + $"{(int)ts.TotalHours}sa {ts.Minutes}dk";
+                if (ts.TotalMinutes >= 1) return prefix + $"{ts.Minutes}dk {ts.Seconds}sn";
+                return prefix + $"{Math.Max(1, ts.Seconds)}sn";
             }
         }
     }

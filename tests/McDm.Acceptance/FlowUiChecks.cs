@@ -18,6 +18,9 @@ internal static class FlowUiChecks
         ThemeManager.ApplyThemeMode("dark");
         ThemeManager.ApplyAccentColor("#C3AFFF");
         Strings.SetLanguage("en");
+        var appBuild = typeof(MainWindow).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyMetadataAttribute), false)
+            .OfType<System.Reflection.AssemblyMetadataAttribute>().Single(attribute => attribute.Key == "StableBuild").Value;
+        Require(appBuild == UpdateChecker.CurrentStableBuild.ToString(), "App/Core stable-build metadata differ");
         var family = FontCatalog.Interface;
         var resource = Application.GetResourceStream(new Uri("pack://application:,,,/FMDownloadManager;component/Resources/Fonts/Inter-Regular.ttf"));
         Console.WriteLine("Font resource bytes: " + resource?.Stream.Length);

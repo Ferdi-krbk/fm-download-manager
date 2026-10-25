@@ -7,6 +7,7 @@ public sealed class UpdateInfo
 {
     public bool HasUpdate { get; set; }
     public string LatestVersion { get; set; } = "";
+    public int LatestBuild { get; set; }
     public string ReleaseUrl { get; set; } = "";
     public string ReleaseNotes { get; set; } = "";
     public string DownloadUrl { get; set; } = "";
@@ -25,6 +26,16 @@ public static class UpdateChecker
             return "1.0.0";
         }
     }
+    public static int CurrentStableBuild
+    {
+        get
+        {
+            static int Read(System.Reflection.Assembly? assembly) => int.TryParse(assembly?.GetCustomAttributes(typeof(System.Reflection.AssemblyMetadataAttribute), false)
+                .OfType<System.Reflection.AssemblyMetadataAttribute>().FirstOrDefault(attribute => attribute.Key == "StableBuild")?.Value, out var build) ? build : 0;
+            int entry = Read(System.Reflection.Assembly.GetEntryAssembly());
+            return entry > 0 ? entry : Read(typeof(UpdateChecker).Assembly);
+        }
+    }
     public const string RepoOwner = "Ferdi-krbk";
     public const string RepoName = "fm-download-manager";
 
@@ -41,7 +52,7 @@ public static class UpdateChecker
             if (!response.IsSuccessStatusCode) return null;
 
             var json = await response.Content.ReadAsStringAsync(ct);
-            return ParseRelease(json, CurrentVersion);
+            return ParseRelease(json, CurrentVersion, CurrentStableBuild);
         }
         catch
         {
@@ -49,7 +60,7 @@ public static class UpdateChecker
         }
     }
 
-    public static UpdateInfo? ParseRelease(string json, string currentVersion)
+    public static UpdateInfo? ParseRelease(string json, string currentVersion, int currentBuild = -1)
     {
         using var doc = JsonDocument.Parse(json);
         var root = doc.RootElement;
@@ -73,21 +84,27 @@ public static class UpdateChecker
             }
         }
 
-        // v3.8.0 is a machine-readable bridge for installed numeric-only updaters.
-        // Only this reserved tag accepts an explicit stable target from this repository.
-        if (cleanTag == "3.8.0")
+        int stableBuild = 0;
+        // 3.8.x is reserved for compatibility with installed numeric-only updaters.
+        if (Version.TryParse(cleanTag, out var bridgeVersion) && bridgeVersion.Major == 3 && bridgeVersion.Minor == 8)
         {
             const string prefix = "FM_STABLE_TARGET=";
             var marker = body.Split('\n').Select(line => line.Trim()).FirstOrDefault(line => line.StartsWith(prefix, StringComparison.Ordinal));
             if (marker == null || !Version.TryParse(marker[prefix.Length..], out var target) || target.Major is < 1 or >= 3 || target.Build < 0)
                 return null; // Never offer the compatibility tag itself as a stable version.
+            const string buildPrefix = "FM_STABLE_BUILD=";
+            var buildMarker = body.Split('\n').Select(line => line.Trim()).FirstOrDefault(line => line.StartsWith(buildPrefix, StringComparison.Ordinal));
+            if (buildMarker != null && (!int.TryParse(buildMarker[buildPrefix.Length..], out stableBuild) || stableBuild < 0)) return null;
             cleanTag = target.ToString(3);
             releaseUrl = $"https://github.com/{RepoOwner}/{RepoName}/releases/tag/v{cleanTag}";
         }
         bool isNewer = IsNewer(cleanTag, currentVersion);
+        if (currentBuild >= 0 && string.Equals(cleanTag, currentVersion.Trim().TrimStart('v', 'V'), StringComparison.Ordinal)
+            && stableBuild > currentBuild) isNewer = true;
         return new UpdateInfo
         {
             HasUpdate = isNewer,
+            LatestBuild = stableBuild,
             LatestVersion = !string.IsNullOrEmpty(cleanTag) ? cleanTag : currentVersion,
             ReleaseUrl = releaseUrl,
             ReleaseNotes = body,

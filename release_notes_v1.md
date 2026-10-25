@@ -55,7 +55,7 @@ Install the optional extension from the installed app's `extension` folder, then
 check pairing in Browser setup. Reload an existing unpacked extension after updating.
 
 3.7.2 users can accept the in-app update without downloading files from GitHub.
-A separate compatibility entry (machine tag v3.8.0) delivers the 1.0.0 installer,
+A separate compatibility entry (machine tag v3.8.1) delivers the 1.0.0 installer,
 installs after the existing confirmation and reopens FM. The refreshed client reads
 the actual stable target and avoids repeat prompts. Settings/history stay in place.
 The old client cannot be changed remotely to skip its own confirmation.

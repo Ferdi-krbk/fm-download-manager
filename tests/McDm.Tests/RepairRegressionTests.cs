@@ -291,6 +291,14 @@ public static class RepairRegressionTests
             """;
             var old = UpdateChecker.ParseRelease(json, "3.7.2");
             check(old?.HasUpdate == true && old.LatestVersion == "1.0.0", "bridge target was not mapped to stable");
+            // v3.8.1 is also discoverable by the first stable parser, which only reserves v3.8.0.
+            check(UpdateChecker.IsNewer("3.8.1", "1.0.0"), "initial stable build cannot discover the refreshed bridge");
+            var refreshed = json.Replace("v3.8.0", "v3.8.1").Replace("FM_STABLE_TARGET=1.0.0", "FM_STABLE_TARGET=1.0.0\\nFM_STABLE_BUILD=2");
+            check(UpdateChecker.ParseRelease(refreshed, "1.0.0", 1)?.HasUpdate == true, "same-version build refresh was not offered");
+            check(UpdateChecker.ParseRelease(refreshed, "1.0.0", 2)?.HasUpdate == false, "same build creates an update loop");
+            check(UpdateChecker.ParseRelease(refreshed, "1.0.0", 3)?.HasUpdate == false, "older stable build was offered as a downgrade");
+            check(UpdateChecker.ParseRelease(refreshed, "2.0.0", 1)?.HasUpdate == false, "build marker overrode a newer product version");
+            check(UpdateChecker.CurrentStableBuild == 2, "stable-build assembly metadata missing");
             var installed = UpdateChecker.ParseRelease(json, "1.0.0");
             check(installed?.HasUpdate == false, "bridge creates an endless update loop");
             check(UpdateChecker.ParseRelease(json.Replace("FM_STABLE_TARGET=1.0.0", "FM_STABLE_TARGET=garbage"), "1.0.0") == null, "invalid target accepted");

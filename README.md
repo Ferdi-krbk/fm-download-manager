@@ -80,7 +80,7 @@ Load the installed folder so app updates can replace the extension files. Reload
 
 ### Coming from 3.x?
 
-**1.0.0 is the first official stable release.** Earlier numbered builds are retained as historical prereleases. 3.7.2 users can accept the in-app update: the compatibility bridge downloads and installs 1.0.0, then reopens FM. The old client may display the compatibility tag 3.8.0; the installed application is 1.0.0. [Migration notes](docs/MIGRATION-1.0.md).
+**1.0.0 is the first official stable release.** Earlier numbered builds are retained as historical prereleases. 3.7.2 users can accept the in-app update: the compatibility bridge downloads and installs 1.0.0, then reopens FM. The old client may display the compatibility tag 3.8.1; the installed application is 1.0.0. [Migration notes](docs/MIGRATION-1.0.md).
 
 ## Privacy and safety
 

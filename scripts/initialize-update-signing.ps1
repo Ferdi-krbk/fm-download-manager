@@ -18,7 +18,7 @@ try {
     }
     $publicPath = Join-Path $PSScriptRoot '../src/McDm.Core/update-public-key.pem'
     $public = $rsa.ExportSubjectPublicKeyInfoPem()
-    if ((Test-Path -LiteralPath $publicPath) -and [IO.File]::ReadAllText($publicPath).Trim() -ne $public.Trim()) {
+    if ((Test-Path -LiteralPath $publicPath) -and [IO.File]::ReadAllText($publicPath).Replace("`r", '').Trim() -ne $public.Replace("`r", '').Trim()) {
         throw 'Existing public key differs; explicit key rotation is required.'
     }
     [IO.File]::WriteAllText($publicPath, $public + "`n", [Text.UTF8Encoding]::new($false))

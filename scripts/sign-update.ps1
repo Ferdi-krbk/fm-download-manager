@@ -21,8 +21,8 @@ try {
     }
     $read = 0
     $rsa.ImportPkcs8PrivateKey($private, [ref]$read)
-    $expected = [IO.File]::ReadAllText((Join-Path $PSScriptRoot '../src/McDm.Core/update-public-key.pem')).Trim()
-    if ($rsa.ExportSubjectPublicKeyInfoPem().Trim() -ne $expected) { throw 'Signing key does not match the application verification key' }
+    $expected = [IO.File]::ReadAllText((Join-Path $PSScriptRoot '../src/McDm.Core/update-public-key.pem')).Replace("`r", '').Trim()
+    if ($rsa.ExportSubjectPublicKeyInfoPem().Replace("`r", '').Trim() -ne $expected) { throw 'Signing key does not match the application verification key' }
     $manifest = [ordered]@{
         version = $Version; build = $Build; asset = $asset.Name
         sha256 = (Get-FileHash -LiteralPath $asset.FullName -Algorithm SHA256).Hash.ToLowerInvariant()

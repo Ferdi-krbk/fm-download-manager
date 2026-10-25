@@ -88,6 +88,8 @@ Load the installed folder so app updates can replace the extension files. Reload
 - The browser bridge listens on `127.0.0.1` and requires a per-user pairing token for download and control requests.
 - Cookies are selected for the destination's domain, path, expiry and HTTPS requirements. Pending job credentials are protected with Windows DPAPI; completed/cancelled jobs omit them from saved history.
 - HTTPS certificate validation is enabled. Bundled tool downloads are pinned and checked against SHA-256 hashes.
+- In-app updates require an RSA-PSS signed manifest and matching version, build, size and SHA-256 before launch. This is separate from Windows publisher signing.
+- Completed downloads receive Windows internet-origin marks on filesystems that support alternate data streams. Windows and Office decide which warnings or restrictions apply.
 - Antivirus scanning is optional. A completed download is not a guarantee that a file is safe; unavailable or incomplete scans are reported separately.
 
 Download URLs and filenames are saved locally. URLs can contain access tokens, so review diagnostic files before sharing them. See [Privacy](PRIVACY.md) and [Security](SECURITY.md).

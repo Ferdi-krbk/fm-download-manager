@@ -11,6 +11,40 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+if (args.Length == 1 && args[0] == "--security-only")
+{
+    int securityPassed = 0, securityFailed = 0;
+    await McDm.Tests.ReleaseSecurityTests.RunAsync(async (name, body) =>
+    {
+        try { await body(); securityPassed++; Console.WriteLine("PASS " + name); }
+        catch (Exception error) { securityFailed++; Console.WriteLine("FAIL " + name + ": " + error.Message); }
+    }, (ok, message) => { if (!ok) throw new Exception(message); }, () =>
+    {
+        string folder = Path.Combine(Path.GetTempPath(), "mcdm-security-tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder); return folder;
+    });
+    Console.WriteLine($"{securityPassed} passed, {securityFailed} failed");
+    return securityFailed == 0 ? 0 : 1;
+}
+if (args.Length == 1 && args[0] == "--verify-published-update")
+{
+    var update = await UpdateChecker.CheckAsync() ?? throw new Exception("Release metadata is unavailable");
+    string file = await SignedUpdates.DownloadVerifiedAsync(update);
+    Console.WriteLine(JsonSerializer.Serialize(new { update.LatestVersion, update.LatestBuild, File = file, Sha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(file))) }));
+    return 0; // Intentionally never launches or installs the downloaded executable.
+}
+if (args.Length == 4 && args[0] == "--verify-local-update")
+{
+    byte[] manifest = File.ReadAllBytes(args[2]);
+    var raw = JsonSerializer.Deserialize<SignedUpdates.Manifest>(manifest, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
+    var info = new UpdateInfo { LatestVersion = raw.Version, LatestBuild = raw.Build, AssetName = Path.GetFileName(args[1]) };
+    var verified = SignedUpdates.VerifyManifest(manifest, File.ReadAllBytes(args[3]), info, SignedUpdates.PublicKey);
+    string hash = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(args[1])));
+    if (new FileInfo(args[1]).Length != verified.Size || !hash.Equals(verified.Sha256, StringComparison.OrdinalIgnoreCase))
+        throw new CryptographicException("Published package bytes differ from signed manifest");
+    Console.WriteLine($"Verified {verified.Asset}, version {verified.Version}, build {verified.Build}, SHA256 {hash}");
+    return 0;
+}
 if (args.Length == 2 && args[0] == "--antivirus-rescan-probe")
 {
     string directory = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(args[1]))!, "rescan-probe-" + Guid.NewGuid().ToString("N"));
@@ -523,6 +557,7 @@ await McDm.Tests.VideoTests.RunAsync(Test, Check, Tmp);
 await McDm.Tests.HardeningTests.RunAsync(Test, Check, Tmp);
 await McDm.Tests.StressAndBoundaryTests.RunAsync(Test, Check, Tmp);
 await McDm.Tests.RepairRegressionTests.RunAsync(Test, Check, Tmp);
+await McDm.Tests.ReleaseSecurityTests.RunAsync(Test, Check, Tmp);
 
 Console.WriteLine($"\n{passed} passed, {failed} failed");
 await origin.StopAsync();

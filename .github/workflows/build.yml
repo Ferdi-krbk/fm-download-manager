@@ -111,6 +111,17 @@ jobs:
           "$sha  $($_.Name)"
         } | Set-Content -LiteralPath dist/SHA256SUMS.txt -Encoding ascii
 
+    - name: Sign official update manifest
+      if: startsWith(github.ref, 'refs/tags/v') && !github.event.forced
+      shell: pwsh
+      env:
+        FM_UPDATE_SIGNING_KEY: ${{ secrets.FM_UPDATE_SIGNING_KEY }}
+      run: |
+        [xml]$project = Get-Content src/McDm.App/McDm.App.csproj
+        $version = [string]($project.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1)
+        $build = [int](($project.Project.ItemGroup.AssemblyMetadata | Where-Object Include -eq 'StableBuild' | Select-Object -First 1).Value)
+        ./scripts/sign-update.ps1 -AssetPath "dist/FMDownloadManager-Setup-$version.exe" -Version $version -Build $build
+
     - name: Release on tag
       # Updating an existing official release after a forced retag uses maintainer credentials.
       if: startsWith(github.ref, 'refs/tags/v') && !github.event.forced
@@ -124,6 +135,8 @@ jobs:
           dist/FMDownloadManager-Setup-*.exe
           dist/winget/*.yaml
           dist/SHA256SUMS.txt
+          dist/update-manifest.json
+          dist/update-manifest.sig
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -132,12 +145,14 @@ jobs:
       shell: pwsh
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        FM_UPDATE_SIGNING_KEY: ${{ secrets.FM_UPDATE_SIGNING_KEY }}
       run: |
         ./scripts/build-legacy-bootstrap.ps1 -InstallerPath dist/FMDownloadManager-Setup-1.0.0.exe
         if ($LASTEXITCODE -ne 0) { throw 'Bridge verification failed' }
         [xml]$project = Get-Content src/McDm.App/McDm.App.csproj
         $stableBuild = [string](($project.Project.ItemGroup.AssemblyMetadata | Where-Object Include -eq 'StableBuild' | Select-Object -First 1).Value)
         if ([int]$stableBuild -lt 1) { throw 'Stable build metadata is missing' }
+        ./scripts/sign-update.ps1 -AssetPath dist/legacy-bridge/FM-Legacy-Update.exe -Version 1.0.0 -Build ([int]$stableBuild)
         $notes = @'
         This compatibility update installs FM Download Manager 1.0.0. Accept the update in your existing app; downloading and installation then complete automatically. The 3.8.1 tag only lets old numeric-only updaters discover 1.0.0.
 
@@ -156,7 +171,12 @@ jobs:
           gh release create v3.8.1 --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title 'FM Download Manager 1.0.0 - update compatibility' --notes-file dist/legacy-bridge/release-notes.md --latest=false
           if ($LASTEXITCODE -ne 0) { throw 'Bridge release creation failed' }
         }
-        gh release upload v3.8.1 dist/legacy-bridge/FM-Legacy-Update.exe dist/legacy-bridge/SHA256SUMS.txt --repo $env:GITHUB_REPOSITORY --clobber
+        gh release upload v3.8.1 dist/legacy-bridge/FM-Legacy-Update.exe dist/legacy-bridge/SHA256SUMS.txt dist/legacy-bridge/update-manifest.json dist/legacy-bridge/update-manifest.sig --repo $env:GITHUB_REPOSITORY --clobber
         if ($LASTEXITCODE -ne 0) { throw 'Bridge upload failed' }
+        # Refresh the historical compatibility URL too, for clients with a cached offer.
+        gh release upload v3.8.0 dist/legacy-bridge/FM-Legacy-Update.exe dist/legacy-bridge/SHA256SUMS.txt dist/legacy-bridge/update-manifest.json dist/legacy-bridge/update-manifest.sig --repo $env:GITHUB_REPOSITORY --clobber
+        if ($LASTEXITCODE -ne 0) { throw 'Cached bridge upload failed' }
+        gh release edit v3.8.0 --repo $env:GITHUB_REPOSITORY --notes-file dist/legacy-bridge/release-notes.md --prerelease --latest=false
+        if ($LASTEXITCODE -ne 0) { throw 'Cached bridge metadata update failed' }
         gh release edit v3.8.1 --repo $env:GITHUB_REPOSITORY --title 'FM Download Manager 1.0.0 - update compatibility' --notes-file dist/legacy-bridge/release-notes.md --latest
         if ($LASTEXITCODE -ne 0) { throw 'Bridge promotion failed' }

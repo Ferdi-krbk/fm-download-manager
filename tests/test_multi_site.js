@@ -190,22 +190,20 @@ it('yt-dlp executable exists and responds with version', () => {
   console.log(`     (yt-dlp version: ${res.stdout.trim()})`);
 });
 
-it('yt-dlp extracts real public Akamai/Apple HLS master stream using --referer', () => {
+if (process.env.FM_LIVE_MEDIA_URL) it('yt-dlp extracts the opted-in live media URL with certificate verification', () => {
   const ytDlpPath = path.join(__dirname, '../Tools/yt-dlp.exe');
-  // Official Apple test HLS master playlist URL
-  const testHls = 'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_4x3/bipbop_4x3_variant.m3u8';
-  const res = spawnSync(ytDlpPath, [
-    '--no-check-certificates',
-    '--impersonate', 'chrome',
-    '--referer', 'https://developer.apple.com/',
-    '-F',
-    testHls
-  ], { encoding: 'utf8', timeout: 15000 });
+  // Deterministic local HLS transfers are mandatory in McDm.Acceptance.
+  // External service availability is an explicit, separately reported probe.
+  const args = ['--ignore-config', '--socket-timeout', '15', '-F'];
+  if (process.env.FM_LIVE_MEDIA_REFERER) args.push('--referer', process.env.FM_LIVE_MEDIA_REFERER);
+  args.push('--', process.env.FM_LIVE_MEDIA_URL);
+  const res = spawnSync(ytDlpPath, args, { encoding: 'utf8', timeout: 60000 });
 
   assert.strictEqual(res.status, 0, `yt-dlp failed on HLS test stream: ${res.stderr}`);
   assert.ok(res.stdout.includes('m3u8') || res.stdout.includes('Resolution'), 'Must extract HLS resolutions');
   console.log('     (HLS master playlist extracted successfully with video+audio renditions)');
 });
+else console.log('  SKIP: external media probe (set FM_LIVE_MEDIA_URL to opt in; local HLS is checked by acceptance tests)');
 
 // -------------------------------------------------------------
 // TEST 7: Random News, Blog & Educational Sites

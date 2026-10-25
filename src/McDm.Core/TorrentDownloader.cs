@@ -131,6 +131,7 @@ public sealed class TorrentDownloader : IDisposable
                     item.DownloadedBytes = item.TotalBytes > 0 ? item.TotalBytes : item.DownloadedBytes;
                     item.ContentFiles = manager.Files.Select(f => f.DownloadCompleteFullPath).ToList();
                     item.SavePath = manager.Files.Count == 1 ? manager.Files[0].DownloadCompleteFullPath : manager.ContainingDirectory;
+                    DownloadOrigin.MarkCompleted(item, cancel);
                     break;
                 }
 

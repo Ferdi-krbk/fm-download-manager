@@ -8,7 +8,7 @@ must agree. CI rejects a release tag that differs from the project version.
 Installed 3.7.2 clients compare version numbers numerically. The reserved GitHub
 release tag `v3.8.1` is an update compatibility marker; its payload installs the
 actual stable application **1.0.0**. It is not a new 3.x application release.
-The release body declares `FM_STABLE_TARGET=1.0.0` and `FM_STABLE_BUILD=3`. Refreshed stable clients read
+The release body declares `FM_STABLE_TARGET=1.0.0` and `FM_STABLE_BUILD=4`. Refreshed stable clients read
 that target and build number, so they receive refreshed 1.0.0 builds without
 repeatedly offering the same installer. Build metadata is embedded in App and
 Core; the displayed application version remains 1.0.0. The 3.8.1 marker also
@@ -26,6 +26,8 @@ launching it. It preserves the registered installation directory, uses the same
 per-user installer AppId, and does not delete settings or download history.
 Its `--verify-only` mode verifies the embedded payload without installing it.
 The checksum validates the embedded payload; it does not replace code signing.
+Build 4 additionally verifies the outer package against an RSA-PSS signed manifest
+before launch. Previously installed clients lack that check until upgraded.
 
 Keep `v3.8.1` as the API's Latest release for old clients. For subsequent stable
 updates, refresh its payload and stable-target marker together. The official

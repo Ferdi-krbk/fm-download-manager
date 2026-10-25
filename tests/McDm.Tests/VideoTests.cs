@@ -29,6 +29,7 @@ public static class VideoTests
             var args = VideoDownloader.BuildArguments("https://example.com/watch?v=123", opt, @"C:\Downloads", @"C:\Downloads\.temp", @"C:\temp\cookies.txt", @"C:\Tools\ffmpeg.exe");
 
             check(args.Contains("-c"), "should contain resume/continue -c flag");
+            check(!args.Contains("--no-check-certificates"), "HTTPS verification must remain enabled even when cookies are supplied");
             check(args.Contains("--newline"), "should contain --newline");
             check(args.Contains("--progress-template"), "should contain --progress-template");
             check(args.Contains("--merge-output-format"), "should contain merge output format");

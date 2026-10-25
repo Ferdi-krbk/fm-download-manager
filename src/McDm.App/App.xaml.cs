@@ -377,19 +377,21 @@ public partial class App : System.Windows.Application
                     {
                         try
                         {
-                            var tempFile = Path.Combine(Path.GetTempPath(), $"FMDownloadManager-Setup-{info.LatestVersion}.exe");
-                            using (var http = new HttpClient())
-                            using (var stream = await http.GetStreamAsync(info.DownloadUrl))
-                            using (var fs = new FileStream(tempFile, FileMode.Create, FileAccess.Write, FileShare.None))
-                            {
-                                await stream.CopyToAsync(fs);
-                            }
+                            var tempFile = await SignedUpdates.DownloadVerifiedAsync(info);
 
                             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(tempFile) { UseShellExecute = true });
                             Application.Current.Shutdown();
                             return;
                         }
-                        catch { }
+                        catch
+                        {
+                            bool tr = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "tr";
+                            DarkMessageBox.Show(_window, tr
+                                ? "Güncelleme güvenli biçimde indirilemedi veya doğrulanamadı. Hiçbir paket çalıştırılmadı. Bağlantınızı kontrol edip tekrar deneyin."
+                                : "The update could not be securely downloaded or verified. No package was launched. Check your connection and retry.",
+                                Strings.AppTitle, MessageBoxButton.OK, MessageBoxImage.Warning);
+                            return;
+                        }
                     }
                     try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(info.ReleaseUrl) { UseShellExecute = true }); } catch { }
                 }

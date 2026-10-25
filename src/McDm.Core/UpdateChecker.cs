@@ -11,6 +11,9 @@ public sealed class UpdateInfo
     public string ReleaseUrl { get; set; } = "";
     public string ReleaseNotes { get; set; } = "";
     public string DownloadUrl { get; set; } = "";
+    public string ManifestUrl { get; set; } = "";
+    public string SignatureUrl { get; set; } = "";
+    public string AssetName { get; set; } = "";
 }
 
 public static class UpdateChecker
@@ -70,7 +73,7 @@ public static class UpdateChecker
         var releaseUrl = root.TryGetProperty("html_url", out var h) ? h.GetString() ?? "" : $"https://github.com/{RepoOwner}/{RepoName}/releases";
         var body = root.TryGetProperty("body", out var b) ? b.GetString() ?? "" : "";
 
-        string downloadUrl = "";
+        string downloadUrl = "", assetName = "";
         if (root.TryGetProperty("assets", out var assets) && assets.ValueKind == JsonValueKind.Array)
         {
             foreach (var asset in assets.EnumerateArray())
@@ -79,12 +82,16 @@ public static class UpdateChecker
                 if (name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
                 {
                     downloadUrl = asset.TryGetProperty("browser_download_url", out var dl) ? dl.GetString() ?? "" : "";
+                    assetName = name;
                     break;
                 }
             }
         }
 
         int stableBuild = 0;
+        const string buildPrefix = "FM_STABLE_BUILD=";
+        var buildMarker = body.Split('\n').Select(line => line.Trim()).FirstOrDefault(line => line.StartsWith(buildPrefix, StringComparison.Ordinal));
+        if (buildMarker != null && (!int.TryParse(buildMarker[buildPrefix.Length..], out stableBuild) || stableBuild < 0)) return null;
         // 3.8.x is reserved for compatibility with installed numeric-only updaters.
         if (Version.TryParse(cleanTag, out var bridgeVersion) && bridgeVersion.Major == 3 && bridgeVersion.Minor == 8)
         {
@@ -92,9 +99,6 @@ public static class UpdateChecker
             var marker = body.Split('\n').Select(line => line.Trim()).FirstOrDefault(line => line.StartsWith(prefix, StringComparison.Ordinal));
             if (marker == null || !Version.TryParse(marker[prefix.Length..], out var target) || target.Major is < 1 or >= 3 || target.Build < 0)
                 return null; // Never offer the compatibility tag itself as a stable version.
-            const string buildPrefix = "FM_STABLE_BUILD=";
-            var buildMarker = body.Split('\n').Select(line => line.Trim()).FirstOrDefault(line => line.StartsWith(buildPrefix, StringComparison.Ordinal));
-            if (buildMarker != null && (!int.TryParse(buildMarker[buildPrefix.Length..], out stableBuild) || stableBuild < 0)) return null;
             cleanTag = target.ToString(3);
             releaseUrl = $"https://github.com/{RepoOwner}/{RepoName}/releases/tag/v{cleanTag}";
         }
@@ -108,7 +112,11 @@ public static class UpdateChecker
             LatestVersion = !string.IsNullOrEmpty(cleanTag) ? cleanTag : currentVersion,
             ReleaseUrl = releaseUrl,
             ReleaseNotes = body,
-            DownloadUrl = !string.IsNullOrEmpty(downloadUrl) ? downloadUrl : releaseUrl
+            DownloadUrl = downloadUrl,
+            AssetName = assetName,
+            // Derive these addresses from our repository, never an arbitrary metadata host.
+            ManifestUrl = $"https://github.com/{RepoOwner}/{RepoName}/releases/download/{Uri.EscapeDataString(tag)}/update-manifest.json",
+            SignatureUrl = $"https://github.com/{RepoOwner}/{RepoName}/releases/download/{Uri.EscapeDataString(tag)}/update-manifest.sig"
         };
     }
 

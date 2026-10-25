@@ -942,13 +942,7 @@ public partial class MainWindow : Window
                 {
                     TxtUpdateVersion.Text = isTr ? "İndiriliyor..." : "Downloading...";
                     BtnUpdateAvailable.IsEnabled = false;
-                    var tempFile = Path.Combine(Path.GetTempPath(), $"FMDownloadManager-Setup-{_latestUpdate.LatestVersion}.exe");
-                    using (var http = new System.Net.Http.HttpClient())
-                    using (var stream = await http.GetStreamAsync(_latestUpdate.DownloadUrl))
-                    using (var fs = new FileStream(tempFile, FileMode.Create, FileAccess.Write, FileShare.None))
-                    {
-                        await stream.CopyToAsync(fs);
-                    }
+                    var tempFile = await SignedUpdates.DownloadVerifiedAsync(_latestUpdate);
 
                     Process.Start(new ProcessStartInfo(tempFile) { UseShellExecute = true });
                     Application.Current.Shutdown();
@@ -958,6 +952,11 @@ public partial class MainWindow : Window
                 {
                     BtnUpdateAvailable.IsEnabled = true;
                     TxtUpdateVersion.Text = $"v{_latestUpdate.LatestVersion} " + (isTr ? "Yayında!" : "Available!");
+                    DarkMessageBox.Show(this, isTr
+                        ? "Güncelleme güvenli biçimde indirilemedi veya doğrulanamadı. Hiçbir paket çalıştırılmadı. Bağlantınızı kontrol edip tekrar deneyin."
+                        : "The update could not be securely downloaded or verified. No package was launched. Check your connection and retry.",
+                        Strings.AppTitle, MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
                 }
             }
             try { Process.Start(new ProcessStartInfo(_latestUpdate.ReleaseUrl) { UseShellExecute = true }); } catch { }

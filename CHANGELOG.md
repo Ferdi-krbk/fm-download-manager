@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.0 security refresh (stable build 4) - 2026-10-25
+
+- Enable HTTPS certificate validation in the actual yt-dlp download command.
+- Require pinned-key RSA-PSS signed update manifests and validate package version,
+  build, name, size and SHA-256 before either in-app update entry point launches it.
+- Reject insecure update redirects and use unique temporary package directories.
+- Mark completed HTTP, media and torrent files as internet-origin on supported
+  Windows filesystems, preserving restricted-zone marks and private URLs.
+- Add negative security regressions for tampering, wrong keys, stale packages,
+  untrusted hosts, oversized metadata and untrusted video-server certificates.
+
 ## 1.0.0 interface refresh - 2026-10-25
 
 - Detect installed antivirus products automatically and use registered Windows

@@ -162,6 +162,9 @@ internal static class Program
             Require(note.Status == DownloadStatus.Completed && clip.Status == DownloadStatus.Completed, "sample downloads failed");
             Require(Hash(note.SavePath) == Hash(Path.Combine(fixtures, "release-notes.txt")), "text file hash mismatch");
             Require(Hash(clip.SavePath) == Hash(movie), "video file hash mismatch");
+            Require(File.ReadAllText(note.SavePath + ":Zone.Identifier").Contains("ZoneId=3"), "text file internet mark missing");
+            Require(File.ReadAllText(clip.SavePath + ":Zone.Identifier").Contains("ZoneId=3"), "video file internet mark missing");
+            reports.Add("PASS Windows internet marks: completed HTTP files carry ZoneId=3 without changing their hashes");
             reports.Add("PASS direct HTTP downloads: downloaded text and MP4 match their source SHA-256");
             if (manager.VirusScanEnabled)
             {

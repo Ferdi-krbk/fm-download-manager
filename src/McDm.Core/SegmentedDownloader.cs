@@ -192,6 +192,7 @@ public sealed class SegmentedDownloader
         item.Speed = 0;
 
         await MoveFileWithRetryAsync(part, item);
+        DownloadOrigin.MarkFile(item.SavePath);
         TryDelete(StatePath(item.SavePath));
         TryDelete(StatePath(Path.ChangeExtension(part, null) ?? ""));
     }

@@ -232,7 +232,6 @@ public sealed class VideoDownloader
             "--no-mtime",
             "--concurrent-fragments", IsYouTubeUrl(url) ? "5" : "1",
             "--buffer-size", "1024K",
-            "--no-check-certificates",
             "--socket-timeout", "20",
             "--extractor-retries", "10",
             "--file-access-retries", "20",
@@ -610,6 +609,7 @@ public sealed class VideoDownloader
             string srtFile = Path.Combine(outDir, $"{baseName}.{cleanSubLang}.srt");
             await File.WriteAllTextAsync(srtFile, srtContent, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), ct);
             CleanAndNormalizeSubtitleFile(srtFile);
+            DownloadOrigin.MarkFile(srtFile);
 
             item.SavePath = srtFile;
             item.FileName = Path.GetFileName(srtFile);
@@ -733,6 +733,7 @@ public sealed class VideoDownloader
                     foreach (var srt in Directory.GetFiles(outDir, $"{baseName}*.srt"))
                     {
                         CleanAndNormalizeSubtitleFile(srt);
+                        DownloadOrigin.MarkFile(srt);
                     }
 
                     string? srtToEmbed = File.Exists(finalSrt) ? finalSrt : Directory.GetFiles(outDir, $"{baseName}*.srt").FirstOrDefault();
@@ -758,6 +759,7 @@ public sealed class VideoDownloader
                 }
             }
 
+            DownloadOrigin.MarkFile(item.SavePath);
             // Clean up temporary work directory now that yt-dlp and subtitle muxing succeeded
             if (!string.IsNullOrEmpty(item.WorkDir) && Directory.Exists(item.WorkDir))
             {
@@ -1696,7 +1698,6 @@ public sealed class VideoDownloader
                          cookieFile, _ffmpeg(), item.Request.UserAgent, item.Request.Referer,
                          Path.GetFileName(outTemplate), jsRuntime);
             // Preserve certificate validation in the separate-audio path.
-            audioArguments.Remove("--no-check-certificates");
             foreach (var arg in audioArguments)
                 psi.ArgumentList.Add(arg);
 

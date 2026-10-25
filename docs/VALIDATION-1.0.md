@@ -1,7 +1,31 @@
 # 1.0.0 validation
 
-Validated on Windows on 24 October 2026. Automated tests are not a guarantee that
+Validated on Windows on 25 October 2026. Automated tests are not a guarantee that
 every host, browser version or antivirus product will behave identically.
+
+## Security refresh: stable build 4
+
+- All 74 Core regressions passed, including seven update/origin/TLS security checks.
+- The actual bundled yt-dlp rejected a generated, untrusted HTTPS video certificate;
+  an isolated loopback transport control confirmed that the fixture itself worked.
+- A valid signed update downloaded byte-exactly; wrong keys, modified manifests,
+  changed/truncated/oversized packages, stale builds, untrusted asset hosts,
+  HTTP redirects and missing signatures were rejected without launching an exe.
+- Windows internet-origin marks were verified without changing file contents;
+  restricted-zone marks and unrelated files in destination folders were preserved.
+- All eight standalone JavaScript suites and the isolated real-browser extension
+  UI check passed. External service extraction is explicitly opt-in; mandatory HLS
+  transfer/muxing tests use actual local media and actual yt-dlp/FFmpeg.
+- Native acceptance passed actual HTTP hashes, multipart ZIP reconstruction,
+  pause/resume, HLS video/audio/subtitles, public HTTPS and installed Kaspersky
+  scanning. Tests used separate fixtures, not personal downloads.
+- The NuGet vulnerability query reported no known vulnerable application packages.
+  This is an advisory-database check, not proof that all dependencies are secure.
+
+A fresh Windows installation and a full upgrade of a separately installed 3.7.2
+binary were not exercised on another machine in this run. The compatibility
+version/parser tests and embedded installer verification do not replace that test.
+Bitdefender and other antivirus products not installed here remain unverified.
 
 ## Core and extension regressions
 

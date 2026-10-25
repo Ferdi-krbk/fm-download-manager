@@ -383,6 +383,7 @@ public sealed class DownloadManager : IDisposable, IAsyncDisposable
                 try { if (Directory.Exists(item.WorkDir)) Directory.Delete(item.WorkDir, recursive: true); } catch { }
                 item.WorkDir = null;
             }
+            DownloadOrigin.MarkCompleted(item, cts.Token);
             if (VirusScanEnabled && !string.IsNullOrEmpty(item.SavePath) && (File.Exists(item.SavePath) || Directory.Exists(item.SavePath)))
             {
                 await RunVirusScanAsync(item, CustomAntivirusPath, CustomAntivirusArgs, cts.Token);

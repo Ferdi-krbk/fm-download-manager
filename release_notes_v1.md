@@ -1,5 +1,9 @@
 # FM Download Manager 1.0.0
 
+<!--
+FM_STABLE_BUILD=4
+-->
+
 The first official stable release. Earlier numbered builds are retained as
 historical alpha/beta prereleases; their tags and downloadable files remain intact.
 
@@ -39,6 +43,11 @@ https://learn.microsoft.com/en-us/windows/win32/api/amsi/nf-amsi-iantimalware-sc
 - Companion Chromium extension, distributed as an unpacked extension.
 
 ## Reliability and security
+
+- Stable build 4 verifies an RSA-PSS signed manifest and the exact update package
+  before launching it; missing/invalid verification data blocks installation.
+- Completed downloads receive Windows internet-origin marks on supported
+  filesystems, preserving Windows/Office attachment-origin protections.
 
 - Interrupted non-range downloads restart cleanly instead of duplicating bytes.
 - Resume checkpoints and entity validators are checked; transfer requests use If-Range.

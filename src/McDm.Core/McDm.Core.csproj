@@ -11,7 +11,9 @@
     <UseAppHost>false</UseAppHost>
   </PropertyGroup>
   <ItemGroup>
-    <AssemblyMetadata Include="StableBuild" Value="3" />
+    <AssemblyMetadata Include="StableBuild" Value="4" />
+    <EmbeddedResource Include="update-public-key.pem" />
+    <InternalsVisibleTo Include="McDm.Tests" />
   </ItemGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />

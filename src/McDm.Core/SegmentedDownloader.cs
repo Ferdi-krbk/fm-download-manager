@@ -474,8 +474,8 @@ public sealed class SegmentedDownloader
             {
                 if (resp.StatusCode != HttpStatusCode.PartialContent)
                     throw new FatalDownloadException("Server stopped honoring Range requests");
-                if (resp.Content.Headers.ContentRange?.From != pos || resp.Content.Headers.ContentRange?.Length != c.Total
-                    || resp.Content.Headers.ContentRange?.To != rangeEnd)
+                var cr = resp.Content.Headers.ContentRange;
+                if (cr is { From: { } crFrom } && (crFrom != pos || (cr.To is { } crTo && crTo < pos) || (cr.Length is { } crLen && c.Total > 0 && crLen != c.Total)))
                     throw new FatalDownloadException("Server returned an unexpected byte range");
                 if (c.Validator != null && !ValidatorsMatch(c.Validator, ResponseValidator(resp)))
                     throw new FatalDownloadException("Remote file changed during download; restart the download");

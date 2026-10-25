@@ -27,6 +27,12 @@ binary were not exercised on another machine in this run. The compatibility
 version/parser tests and embedded installer verification do not replace that test.
 Bitdefender and other antivirus products not installed here remain unverified.
 
+Release CI additionally gates publication on a silent installer smoke test in its
+disposable Windows runner: installed/published binary hashes, bundled tools,
+absence of a packaged pairing secret, real app startup and an authenticated
+bridge response. It uninstalls the fixture afterwards. A hosted Windows runner
+has developer dependencies preinstalled; this is not a fresh Windows 10/11 PC.
+
 ## Core and extension regressions
 
 The regression suite checks content hashes, interrupted non-range transfers,

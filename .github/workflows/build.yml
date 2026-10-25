@@ -83,6 +83,10 @@ jobs:
       with:
         path: installer/setup.iss
 
+    - name: Test installed package on disposable Windows runner
+      shell: pwsh
+      run: ./scripts/test-installed-package.ps1 -InstallerPath dist/FMDownloadManager-Setup-1.0.0.exe
+
     - name: Upload Installer Artifact
       uses: actions/upload-artifact@v4
       with:

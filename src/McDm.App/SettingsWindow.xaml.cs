@@ -26,6 +26,7 @@ public partial class SettingsWindow : Window
 
         ApplyLocalization();
         LoadValues();
+        Loaded += (_, _) => RefreshAntivirus();
         CmbLanguage.SelectionChanged += Language_SelectionChanged;
         CmbAppTheme.SelectionChanged += AppTheme_SelectionChanged;
         Closed += (_, _) =>
@@ -74,13 +75,12 @@ public partial class SettingsWindow : Window
         ChkClipboardWatcher.Content = Strings.SettingsClipboardWatcher;
         ChkNotifications.Content = Strings.SettingsNotifications;
         ChkAutoCategorize.Content = Strings.SettingsAutoCategorize;
-        if (ChkVirusScan != null) ChkVirusScan.Content = Strings.SettingsVirusScan;
+        if (ChkVirusScan != null) ChkVirusScan.Content = Strings.IsTurkish ? "\u0130ndirmeler tamamlan\u0131nca otomatik antivir\u00fcs taramas\u0131" : "Automatically scan completed downloads";
+        BtnDetectAv.Content = Strings.IsTurkish ? "Yeniden alg\u0131la" : "Detect again";
+        TxtAntivirusHelp.Text = Strings.IsTurkish ? "Windows'a kay\u0131tl\u0131 antivir\u00fcsler otomatik kullan\u0131l\u0131r. Dosyay\u0131 uygulama g\u00f6nderir; exe veya komut se\u00e7men gerekmez." : "Registered Windows antivirus providers are used automatically. The app sends the downloaded file; no executable or command setup is needed.";
         if (LblAppTheme != null) LblAppTheme.Text = Strings.IsTurkish ? "TEMA / GÖRÜNÜM MODU" : "APPEARANCE / THEME MODE";
         if (CmbThemeDark != null) CmbThemeDark.Content = Strings.IsTurkish ? "🌙 Koyu Tema (Dark)" : "🌙 Dark Theme";
         if (CmbThemeLight != null) CmbThemeLight.Content = Strings.IsTurkish ? "☀️ Açık / Beyaz Tema (Light)" : "☀️ Light / White Theme";
-        if (LblCustomAvTitle != null) LblCustomAvTitle.Text = Strings.IsTurkish ? "ÖZEL ANTİVİRÜS TARAYICISI (BOŞSA WINDOWS DEFENDER KULLANILIR)" : "CUSTOM ANTIVIRUS SCANNER (DEFAULTS TO WINDOWS DEFENDER IF EMPTY)";
-        if (BtnBrowseAv != null) BtnBrowseAv.Content = Strings.IsTurkish ? "SEÇ..." : "BROWSE...";
-        if (LblCustomAvArgs != null) LblCustomAvArgs.Text = Strings.IsTurkish ? "Parametreler:" : "Arguments:";
 
         LblScheduler.Text = Strings.SettingsSchedulerTitle;
         ChkScheduler.Content = Strings.SettingsSchedulerEnable;
@@ -146,8 +146,6 @@ public partial class SettingsWindow : Window
         ChkNotifications.IsChecked = _settings.NotificationsEnabled;
         ChkAutoCategorize.IsChecked = _settings.AutoCategorizeSubfolders;
         if (ChkVirusScan != null) ChkVirusScan.IsChecked = _settings.VirusScanEnabled;
-        if (TxtCustomAvPath != null) TxtCustomAvPath.Text = _settings.CustomAntivirusPath ?? "";
-        if (TxtCustomAvArgs != null) TxtCustomAvArgs.Text = string.IsNullOrWhiteSpace(_settings.CustomAntivirusArgs) ? "\"{file}\"" : _settings.CustomAntivirusArgs;
 
         for (int i = 0; i < CmbAppTheme.Items.Count; i++)
         {
@@ -246,22 +244,24 @@ public partial class SettingsWindow : Window
         }
     }
 
-    private void BrowseAv_Click(object sender, RoutedEventArgs e)
+    private void DetectAv_Click(object sender, RoutedEventArgs e) => RefreshAntivirus();
+    private async void RefreshAntivirus()
     {
-        var dlg = new OpenFileDialog
+        BtnDetectAv.IsEnabled = false;
+        TxtDetectedAv.Text = Strings.IsTurkish ? "Antivir\u00fcsler alg\u0131lan\u0131yor\u2026" : "Detecting antivirus providers\u2026";
+        try
         {
-            Title = Strings.IsTurkish ? "Antivirüs Komut Satırı / Tarayıcı (.exe / .com) Seçin" : "Select Antivirus Scanner Executable",
-            Filter = "Executable Files (*.exe;*.com)|*.exe;*.com",
-            CheckFileExists = true
-        };
-        if (!string.IsNullOrWhiteSpace(TxtCustomAvPath.Text) && File.Exists(TxtCustomAvPath.Text))
-        {
-            dlg.InitialDirectory = Path.GetDirectoryName(TxtCustomAvPath.Text);
+            var found = await Task.Run(() => (Profile: McDm.Core.AntivirusDetection.Detect(_settings.CustomAntivirusPath, _settings.CustomAntivirusArgs), Names: McDm.Core.AntivirusDetection.InstalledProductNames()));
+            string names = found.Names.Count > 0 ? string.Join(", ", found.Names) : found.Profile?.Name ?? "";
+            TxtDetectedAv.Text = names.Length > 0
+                ? (Strings.IsTurkish ? "Alg\u0131lanan: " : "Detected: ") + names
+                : (Strings.IsTurkish ? "Uyumlu tarama entegrasyonu bulunamad\u0131" : "No compatible scan integration found");
+            if (found.Profile != null)
+                TxtAntivirusHelp.Text = Strings.IsTurkish ? "Dosyalar\u0131 Windows antivir\u00fcs entegrasyonu tarar. Exe ya da komut se\u00e7mene gerek yok." : "Files are scanned through Windows antivirus integration. No executable or command setup is needed.";
+            if (found.Profile == null)
+                TxtAntivirusHelp.Text = Strings.IsTurkish ? "Bu bilgisayarda otomatik dosya taramas\u0131 kullan\u0131lam\u0131yor. \u0130ndirmeler bundan etkilenmez." : "Automatic file scanning is unavailable on this PC. Downloads remain available.";
         }
-        if (dlg.ShowDialog(this) == true)
-        {
-            TxtCustomAvPath.Text = dlg.FileName;
-        }
+        finally { BtnDetectAv.IsEnabled = true; }
     }
 
     private void Save_Click(object sender, RoutedEventArgs e)
@@ -306,8 +306,6 @@ public partial class SettingsWindow : Window
         _settings.NotificationsEnabled = ChkNotifications.IsChecked == true;
         _settings.AutoCategorizeSubfolders = ChkAutoCategorize.IsChecked == true;
         if (ChkVirusScan != null) _settings.VirusScanEnabled = ChkVirusScan.IsChecked == true;
-        if (TxtCustomAvPath != null) _settings.CustomAntivirusPath = TxtCustomAvPath.Text.Trim();
-        if (TxtCustomAvArgs != null) _settings.CustomAntivirusArgs = string.IsNullOrWhiteSpace(TxtCustomAvArgs.Text) ? "\"{file}\"" : TxtCustomAvArgs.Text.Trim();
 
         _settings.SchedulerEnabled = ChkScheduler.IsChecked == true;
         _settings.SchedulerStartTime = string.IsNullOrWhiteSpace(TxtSchedStart.Text) ? "02:00" : TxtSchedStart.Text.Trim();

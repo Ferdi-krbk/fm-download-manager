@@ -22,6 +22,8 @@ public sealed class DownloadManager : IDisposable, IAsyncDisposable
     private readonly SynchronizationContext? _ui;
     private readonly string _dbPath;
     private readonly Dictionary<string, Task> _runningWorkers = new();
+    private readonly Dictionary<string, Task> _manualScans = new();
+    private readonly Dictionary<string, CancellationTokenSource> _manualScanCancellation = new();
     private readonly Dictionary<string, DateTimeOffset> _retryAfter = new();
     private readonly HashSet<string> _deleteOnExit = new();
     private readonly CancellationTokenSource _lifetime = new();
@@ -276,6 +278,7 @@ public sealed class DownloadManager : IDisposable, IAsyncDisposable
     {
         var item = Find(id);
         if (item == null || item.Status is not (DownloadStatus.Paused or DownloadStatus.Failed)) return false;
+        lock (_gate) if (_manualScans.ContainsKey(id)) return false;
         item.Error = null;
         item.AutoRetryCount = 0;
         lock (_gate) _retryAfter.Remove(item.Id);
@@ -303,6 +306,7 @@ public sealed class DownloadManager : IDisposable, IAsyncDisposable
         if (item == null) return false;
         if (item.Cts != null || item.Status == DownloadStatus.Downloading || item.Status == DownloadStatus.Queued)
             Cancel(id);
+        lock (_gate) if (_manualScanCancellation.TryGetValue(id, out var pendingScan)) pendingScan.Cancel();
         if (deleteFile)
         {
             lock (_gate)
@@ -441,44 +445,86 @@ public sealed class DownloadManager : IDisposable, IAsyncDisposable
         }
     }
 
+    public Task ScanExistingAsync(string id)
+    {
+        lock (_gate)
+        {
+            if (_disposed || _runningWorkers.ContainsKey(id)) return Task.CompletedTask;
+            if (_manualScans.TryGetValue(id, out var running)) return running;
+            var item = _all.FirstOrDefault(item => item.Id == id);
+            if (item == null || (!File.Exists(item.SavePath) && !Directory.Exists(item.SavePath))) return Task.CompletedTask;
+            bool scanOnlyFailure = item.Status == DownloadStatus.Failed && (item.ScanResult is "attention" or "unverified")
+                && (item.Error?.Contains("scan", StringComparison.OrdinalIgnoreCase) == true || item.Error?.Contains("tarama", StringComparison.OrdinalIgnoreCase) == true);
+            var scanCancellation = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
+            _manualScanCancellation[id] = scanCancellation;
+            return _manualScans[id] = Task.Run(async () =>
+            {
+                try
+                {
+                    await RunVirusScanAsync(item, CustomAntivirusPath, CustomAntivirusArgs, scanCancellation.Token);
+                    if (scanOnlyFailure && (item.ScanResult is "passed" or "unverified") && item.TotalBytes > 0
+                        && item.DownloadedBytes >= item.TotalBytes && File.Exists(item.SavePath) && new FileInfo(item.SavePath).Length == item.TotalBytes)
+                    { item.Status = DownloadStatus.Completed; item.Error = null; }
+                }
+                catch (OperationCanceledException) { item.ScanResult = "unverified"; item.Stage = "Scan cancelled"; }
+                catch (FatalDownloadException error) { item.Status = DownloadStatus.Failed; item.Error = error.Message; }
+                catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+                { item.ScanResult = "unverified"; item.Stage = "Scan incomplete: file unavailable"; }
+                finally
+                {
+                    lock (_gate) { _manualScans.Remove(id); _manualScanCancellation.Remove(id); }
+                    scanCancellation.Dispose();
+                    Save();
+                }
+            });
+        }
+    }
+
     private static async Task RunVirusScanAsync(DownloadItem item, string? customAvPath, string? customAvArgs, CancellationToken cancel)
     {
         bool tr = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "tr";
-        bool custom = !string.IsNullOrWhiteSpace(customAvPath);
-        string? scanner = custom ? customAvPath : FindWindowsDefenderScanner();
+        var profile = AntivirusDetection.Detect(customAvPath, customAvArgs);
         item.ScanResult = "unverified";
-        if (string.IsNullOrEmpty(scanner) || !File.Exists(scanner))
+        if (profile == null)
         {
-            item.Stage = tr ? "⚠ Tarama yapılamadı: antivirüs bulunamadı" : "⚠ Not scanned: antivirus unavailable";
+            item.Stage = tr ? "Tarama yap\u0131lamad\u0131: uyumlu taray\u0131c\u0131 bulunamad\u0131" : "Not scanned: no compatible scanner found";
             return;
         }
-        item.Stage = tr ? "Antivirüs taraması yapılıyor…" : "Antivirus scan in progress…";
-        var start = new System.Diagnostics.ProcessStartInfo(scanner);
-        if (custom)
-        {
-            string template = string.IsNullOrWhiteSpace(customAvArgs) ? "\"{file}\"" : customAvArgs.Trim();
-            start.Arguments = template.Contains("{file}", StringComparison.OrdinalIgnoreCase)
-                ? template.Replace("{file}", item.SavePath, StringComparison.OrdinalIgnoreCase)
-                : $"{template} \"{item.SavePath}\"";
-        }
-        else
-        {
-            foreach (string arg in new[] { "-Scan", "-ScanType", "3", "-File", item.SavePath }) start.ArgumentList.Add(arg);
-        }
+        item.Stage = tr ? $"{profile.Name} ile taran\u0131yor\u2026" : $"Scanning with {profile.Name}\u2026";
+        var start = profile.ForFile(item.SavePath);
         try
         {
-            int code = await AntivirusScanner.RunAsync(start, TimeSpan.FromMinutes(3), cancel);
-            if (code != 0)
+            var result = await AntivirusScanner.RunDetailedAsync(start, TimeSpan.FromMinutes(3), cancel);
+            if (profile.Kind == "windows" && result.ExitCode != 0 && !result.ThreatReported && !result.PolicyBlocked
+                && AntivirusDetection.Detect(customAvPath, customAvArgs, allowWindowsIntegration: false) is { } fallback)
+            {
+                profile = fallback;
+                result = await AntivirusScanner.RunDetailedAsync(fallback.ForFile(item.SavePath), TimeSpan.FromMinutes(3), cancel);
+            }
+            if (result.PolicyBlocked)
             {
                 item.ScanResult = "attention";
-                item.Stage = tr ? $"⚠ Tarama doğrulanamadı (kod {code})" : $"⚠ Scan requires attention (code {code})";
-                // Exit codes differ between scanners. Defender's 2 also includes scan errors.
-                throw new FatalDownloadException(item.Stage);
+                throw new FatalDownloadException(tr ? "Dosya Windows g\u00fcvenlik ilkesi taraf\u0131ndan engellendi" : "File blocked by Windows security policy");
             }
             if (!File.Exists(item.SavePath) && !Directory.Exists(item.SavePath))
-                throw new FatalDownloadException(tr ? "Dosya tarama sırasında kaldırıldı veya karantinaya alındı" : "File removed or quarantined during scanning");
+            {
+                item.ScanResult = "attention";
+                throw new FatalDownloadException(tr ? "Dosya tarama s\u0131ras\u0131nda kald\u0131r\u0131ld\u0131 veya karantinaya al\u0131nd\u0131" : "File removed or quarantined during scanning");
+            }
+            if (result.ThreatReported)
+            {
+                item.ScanResult = "attention";
+                item.Stage = tr ? "Antivir\u00fcs tehdit bildirdi; dosyay\u0131 a\u00e7madan koruma uygulamas\u0131n\u0131 kontrol edin" : "Antivirus reported a threat; review it in your protection app";
+                throw new FatalDownloadException(item.Stage);
+            }
+            if (result.ExitCode != 0)
+            {
+                item.Stage = tr ? $"Tarama tamamlanamad\u0131 (kod {result.ExitCode}); indirme korundu" : $"Scan incomplete (code {result.ExitCode}); download preserved";
+                return;
+            }
             item.ScanResult = "passed";
-            item.Stage = tr ? "✓ Antivirüs taraması tamamlandı" : "✓ Antivirus scan completed";
+            string providerName = profile.Name;
+            item.Stage = tr ? $"{providerName} taramas\u0131 tamamland\u0131" : $"{providerName} scan completed";
         }
         catch (OperationCanceledException) when (cancel.IsCancellationRequested) { throw; }
         catch (FatalDownloadException) { throw; }
@@ -486,29 +532,6 @@ public sealed class DownloadManager : IDisposable, IAsyncDisposable
         {
             item.Stage = tr ? "⚠ Tarama tamamlanamadı; dosyanın güvenliği doğrulanmadı" : "⚠ Scan incomplete; file safety unverified";
         }
-    }
-
-    private static string? FindWindowsDefenderScanner()
-    {
-        try
-        {
-            string progFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
-            string direct = Path.Combine(progFiles, "Windows Defender", "MpCmdRun.exe");
-            if (File.Exists(direct)) return direct;
-
-            string platformRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "Microsoft", "Windows Defender", "Platform");
-            if (Directory.Exists(platformRoot))
-            {
-                var dirs = Directory.GetDirectories(platformRoot).OrderByDescending(d => d);
-                foreach (var dir in dirs)
-                {
-                    string candidate = Path.Combine(dir, "MpCmdRun.exe");
-                    if (File.Exists(candidate)) return candidate;
-                }
-            }
-        }
-        catch { }
-        return null;
     }
 
     private static void CleanupPartial(DownloadItem item)
@@ -681,7 +704,7 @@ public sealed class DownloadManager : IDisposable, IAsyncDisposable
                 i.Status = DownloadStatus.Paused;
                 i.Cts?.Cancel();
             }
-            workers = _runningWorkers.Values.ToArray();
+            workers = _runningWorkers.Values.Concat(_manualScans.Values).ToArray();
         }
         if (_networkHandler != null) NetworkChange.NetworkAvailabilityChanged -= _networkHandler;
         try { await Task.WhenAll(workers).ConfigureAwait(false); } catch { }

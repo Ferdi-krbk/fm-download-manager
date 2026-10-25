@@ -42,6 +42,11 @@ public partial class App : System.Windows.Application
 
     protected override async void OnStartup(StartupEventArgs e)
     {
+        if (e.Args.Length == 2 && e.Args[0] == "--antivirus-file")
+        {
+            Shutdown(WindowsAntivirus.RunWorker(e.Args[1]));
+            return;
+        }
         try
         {
             SetCurrentProcessExplicitAppUserModelID("FM.DownloadManager.3.0");

@@ -19,6 +19,18 @@ historical alpha/beta prereleases; their tags and downloadable files remain inta
 - Unified file categories and clearer audio/subtitle classification.
 - External audio downloads report their own progress and clear stale transfer speeds.
 
+## Automatic antivirus integration
+
+Installed products are detected through Windows Security Center. File scanning uses
+registered Windows AMSI providers in a separate bounded process, with known
+Kaspersky/Defender console fallbacks. Users no longer choose executables or write
+arguments. Existing files can be scanned from their context menu. An unavailable
+or unsuccessful scan is reported separately from a detected threat.
+
+Provider support depends on the installed product exposing a Windows interface.
+No claim is made that every brand/version has been tested. Integration details:
+https://learn.microsoft.com/en-us/windows/win32/api/amsi/nf-amsi-iantimalware-scan
+
 ## Included
 
 - Windows x64 desktop application with light/dark themes and English/Turkish UI.

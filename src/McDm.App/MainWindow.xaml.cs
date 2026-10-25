@@ -54,6 +54,15 @@ public partial class MainWindow : Window
         };
         Grid.UnloadingRow += (_, args) => FlowMotion.Reset(args.Row);
         Grid.PreviewMouseLeftButtonDown += CardPointerDown;
+        Grid.PreviewMouseRightButtonDown += (_, args) =>
+        {
+            for (var node = args.OriginalSource as DependencyObject; node != null; node = node is Visual ? VisualTreeHelper.GetParent(node) : LogicalTreeHelper.GetParent(node))
+                if (node is DataGridRow row)
+                {
+                    if (!Grid.SelectedItems.Contains(row.Item)) Grid.SelectedItem = row.Item;
+                    break;
+                }
+        };
         Grid.SelectionChanged += (_, _) =>
         {
             UpdateActionButtons();
@@ -179,6 +188,7 @@ public partial class MainWindow : Window
         CtxRemoveAndDelete.Header = Strings.RemoveAndDelete;
         CtxCopyUrl.Header = Strings.CopyUrl;
         CtxDetails.Header = Strings.Details;
+        CtxAntivirusScan.Header = Strings.IsTurkish ? "Antivir\u00fcs ile tara" : "Scan with antivirus";
 
         ColHeaderName.Header = Strings.ColName;
         ColHeaderSize.Header = Strings.ColSize;
@@ -509,6 +519,7 @@ public partial class MainWindow : Window
         BtnCancel.IsEnabled = selected.Any(i => i.Status is DownloadStatus.Downloading or DownloadStatus.Queued or DownloadStatus.Paused);
         BtnRemove.IsEnabled = selected.Count > 0;
         BtnToolbarDetails.IsEnabled = selected.Count > 0;
+        CtxAntivirusScan.IsEnabled = selected.Any(item => item.Status is DownloadStatus.Completed or DownloadStatus.Failed && !string.IsNullOrWhiteSpace(item.SavePath));
         BtnSelectAll.IsEnabled = Grid.Items.Count > 0 && selected.Count < Grid.Items.Count;
     }
 
@@ -747,6 +758,11 @@ public partial class MainWindow : Window
                 await Task.Delay(120);
             }
         });
+    }
+
+    private async void AntivirusScan_Click(object sender, RoutedEventArgs e)
+    {
+        foreach (var item in Selected) await _manager.ScanExistingAsync(item.Id);
     }
 
     private void Open_Click(object s, RoutedEventArgs e)

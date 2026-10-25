@@ -20,6 +20,7 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
+        if (args.Length == 2 && args[0] == "--antivirus-file") return WindowsAntivirus.RunWorker(args[1]);
         int result = 0;
         var application = new System.Windows.Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         application.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri("/FMDownloadManager;component/Themes/Theme.xaml", UriKind.Relative) });

@@ -2,6 +2,9 @@
 
 ## 1.0.0 interface refresh - 2026-10-25
 
+- Detect installed antivirus products automatically and use registered Windows
+  AMSI providers, with known console-scanner fallbacks. Remove manual exe/argument
+  fields; add an existing-file scan action and separate unavailable scans from threats.
 - Add the legacy in-app update bridge to stable 1.0.0, with verified silent installer payload and no repeated update prompts.
 - Add staggered card entrances, hover lift, removal, details and progress transitions.
 - Bundle static Inter font files for the app, popup and hover menu. Clamp startup

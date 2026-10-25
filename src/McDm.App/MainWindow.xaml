@@ -360,6 +360,7 @@
 <MenuItem x:Name="CtxRemoveAndDelete" Click="RemoveAndDelete_Click"/>
 <MenuItem x:Name="CtxCopyUrl" Click="CopyUrl_Click"/>
 <MenuItem x:Name="CtxDetails" Click="Details_Click"/>
+<MenuItem x:Name="CtxAntivirusScan" Click="AntivirusScan_Click"/>
 </ContextMenu>
 </DataGrid.ContextMenu>
 <DataGrid.Columns>

@@ -19,11 +19,40 @@ public static class RepairRegressionTests
 {
     public static async Task RunAsync(Func<string, Func<Task>, Task> test, Action<bool, string> check, Func<string> tmp)
     {
+        await test("repair: automatic antivirus detection and real result semantics", () =>
+        {
+            string root = tmp(), product = Path.Combine(root, "Kaspersky Lab", "Kaspersky Test");
+            Directory.CreateDirectory(product);
+            string gui = Path.Combine(product, "avpui.exe"), console = Path.Combine(product, "avp.com");
+            File.WriteAllText(gui, "fixture GUI");
+            check(AntivirusDetection.Detect(gui, installRoots: new[] { root }) == null, "GUI launcher was treated as a file scanner");
+            File.WriteAllText(console, "fixture console");
+            var detected = AntivirusDetection.Detect(installRoots: new[] { root });
+            check(detected?.Kind == "kaspersky" && detected.Executable == console, "installed console was not discovered automatically");
+            check(AntivirusDetection.Detect(gui, installRoots: new[] { root })?.Executable == console, "legacy GUI setting was not repaired");
+            var command = detected!.ForFile(@"C:\Downloads\a file.ppt");
+            check(command.ArgumentList.SequenceEqual(new[] { "SCAN", @"C:\Downloads\a file.ppt", "/i0", "/fa" }), "scanner command or quoting is incorrect");
+            check(!AntivirusScanner.ReportsThreat("Threats detected: 0\nNot infected: 1"), "clean scan statistics produced a false threat");
+            check(AntivirusScanner.ReportsThreat("Threats detected: 1"), "positive threat count was ignored");
+            check(WindowsAntivirus.IsThreat(32768) && !WindowsAntivirus.IsThreat(1), "Windows scan verdict was misinterpreted");
+            check(WindowsAntivirus.IsPolicyBlock(0x4000) && !WindowsAntivirus.IsPolicyBlock(0), "Windows policy blocks were misinterpreted");
+            using var content = new WindowsAntivirus.FileContent(new MemoryStream("ABCDEF"u8.ToArray()), "fixture.txt");
+            IntPtr buffer = System.Runtime.InteropServices.Marshal.AllocHGlobal(128);
+            try
+            {
+                check(content.GetAttribute(2, 8, buffer, out var size) == 0 && size == 8 && System.Runtime.InteropServices.Marshal.ReadInt64(buffer) == 6, "Windows stream length is incorrect");
+                check(content.Read(3, 3, buffer, out var read) == 0 && read == 3 && System.Runtime.InteropServices.Marshal.ReadByte(buffer) == (byte)'D', "Windows scanner stream offset was ignored");
+                check(content.Read(100, 3, buffer, out read) == 0 && read == 0, "Windows stream EOF was misreported");
+            }
+            finally { System.Runtime.InteropServices.Marshal.FreeHGlobal(buffer); }
+            return Task.CompletedTask;
+        });
+
         await test("repair: multipart names group only explicit sibling volumes", () =>
         {
-            var first = MultipartFiles.Describe("Game.part01.rar", @"C:\Downloads");
+            var first = MultipartFiles.Describe("Game.part01.rar", @"C:\Downloads") ?? throw new Exception("multipart name was not recognized");
             var second = MultipartFiles.Describe("Game.part02.rar", @"c:\downloads");
-            check(first != null && first.Key == second?.Key && first.Label == "Game.rar", "RAR sibling parts did not group");
+            check(first.Key == second?.Key && first.Label == "Game.rar", "RAR sibling parts did not group");
             check(first.Key != MultipartFiles.Describe("Game.part02.zip", @"C:\Downloads")?.Key, "different archive formats grouped");
             check(first.Key != MultipartFiles.Describe("Game.part02.rar", @"C:\Other")?.Key, "different target folders grouped");
             check(MultipartFiles.Describe("Game.7z.001", @"C:\Downloads")?.Key == MultipartFiles.Describe("Game.7z.002", @"C:\Downloads")?.Key, "split 7z volumes did not group");
@@ -293,12 +322,12 @@ public static class RepairRegressionTests
             check(old?.HasUpdate == true && old.LatestVersion == "1.0.0", "bridge target was not mapped to stable");
             // v3.8.1 is also discoverable by the first stable parser, which only reserves v3.8.0.
             check(UpdateChecker.IsNewer("3.8.1", "1.0.0"), "initial stable build cannot discover the refreshed bridge");
-            var refreshed = json.Replace("v3.8.0", "v3.8.1").Replace("FM_STABLE_TARGET=1.0.0", "FM_STABLE_TARGET=1.0.0\\nFM_STABLE_BUILD=2");
+            var refreshed = json.Replace("v3.8.0", "v3.8.1").Replace("FM_STABLE_TARGET=1.0.0", "FM_STABLE_TARGET=1.0.0\\nFM_STABLE_BUILD=3");
             check(UpdateChecker.ParseRelease(refreshed, "1.0.0", 1)?.HasUpdate == true, "same-version build refresh was not offered");
-            check(UpdateChecker.ParseRelease(refreshed, "1.0.0", 2)?.HasUpdate == false, "same build creates an update loop");
-            check(UpdateChecker.ParseRelease(refreshed, "1.0.0", 3)?.HasUpdate == false, "older stable build was offered as a downgrade");
+            check(UpdateChecker.ParseRelease(refreshed, "1.0.0", 3)?.HasUpdate == false, "same build creates an update loop");
+            check(UpdateChecker.ParseRelease(refreshed, "1.0.0", 4)?.HasUpdate == false, "older stable build was offered as a downgrade");
             check(UpdateChecker.ParseRelease(refreshed, "2.0.0", 1)?.HasUpdate == false, "build marker overrode a newer product version");
-            check(UpdateChecker.CurrentStableBuild == 2, "stable-build assembly metadata missing");
+            check(UpdateChecker.CurrentStableBuild == 3, "stable-build assembly metadata missing");
             var installed = UpdateChecker.ParseRelease(json, "1.0.0");
             check(installed?.HasUpdate == false, "bridge creates an endless update loop");
             check(UpdateChecker.ParseRelease(json.Replace("FM_STABLE_TARGET=1.0.0", "FM_STABLE_TARGET=garbage"), "1.0.0") == null, "invalid target accepted");

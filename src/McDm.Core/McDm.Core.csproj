@@ -11,7 +11,7 @@
     <UseAppHost>false</UseAppHost>
   </PropertyGroup>
   <ItemGroup>
-    <AssemblyMetadata Include="StableBuild" Value="2" />
+    <AssemblyMetadata Include="StableBuild" Value="3" />
   </ItemGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />

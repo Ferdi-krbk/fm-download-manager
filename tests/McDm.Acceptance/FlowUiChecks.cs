@@ -198,6 +198,16 @@ internal static class FlowUiChecks
             Layout(content, new Size(1024, 700));
             Require(Descendants<DataGridRow>(grid).Count() < 60, "grouping disabled row virtualization and made scrolling expensive");
             Console.WriteLine("PASS grouped row virtualization with 300 downloads");
+            var settingsDialog = new SettingsWindow(new AppSettings(), _ => { });
+            try
+            {
+                Require(settingsDialog.FindName("TxtCustomAvPath") == null && settingsDialog.FindName("TxtCustomAvArgs") == null,
+                    "antivirus setup still requires a user-selected executable or arguments");
+                Require(settingsDialog.FindName("TxtDetectedAv") is TextBlock && settingsDialog.FindName("BtnDetectAv") is Button,
+                    "automatic antivirus detection UI is missing");
+            }
+            finally { settingsDialog.Close(); }
+            Console.WriteLine("PASS automatic antivirus settings without manual executable/command fields");
 
         }
         finally

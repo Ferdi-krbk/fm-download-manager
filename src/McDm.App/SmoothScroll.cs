@@ -90,7 +90,10 @@ public static class SmoothScroll
             viewer.ScrollToVerticalOffset(finalTarget);
             state.Active = false;
         };
-        viewer.BeginAnimation(OffsetProperty, animation, HandoffBehavior.SnapshotAndReplace);
+        var clock = (AnimationClock)animation.CreateClock(true);
+        viewer.ApplyAnimationClock(OffsetProperty, clock, HandoffBehavior.SnapshotAndReplace);
+        // Begin on the next presentation tick, including a cold/temporarily idle render host.
+        clock.Controller?.Begin();
     }
 
     private static void Cancel(ScrollViewer viewer)

@@ -162,27 +162,10 @@
                     <CheckBox x:Name="ChkNotifications" Content="SHOW SYSTEM NOTIFICATIONS ON COMPLETION" Margin="0,0,0,12" />
                     <CheckBox x:Name="ChkAutoCategorize" Content="Kategoriye göre alt klasörleme yap (Videos, Music, Torrents vb.)" Margin="0,0,0,12" />
                     <CheckBox x:Name="ChkVirusScan" Content="İndirme tamamlandığında otomatik virüs taraması yap (Windows Defender / Özel Antivirüs)" Margin="0,0,0,10" />
-                    <Border Background="{DynamicResource Bg2Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="12,10" Margin="0,0,0,18">
-                        <StackPanel>
-                            <TextBlock x:Name="LblCustomAvTitle" Text="ÖZEL ANTİVİRÜS TARAYICISI (İSTEĞE BAĞLI - BOŞSA WINDOWS DEFENDER KULLANILIR)" FontFamily="{DynamicResource UiFont}" FontWeight="SemiBold" FontSize="10.5" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,6" />
-                            <Grid Margin="0,0,0,8">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBox x:Name="TxtCustomAvPath" FontFamily="{DynamicResource MonoFont}" FontSize="11.5" ToolTip="Örn: C:\Program Files\Kaspersky Lab\avp.com veya ESET ecls.exe (Boş bırakılırsa otomatik Windows Defender kullanılır)" />
-                                <Button x:Name="BtnBrowseAv" Grid.Column="1" Style="{DynamicResource SecondaryButton}" Content="SEÇ..." Margin="8,0,0,0" Click="BrowseAv_Click" />
-                            </Grid>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock x:Name="LblCustomAvArgs" Text="Parametreler:" FontFamily="{DynamicResource UiFont}" FontSize="11" Foreground="{DynamicResource TextDimBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
-                                <TextBox x:Name="TxtCustomAvArgs" Grid.Column="1" FontFamily="{DynamicResource MonoFont}" FontSize="11.5" Text="&quot;{file}&quot;" ToolTip="{}{file} yerine indirilen dosyanın yolu koyulur." />
-                            </Grid>
-                        </StackPanel>
-                    </Border>
+                    <Border Background="{DynamicResource Bg2Brush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,18">
+<DockPanel><Button x:Name="BtnDetectAv" DockPanel.Dock="Right" Style="{DynamicResource SecondaryButton}" Click="DetectAv_Click" Margin="10,0,0,0" VerticalAlignment="Top"/>
+<StackPanel><TextBlock x:Name="TxtDetectedAv" FontSize="12" TextWrapping="Wrap"/><TextBlock x:Name="TxtAntivirusHelp" FontSize="11" Foreground="{DynamicResource TextDimBrush}" TextWrapping="Wrap" Margin="0,6,0,0"/></StackPanel></DockPanel>
+</Border>
 
                     <Separator Margin="0,0,0,18" />
 

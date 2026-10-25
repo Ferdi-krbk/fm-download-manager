@@ -36,6 +36,7 @@
 | Torrents | Magnet links and `.torrent` files through MonoTorrent, with pause/resume and a download speed limit. |
 | Multipart archives | Numbered archive volumes share an expandable group with aggregate progress and batch selection. Files stay separate on disk. |
 | Browser integration | A Chromium extension for file handoff, media detection and a compact fm. menu on videos. |
+| Antivirus | Automatic detection of installed products and registered Windows scan providers; existing files can be scanned from their context menu. No exe/argument setup. [Details](docs/ANTIVIRUS.md). |
 | Desktop | Light and dark themes, accent colors, English/Turkish UI, tray controls and scheduling. |
 
 Transfer speed depends on the host, your connection and storage. Media formats and authentication requirements depend on the source; support for every website is not guaranteed.

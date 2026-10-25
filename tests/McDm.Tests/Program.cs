@@ -11,6 +11,32 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+if (args.Length == 2 && args[0] == "--antivirus-rescan-probe")
+{
+    string directory = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(args[1]))!, "rescan-probe-" + Guid.NewGuid().ToString("N"));
+    Directory.CreateDirectory(directory);
+    string file = Path.Combine(directory, "scan-probe.txt");
+    File.Copy(args[1], file);
+    byte[] before = File.ReadAllBytes(file);
+    var item = new DownloadItem { Id = "scan-probe", FileName = "scan-probe.txt", Directory = directory, SavePath = file,
+        TotalBytes = before.Length, DownloadedBytes = before.Length, Status = DownloadStatus.Failed,
+        ScanResult = "attention", Error = "Scan requires attention (exit code 0)" };
+    var options = new JsonSerializerOptions(); options.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+    File.WriteAllText(Path.Combine(directory, "downloads.json"), JsonSerializer.Serialize(new[] { item }, options));
+    await using var manager = new DownloadManager(directory, directory);
+    await manager.ScanExistingAsync("scan-probe");
+    var result = manager.Items.Single();
+    bool unchanged = before.SequenceEqual(File.ReadAllBytes(file));
+    Console.WriteLine(JsonSerializer.Serialize(new { result.ScanResult, Status = result.Status.ToString(), BytesUnchanged = unchanged }));
+    return result.ScanResult == "passed" && result.Status == DownloadStatus.Completed && unchanged ? 0 : 1;
+}
+if (args.Length == 1 && args[0] == "--antivirus-probe")
+{
+    Console.WriteLine(JsonSerializer.Serialize(new { Products = AntivirusDetection.InstalledProductNames(), Route = AntivirusDetection.Detect()?.Kind }));
+    return 0;
+}
+if (args.Length == 2 && args[0] == "--antivirus-file") return WindowsAntivirus.RunWorker(args[1]);
+
 // ───────────── test origin server ─────────────
 if (Environment.GetEnvironmentVariable("MCDM_TEST_UI_CULTURE") is { Length: > 0 } testCulture)
     System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo(testCulture);

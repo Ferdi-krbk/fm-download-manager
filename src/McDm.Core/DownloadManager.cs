@@ -481,57 +481,64 @@ public sealed class DownloadManager : IDisposable, IAsyncDisposable
         }
     }
 
-    private static async Task RunVirusScanAsync(DownloadItem item, string? customAvPath, string? customAvArgs, CancellationToken cancel)
+    internal static async Task RunVirusScanAsync(DownloadItem item, string? customAvPath, string? customAvArgs, CancellationToken cancel,
+        IReadOnlyList<AntivirusProfile>? candidatesOverride = null)
     {
         bool tr = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "tr";
-        var profile = AntivirusDetection.Detect(customAvPath, customAvArgs);
+        var candidates = candidatesOverride ?? AntivirusDetection.DetectCandidates(customAvPath, customAvArgs);
         item.ScanResult = "unverified";
-        if (profile == null)
+        if (candidates.Count == 0)
         {
             item.Stage = tr ? "Tarama yap\u0131lamad\u0131: uyumlu taray\u0131c\u0131 bulunamad\u0131" : "Not scanned: no compatible scanner found";
             return;
         }
-        item.Stage = tr ? $"{profile.Name} ile taran\u0131yor\u2026" : $"Scanning with {profile.Name}\u2026";
-        var start = profile.ForFile(item.SavePath);
-        try
+        foreach (var profile in candidates)
         {
-            var result = await AntivirusScanner.RunDetailedAsync(start, TimeSpan.FromMinutes(3), cancel);
-            if (profile.Kind == "windows" && result.ExitCode != 0 && !result.ThreatReported && !result.PolicyBlocked
-                && AntivirusDetection.Detect(customAvPath, customAvArgs, allowWindowsIntegration: false) is { } fallback)
+            cancel.ThrowIfCancellationRequested();
+            item.Stage = tr ? $"{profile.Name} ile taran\u0131yor\u2026" : $"Scanning with {profile.Name}\u2026";
+            var start = profile.ForFile(item.SavePath);
+            try
             {
-                profile = fallback;
-                result = await AntivirusScanner.RunDetailedAsync(fallback.ForFile(item.SavePath), TimeSpan.FromMinutes(3), cancel);
-            }
-            if (result.PolicyBlocked)
-            {
-                item.ScanResult = "attention";
-                throw new FatalDownloadException(tr ? "Dosya Windows g\u00fcvenlik ilkesi taraf\u0131ndan engellendi" : "File blocked by Windows security policy");
-            }
-            if (!File.Exists(item.SavePath) && !Directory.Exists(item.SavePath))
-            {
-                item.ScanResult = "attention";
-                throw new FatalDownloadException(tr ? "Dosya tarama s\u0131ras\u0131nda kald\u0131r\u0131ld\u0131 veya karantinaya al\u0131nd\u0131" : "File removed or quarantined during scanning");
-            }
-            if (result.ThreatReported)
-            {
-                item.ScanResult = "attention";
-                item.Stage = tr ? "Antivir\u00fcs tehdit bildirdi; dosyay\u0131 a\u00e7madan koruma uygulamas\u0131n\u0131 kontrol edin" : "Antivirus reported a threat; review it in your protection app";
-                throw new FatalDownloadException(item.Stage);
-            }
-            if (result.ExitCode != 0)
-            {
-                item.Stage = tr ? $"Tarama tamamlanamad\u0131 (kod {result.ExitCode}); indirme korundu" : $"Scan incomplete (code {result.ExitCode}); download preserved";
+                var result = await AntivirusScanner.RunDetailedAsync(start, TimeSpan.FromMinutes(3), cancel);
+                if (result.PolicyBlocked)
+                {
+                    item.ScanResult = "attention";
+                    throw new FatalDownloadException(tr ? "Dosya Windows g\u00fcvenlik ilkesi taraf\u0131ndan engellendi" : "File blocked by Windows security policy");
+                }
+                if (!File.Exists(item.SavePath) && !Directory.Exists(item.SavePath))
+                {
+                    item.ScanResult = "attention";
+                    throw new FatalDownloadException(tr ? "Dosya tarama s\u0131ras\u0131nda kald\u0131r\u0131ld\u0131 veya karantinaya al\u0131nd\u0131" : "File removed or quarantined during scanning");
+                }
+                if (result.ThreatReported || profile.Kind == "kaspersky" && result.ExitCode is 101 or 102)
+                {
+                    item.ScanResult = "attention";
+                    item.Stage = tr ? "Antivir\u00fcs tehdit bildirdi; dosyay\u0131 a\u00e7madan koruma uygulamas\u0131n\u0131 kontrol edin" : "Antivirus reported a threat; review it in your protection app";
+                    throw new FatalDownloadException(item.Stage);
+                }
+                if (result.ExitCode != 0)
+                {
+                    item.Stage = tr ? $"{profile.Name} taramas\u0131 tamamlanamad\u0131 (kod {result.ExitCode}); indirme korundu" : $"{profile.Name} scan incomplete (code {result.ExitCode}); download preserved";
+                    continue;
+                }
+                if (profile.Kind == "kaspersky" && !result.ScanCompleted)
+                {
+                    item.Stage = tr ? "Kaspersky dosyan\u0131n tarand\u0131\u011f\u0131n\u0131 do\u011frulamad\u0131; atlanan, hatal\u0131 veya \u015fifreli dosya olabilir"
+                        : "Kaspersky did not confirm a completed file scan; the file may have been skipped, unreadable or encrypted";
+                    continue;
+                }
+                if ((profile.Kind is "amsi" or "amsi-microsoft") && !result.ScanCompleted) continue;
+                item.ScanResult = "passed";
+                string providerName = profile.Name;
+                item.Stage = tr ? $"{providerName} taramas\u0131 tamamland\u0131" : $"{providerName} scan completed";
                 return;
             }
-            item.ScanResult = "passed";
-            string providerName = profile.Name;
-            item.Stage = tr ? $"{providerName} taramas\u0131 tamamland\u0131" : $"{providerName} scan completed";
-        }
-        catch (OperationCanceledException) when (cancel.IsCancellationRequested) { throw; }
-        catch (FatalDownloadException) { throw; }
-        catch (Exception ex) when (ex is TimeoutException or IOException or System.ComponentModel.Win32Exception)
-        {
-            item.Stage = tr ? "⚠ Tarama tamamlanamadı; dosyanın güvenliği doğrulanmadı" : "⚠ Scan incomplete; file safety unverified";
+            catch (OperationCanceledException) when (cancel.IsCancellationRequested) { throw; }
+            catch (FatalDownloadException) { throw; }
+            catch (Exception ex) when (ex is TimeoutException or IOException or System.ComponentModel.Win32Exception)
+            {
+                item.Stage = tr ? "⚠ Tarama tamamlanamadı; dosyanın güvenliği doğrulanmadı" : "⚠ Scan incomplete; file safety unverified";
+            }
         }
     }
 

@@ -1,7 +1,23 @@
 # 1.0.0 validation
 
-Validated on Windows on 25 October 2026. Automated tests are not a guarantee that
+Validated on Windows on 28 October 2026. Automated tests are not a guarantee that
 every host, browser version or antivirus product will behave identically.
+
+## Download and scanner fixes: stable build 6
+
+All 91 Core regressions, nine JavaScript suites and the isolated browser UI check
+passed. Native UI checks passed, including intermediate animation frames and final
+positions. The off-screen acceptance host uses software composition and bounded
+completion waits to avoid occluded GPU timing affecting the fixture; production
+rendering settings are unchanged.
+
+New regressions cover ignored Range requests, interrupted single-stream retries,
+invalid responses, browser download cancellation/continuation, scanner priority and
+threat/policy handling. Installed Kaspersky console and its signed registered AMSI
+provider both completed scans of harmless generated files. Bitdefender, Avast and
+ESET priority is covered by fixtures; those products were not installed here.
+Update checks cover builds 4 and 5 discovering build 6, no build-6 self-update loop
+and no downgrade from a newer build.
 
 ## Antivirus refresh: stable build 5
 

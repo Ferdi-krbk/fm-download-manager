@@ -429,10 +429,9 @@ async function interceptDownload(item) {
   }
 
   if (result.cancelled) {
-    // User explicitly cancelled in the app prompt dialog: cancel browser download too
-    try { await api.downloads.cancel(item.id); } catch {}
-    try { await api.downloads.erase({ id: item.id }); } catch {}
-    return true;
+    // Declining FM means keep the browser's original download (including POST,
+    // cookies and one-use URLs). Chrome calls suggest(); Firefox resumes below.
+    return false;
   }
 
   // Handover to app failed (offline, unpaired, error):
@@ -460,7 +459,7 @@ async function interceptDownload(item) {
 
 if (api.downloads?.onDeterminingFilename) {
   api.downloads.onDeterminingFilename.addListener((item, suggest) => {
-    interceptDownload(item).then((took) => { if (!took) { try { suggest(); } catch {} } });
+    interceptDownload(item).catch(() => false).then((took) => { if (!took) { try { suggest(); } catch {} } });
     return true;
   });
 } else if (api.downloads?.onCreated) {
@@ -468,7 +467,7 @@ if (api.downloads?.onDeterminingFilename) {
   // Pause it at once so it does not keep downloading while the app is asked; resume it if the app declines.
   api.downloads.onCreated.addListener((item) => {
     const paused = item.state === 'in_progress' ? Promise.resolve(api.downloads.pause(item.id)).then(() => true, () => false) : Promise.resolve(false);
-    interceptDownload(item).then(async (took) => {
+    interceptDownload(item).catch(() => false).then(async (took) => {
       if (!took && (await paused)) { try { await api.downloads.resume(item.id); } catch {} }
     });
   });
@@ -1106,7 +1105,7 @@ api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           const sTheme = await api.storage.local.get(['accentColor', 'language', 'themeMode']);
           sendResponse({
             online: !!app, reachable: !!raw, paired: !!(raw && raw.paired), rawApp: raw,
-            app, settings, clickIntercept: !api.downloads?.onDeterminingFilename, isSafari: IS_SAFARI,
+            app, settings, clickIntercept: !api.downloads?.onDeterminingFilename && !api.downloads?.onCreated, isSafari: IS_SAFARI,
             canLaunch: !!api.runtime.sendNativeMessage, captureExtensions: (app && app.captureExtensions) || cached || [],
             accentColor: (raw && raw.accentColor) || sTheme.accentColor || '#E50914',
             language: (raw && raw.language) || sTheme.language || 'tr',

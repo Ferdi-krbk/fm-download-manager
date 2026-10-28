@@ -1,7 +1,7 @@
 # FM Download Manager 1.0.0
 
 <!--
-FM_STABLE_BUILD=5
+FM_STABLE_BUILD=6
 -->
 
 The first official stable release. Earlier numbered builds are retained as
@@ -24,6 +24,17 @@ historical alpha/beta prereleases; their tags and downloadable files remain inta
 - External audio downloads report their own progress and clear stale transfer speeds.
 
 ## Automatic antivirus integration
+
+Stable build 6 prioritizes compatible third-party scanners/providers before every
+Microsoft Defender route. AMSI workers target a specific registered provider and
+verify its DLL signature. Kaspersky VPN consoles are excluded; completed Kaspersky
+scan statistics are required before reporting success. Settings show the route
+actually selected. Threats and policy blocks stop fallback.
+
+File downloads now restart from scratch with one connection if a server ignores
+Range requests; malformed byte ranges remain rejected. Declining/closing FM's
+download prompt leaves the original browser download running. Page-click and
+native-browser interception no longer capture the same action twice.
 
 Stable build 5 fixes product names disappearing after **Detect again**. WMI
 product properties are looked up per instance, avoiding the observed E_FAIL on

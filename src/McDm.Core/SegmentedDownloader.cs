@@ -40,6 +40,8 @@ internal sealed class ThrottledException : Exception
     public ThrottledException(TimeSpan? retryAfter) : base("Server is throttling (429/503)") => RetryAfter = retryAfter;
 }
 
+internal sealed class RangeIgnoredException : Exception { }
+
 internal sealed class ResumeState
 {
     public long Total { get; set; }
@@ -84,9 +86,27 @@ public sealed class SegmentedDownloader
 
     public async Task RunAsync(DownloadItem item, int maxConnections, CancellationToken ct)
     {
+        try { await RunAttemptAsync(item, maxConnections, forceSingleStream: false, ct); }
+        catch (RangeIgnoredException)
+        {
+            ct.ThrowIfCancellationRequested();
+            item.Stage = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "tr"
+                ? "Sunucu parçalı indirmeyi desteklemiyor; tek bağlantıyla baştan deneniyor…"
+                : "Server ignored byte ranges; restarting with one connection…";
+            // All previous workers and handles have stopped. Never append a 200 body
+            // to partial ranges, or reuse a checkpoint from a different entity.
+            try { await RunAttemptAsync(item, 1, forceSingleStream: true, ct); }
+            finally { item.Stage = null; }
+        }
+    }
+
+    private async Task RunAttemptAsync(DownloadItem item, int maxConnections, bool forceSingleStream, CancellationToken ct)
+    {
         maxConnections = Math.Clamp(maxConnections, 1, 32);
 
-        var probe = await RetryAsync(() => ProbeAsync(item, ct), ct);
+        var probe = forceSingleStream
+            ? new Probe(new Uri(item.Request.Url), -1, false, null, item.FileName)
+            : await RetryAsync(() => ProbeAsync(item, ct), ct);
         item.SupportsRanges = probe.Ranges;
         item.TotalBytes = probe.Total;
 
@@ -172,7 +192,7 @@ public sealed class SegmentedDownloader
             if (ctx.Failure != null) ExceptionDispatchInfo.Capture(ctx.Failure).Throw();
             ct.ThrowIfCancellationRequested();
 
-            completed = chunks.All(c => c.IsComplete);
+            completed = chunks.All(c => c.IsComplete) || (!ctx.UseRange && ctx.Total == 0 && chunks.All(c => c.Done == 0));
             if (!completed) throw new FatalDownloadException("Download ended with missing segments");
         }
         finally
@@ -474,6 +494,7 @@ public sealed class SegmentedDownloader
             if (!resp.IsSuccessStatusCode) ThrowForStatus(resp);
             if (c.UseRange)
             {
+                if (resp.StatusCode == HttpStatusCode.OK) throw new RangeIgnoredException();
                 if (resp.StatusCode != HttpStatusCode.PartialContent)
                     throw new FatalDownloadException("Server stopped honoring Range requests");
                 var cr = resp.Content.Headers.ContentRange;
@@ -487,6 +508,25 @@ public sealed class SegmentedDownloader
                 responseEnd = crTo;
                 if (c.Validator != null && !ValidatorsMatch(c.Validator, ResponseValidator(resp)))
                     throw new FatalDownloadException("Remote file changed during download; restart the download");
+            }
+            else
+            {
+                if (resp.StatusCode != HttpStatusCode.OK)
+                    throw new FatalDownloadException("Server returned a partial response to a full download");
+                // A full GET is a new entity. Use this response's size, not the old probe.
+                // Reset on every non-range retry so bytes from different attempts cannot mix.
+                c.Total = resp.Content.Headers.ContentLength ?? -1;
+                c.Item.TotalBytes = c.Total;
+                lock (c.StateLock)
+                {
+                    chunk.Done = 0;
+                    chunk.End = c.Total > 0 ? c.Total - 1 : -1;
+                    RandomAccess.SetLength(c.Handle, Math.Max(0, c.Total));
+                }
+                if ((Path.GetExtension(c.Item.FileName).Equals(".pdf", StringComparison.OrdinalIgnoreCase)
+                        || Path.GetExtension(c.Item.Request.FileName)?.Equals(".pdf", StringComparison.OrdinalIgnoreCase) == true)
+                    && resp.Content.Headers.ContentType?.MediaType?.Equals("text/html", StringComparison.OrdinalIgnoreCase) == true)
+                    throw new FatalDownloadException("Server returned a web page instead of the requested PDF; refresh the download link");
             }
 
             await using var stream = await resp.Content.ReadAsStreamAsync(ct);
@@ -528,6 +568,7 @@ public sealed class SegmentedDownloader
 
         if (chunk.End >= 0 && !chunk.IsComplete) throw new TransientException("Connection closed early");
         if (chunk.End < 0) chunk.End = chunk.Start + chunk.Done - 1; // unknown-length stream finished
+        if (!c.UseRange && chunk.Done == 0) c.Total = 0;
     }
 
     // ───────────────────────── HTTP ─────────────────────────

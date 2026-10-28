@@ -261,7 +261,9 @@ public partial class SettingsWindow : Window
                     ? (Strings.IsTurkish ? "Antivir\u00fcs \u00fcr\u00fcn ad\u0131 belirlenemedi" : "Antivirus product name could not be determined")
                     : (Strings.IsTurkish ? "Uyumlu tarama entegrasyonu bulunamad\u0131" : "No compatible scan integration found");
             if (found.Profile != null)
-                TxtAntivirusHelp.Text = Strings.IsTurkish ? "Dosyalar\u0131 Windows antivir\u00fcs entegrasyonu tarar. Exe ya da komut se\u00e7mene gerek yok." : "Files are scanned through Windows antivirus integration. No executable or command setup is needed.";
+                TxtAntivirusHelp.Text = found.Profile.Kind is "amsi" or "amsi-microsoft"
+                    ? (Strings.IsTurkish ? $"Tarama yolu: {found.Profile.Name}. Uyumlu sa\u011flay\u0131c\u0131 do\u011frudan kullan\u0131l\u0131r; Microsoft Defender son se\u00e7enektir." : $"Scan route: {found.Profile.Name}. The selected compatible provider is used directly; Microsoft Defender is the last fallback.")
+                    : (Strings.IsTurkish ? $"Tarama yolu: {found.Profile.Name} dosya taray\u0131c\u0131s\u0131. Exe veya komut se\u00e7mene gerek yok." : $"Scan route: {found.Profile.Name} file scanner. No executable or command setup is needed.");
             if (found.Profile == null)
                 TxtAntivirusHelp.Text = Strings.IsTurkish ? "Bu bilgisayarda otomatik dosya taramas\u0131 kullan\u0131lam\u0131yor. \u0130ndirmeler bundan etkilenmez." : "Automatic file scanning is unavailable on this PC. Downloads remain available.";
         }

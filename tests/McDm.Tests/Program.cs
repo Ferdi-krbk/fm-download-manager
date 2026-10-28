@@ -11,14 +11,17 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-if (args.Length == 1 && args[0] == "--security-only")
+if (args.Length == 1 && args[0] is "--security-only" or "--antivirus-tests")
 {
     int securityPassed = 0, securityFailed = 0;
-    await McDm.Tests.ReleaseSecurityTests.RunAsync(async (name, body) =>
+    async Task ReportCheck(string name, Func<Task> body)
     {
         try { await body(); securityPassed++; Console.WriteLine("PASS " + name); }
         catch (Exception error) { securityFailed++; Console.WriteLine("FAIL " + name + ": " + error.Message); }
-    }, (ok, message) => { if (!ok) throw new Exception(message); }, () =>
+    }
+    void CheckCondition(bool ok, string message) { if (!ok) throw new Exception(message); }
+    if (args[0] == "--antivirus-tests") await McDm.Tests.AntivirusRefreshTests.RunAsync(ReportCheck, CheckCondition);
+    else await McDm.Tests.ReleaseSecurityTests.RunAsync(ReportCheck, CheckCondition, () =>
     {
         string folder = Path.Combine(Path.GetTempPath(), "mcdm-security-tests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(folder); return folder;
@@ -69,13 +72,44 @@ if (args.Length == 1 && args[0] == "--antivirus-probe")
     Console.WriteLine(JsonSerializer.Serialize(new { Products = AntivirusDetection.InstalledProductNames(), Route = AntivirusDetection.Detect()?.Kind }));
     return 0;
 }
+if (args.Length == 1 && args[0] == "--antivirus-providers")
+{
+    Console.WriteLine(JsonSerializer.Serialize(WindowsAntivirus.RegisteredProviders().Select(provider => new
+    { provider.Id, provider.Name, provider.IsMicrosoft, Trusted = Authenticode.IsTrusted(provider.ModulePath) })));
+    return 0;
+}
+if (args.Length == 2 && args[0] == "--antivirus-direct-probe")
+{
+    var profile = AntivirusDetection.Detect() ?? throw new Exception("Scanner unavailable");
+    if (profile.Kind != "kaspersky") throw new Exception("Kaspersky was not selected on this test host");
+    var result = await AntivirusScanner.RunDetailedAsync(profile.ForFile(args[1]), TimeSpan.FromMinutes(2), CancellationToken.None);
+    Console.WriteLine(JsonSerializer.Serialize(new { profile.Name, profile.Kind, result.ExitCode, result.ThreatReported, result.ScanCompleted }));
+    return result.ExitCode == 0 && result.ScanCompleted && !result.ThreatReported ? 0 : 1;
+}
+if (args.Length == 2 && args[0] == "--antivirus-provider-probe")
+{
+    var provider = WindowsAntivirus.RegisteredProviders().First(provider => !provider.IsMicrosoft);
+    var profile = new AntivirusProfile(provider.Name, Environment.ProcessPath!, "amsi", ProviderId: provider.Id.ToString("D"));
+    var result = await AntivirusScanner.RunDetailedAsync(profile.ForFile(args[1]), TimeSpan.FromSeconds(45), CancellationToken.None);
+    Console.WriteLine(JsonSerializer.Serialize(new { provider.Name, provider.Id, result.ExitCode, result.ThreatReported, result.ScanCompleted }));
+    return result.ExitCode == 0 && result.ScanCompleted && !result.ThreatReported ? 0 : 1;
+}
 if (args.Length == 2 && args[0] == "--antivirus-file") return WindowsAntivirus.RunWorker(args[1]);
+if (args.Length == 3 && args[0] == "--antivirus-provider") return WindowsAntivirus.RunProviderWorker(args[1], args[2]);
 
 // ───────────── test origin server ─────────────
 if (Environment.GetEnvironmentVariable("MCDM_TEST_UI_CULTURE") is { Length: > 0 } testCulture)
     System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo(testCulture);
 if (args.Length >= 2 && args[0] == "--scanner-fixture")
 {
+    if (args[1] is "scan-clean" or "scan-failure" or "scan-threat" or "scan-policy")
+    {
+        File.AppendAllText(args[2], args[1] + "\n");
+        if (args[1] == "scan-threat") { Console.WriteLine("Detected: 1"); return 10; }
+        if (args[1] == "scan-policy") { Console.WriteLine("FM_AV_POLICY_BLOCK"); return 21; }
+        if (args[1] == "scan-failure") return 7;
+        Console.WriteLine("FM_AV_SCAN_COMPLETED"); return 0;
+    }
     if (args[1] == "wait")
     {
         File.WriteAllText(args[2], Environment.ProcessId.ToString());
@@ -322,6 +356,18 @@ HttpRequestMessage BReq(string bb, HttpMethod method, string path, string? token
     if (body != null) r.Content = JsonContent.Create(body);
     return r;
 }
+
+await Test("bridge: declining or closing download confirmation does not create a job", async () =>
+{
+    using var manager = NewManager(Tmp());
+    var (bridge, token, address, http) = await StartBridge(manager, new BridgeHooks { ConfirmDownloadAsync = _ => Task.FromResult(false) });
+    await using var lifetime = bridge; using var client = http;
+    using var response = await client.SendAsync(BReq(address, HttpMethod.Post, "/download", token, body: new { url = Base + "/file", filename = "lecture.pdf", kind = "file" }));
+    var answer = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+    Check(response.StatusCode == HttpStatusCode.OK && !answer.GetProperty("ok").GetBoolean()
+        && answer.GetProperty("error").GetString() == "cancelled by user", "declined prompt did not preserve the extension fallback contract");
+    Check(manager.Snapshot().Count == 0, "declined browser download was queued in FM");
+});
 
 await Test("bridge: origin/host enforcement and API contract", async () =>
 {

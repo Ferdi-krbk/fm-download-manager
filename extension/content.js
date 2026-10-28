@@ -35,7 +35,7 @@
 
   let passThrough = null;   // link re-clicked after the app could not take the download
   document.addEventListener('click', (e) => {
-    if (state.settings?.intercept === false) return;
+    if (!state.clickIntercept || state.settings?.intercept === false) return;
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
     const a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
     if (!a) return;

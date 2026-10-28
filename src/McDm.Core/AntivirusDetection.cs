@@ -2,16 +2,17 @@ using System.Diagnostics;
 
 namespace McDm.Core;
 
-public sealed record AntivirusProfile(string Name, string Executable, string Kind, string? CustomArguments = null)
+public sealed record AntivirusProfile(string Name, string Executable, string Kind, string? CustomArguments = null, string? ProviderId = null)
 {
     public ProcessStartInfo ForFile(string file)
     {
         var start = new ProcessStartInfo(Executable);
-        if (Kind == "windows")
+        if (Kind is "windows" or "amsi" or "amsi-microsoft")
         {
             if (string.Equals(Path.GetFileNameWithoutExtension(Executable), "dotnet", StringComparison.OrdinalIgnoreCase))
                 start.ArgumentList.Add(System.Reflection.Assembly.GetEntryAssembly()!.Location);
-            start.ArgumentList.Add("--antivirus-file");
+            start.ArgumentList.Add(ProviderId == null ? "--antivirus-file" : "--antivirus-provider");
+            if (ProviderId != null) start.ArgumentList.Add(ProviderId);
             start.ArgumentList.Add(Path.GetFullPath(file));
         }
         else if (Kind == "kaspersky")
@@ -87,11 +88,34 @@ public static class AntivirusDetection
     }
 
     public static AntivirusProfile? Detect(string? previousPath = null, string? previousArguments = null, IEnumerable<string>? installRoots = null, bool allowWindowsIntegration = true)
+        => DetectCandidates(previousPath, previousArguments, installRoots, allowWindowsIntegration).FirstOrDefault();
+
+    public static IReadOnlyList<AntivirusProfile> DetectCandidates(string? previousPath = null, string? previousArguments = null, IEnumerable<string>? installRoots = null, bool allowWindowsIntegration = true)
     {
-        if (allowWindowsIntegration && installRoots == null && WindowsAntivirus.IsAvailable
-            && System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name is "FMDownloadManager" or "McDm.Tests" or "McDm.Acceptance"
-            && Environment.ProcessPath is { } host)
-            return new("Windows", host, "windows");
+        var native = DetectConsole(previousPath, installRoots);
+        if (installRoots != null || !OperatingSystem.IsWindows()) return native == null ? Array.Empty<AntivirusProfile>() : new[] { native };
+        var providers = allowWindowsIntegration ? WindowsAntivirus.RegisteredProviders() : Array.Empty<WindowsAntivirus.RegisteredProvider>();
+        string? host = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name is "FMDownloadManager" or "McDm.Tests" or "McDm.Acceptance" ? Environment.ProcessPath : null;
+        var defender = DetectDefender(previousPath);
+        return BuildCandidates(native, providers, host, defender);
+    }
+
+    internal static IReadOnlyList<AntivirusProfile> BuildCandidates(AntivirusProfile? native, IReadOnlyList<WindowsAntivirus.RegisteredProvider> providers, string? host, AntivirusProfile? defender)
+    {
+        var candidates = new List<AntivirusProfile>();
+        if (native != null) candidates.Add(native);
+        if (host != null)
+            candidates.AddRange(providers.Where(provider => !provider.IsMicrosoft).Select(provider =>
+                new AntivirusProfile(provider.Name, host, "amsi", ProviderId: provider.Id.ToString("D"))));
+        if (defender != null) candidates.Add(defender);
+        if (host != null)
+            candidates.AddRange(providers.Where(provider => provider.IsMicrosoft).Select(provider =>
+                new AntivirusProfile(provider.Name, host, "amsi-microsoft", ProviderId: provider.Id.ToString("D"))));
+        return candidates;
+    }
+
+    private static AntivirusProfile? DetectConsole(string? previousPath, IEnumerable<string>? installRoots)
+    {
         // Legacy settings often point at Kaspersky's GUI. Never run that as a scanner.
         if (!string.IsNullOrWhiteSpace(previousPath))
         {
@@ -99,10 +123,8 @@ public static class AntivirusDetection
             if (name is "avpui.exe" or "avp.exe" or "avp.com")
             {
                 string console = Path.Combine(Path.GetDirectoryName(previousPath) ?? "", "avp.com");
-                if (File.Exists(console)) return new("Kaspersky", console, "kaspersky");
+                if (IsAntivirusFolder(Path.GetDirectoryName(console) ?? "") && File.Exists(console)) return new("Kaspersky", console, "kaspersky");
             }
-            else if (name == "mpcmdrun.exe" && File.Exists(previousPath))
-                return new("Microsoft Defender", previousPath, "defender");
         }
 
         var roots = installRoots?.ToArray() ?? new[] {
@@ -118,6 +140,8 @@ public static class AntivirusDetection
             {
                 foreach (string product in Directory.EnumerateDirectories(folder).OrderByDescending(path => path, StringComparer.OrdinalIgnoreCase).Prepend(folder))
                 {
+                    // VPN also ships avp.com, but it is not an antivirus scanner.
+                    if (!IsAntivirusFolder(product)) continue;
                     string console = Path.Combine(product, "avp.com");
                     if (File.Exists(console)) return new("Kaspersky", console, "kaspersky");
                 }
@@ -126,6 +150,14 @@ public static class AntivirusDetection
         }
         // Tests can pass explicit roots without accidentally selecting the host's antivirus.
         if (installRoots != null || !OperatingSystem.IsWindows()) return null;
+        return null;
+    }
+
+    private static AntivirusProfile? DetectDefender(string? previousPath)
+    {
+        if (!string.IsNullOrWhiteSpace(previousPath)
+            && Path.GetFileName(previousPath).Equals("MpCmdRun.exe", StringComparison.OrdinalIgnoreCase) && File.Exists(previousPath))
+            return new("Microsoft Defender", previousPath, "defender");
         string platform = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "Microsoft", "Windows Defender", "Platform");
         try
         {
@@ -139,5 +171,14 @@ public static class AntivirusDetection
         catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
         string direct = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Windows Defender", "MpCmdRun.exe");
         return File.Exists(direct) ? new("Microsoft Defender", direct, "defender") : null;
+    }
+
+    private static bool IsAntivirusFolder(string path)
+    {
+        string name = Path.GetFileName(path);
+        return !name.Contains("VPN", StringComparison.OrdinalIgnoreCase)
+            && !name.Contains("Password", StringComparison.OrdinalIgnoreCase)
+            && !name.Contains("Safe Kids", StringComparison.OrdinalIgnoreCase)
+            && !name.Contains("SafeKids", StringComparison.OrdinalIgnoreCase);
     }
 }

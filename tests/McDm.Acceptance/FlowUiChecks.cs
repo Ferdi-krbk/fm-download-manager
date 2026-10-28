@@ -158,19 +158,16 @@ internal static class FlowUiChecks
                 SmoothScroll.ScrollTo(viewer, 420);
                 Pump(45);
                 if (SystemParameters.ClientAreaAnimation)
-                    Require(viewer.VerticalOffset > 0 && viewer.VerticalOffset < 420, "scroll jumped directly to its target instead of animating");
-                Pump(260);
-                Require(Math.Abs(viewer.VerticalOffset - 420) < 1, "scroll did not settle at target: " + viewer.VerticalOffset);
+                    Require(viewer.VerticalOffset > 0 && viewer.VerticalOffset < 420, "scroll missed its intermediate frame: " + viewer.VerticalOffset);
+                WaitForSettlement(() => Math.Abs(viewer.VerticalOffset - 420) < 1, "scroll did not settle at target");
                 SmoothScroll.ScrollTo(viewer, 800);
                 Pump(30);
                 SmoothScroll.ScrollTo(viewer, 1000);
-                Pump(280);
-                Require(Math.Abs(viewer.VerticalOffset - 1000) < 1, "interrupted wheel animation settled incorrectly");
+                WaitForSettlement(() => Math.Abs(viewer.VerticalOffset - 1000) < 1, "interrupted wheel animation settled incorrectly");
                 FlowMotion.Reveal(viewer);
                 Pump(35);
                 if (SystemParameters.ClientAreaAnimation) Require(viewer.Opacity < 1, "reveal animation did not start");
-                Pump(380);
-                Require(Math.Abs(viewer.Opacity - 1) < .01, "reveal did not settle");
+                WaitForSettlement(() => Math.Abs(viewer.Opacity - 1) < .01, "reveal did not settle");
                 FlowMotion.Hover(viewer, true);
                 Pump(45);
                 if (SystemParameters.ClientAreaAnimation)
@@ -179,8 +176,7 @@ internal static class FlowUiChecks
                     Require(lift.Y < 0 && lift.Y > -2, "hover lift skipped intermediate frames");
                 }
                 FlowMotion.Hover(viewer, false);
-                Pump(230);
-                Require(viewer.RenderTransform == Transform.Identity, "hover left text under a permanent transform");
+                WaitForSettlement(() => viewer.RenderTransform == Transform.Identity, "hover left text under a permanent transform");
                 FlowMotion.Reveal(viewer, true, 80);
                 Pump(100);
                 FlowMotion.Reset(viewer);
@@ -198,31 +194,7 @@ internal static class FlowUiChecks
             Layout(content, new Size(1024, 700));
             Require(Descendants<DataGridRow>(grid).Count() < 60, "grouping disabled row virtualization and made scrolling expensive");
             Console.WriteLine("PASS grouped row virtualization with 300 downloads");
-            var settingsDialog = new SettingsWindow(new AppSettings(), _ => { });
-            try
-            {
-                Require(settingsDialog.FindName("TxtCustomAvPath") == null && settingsDialog.FindName("TxtCustomAvArgs") == null,
-                    "antivirus setup still requires a user-selected executable or arguments");
-                Require(settingsDialog.FindName("TxtDetectedAv") is TextBlock && settingsDialog.FindName("BtnDetectAv") is Button,
-                    "automatic antivirus detection UI is missing");
-                var knownProducts = Task.Run(AntivirusDetection.InstalledProductNames).GetAwaiter().GetResult();
-                var detect = (Button)settingsDialog.FindName("BtnDetectAv");
-                var detected = (TextBlock)settingsDialog.FindName("TxtDetectedAv");
-                for (int attempt = 0; attempt < 4; attempt++)
-                {
-                    settingsDialog.Dispatcher.BeginInvoke(new Action(() => detect.RaiseEvent(new RoutedEventArgs(Button.ClickEvent))));
-                    Pump(40);
-                    var deadline = System.Diagnostics.Stopwatch.StartNew();
-                    while (!detect.IsEnabled && deadline.Elapsed < TimeSpan.FromSeconds(10)) Pump(20);
-                    Require(detect.IsEnabled, "antivirus refresh did not finish");
-                    Require(detected.Text != "Detected: Windows", "scan transport was incorrectly displayed as an antivirus product");
-                    foreach (string product in knownProducts)
-                        Require(detected.Text.Contains(product, StringComparison.OrdinalIgnoreCase), "registered antivirus vanished after Detect again");
-                }
-                Console.WriteLine("PASS actual Detect again button: repeated worker queries retain registered antivirus names");
-            }
-            finally { settingsDialog.Close(); }
-            Console.WriteLine("PASS automatic antivirus settings without manual executable/command fields");
+            CheckAntivirusSettings();
 
         }
         finally
@@ -231,7 +203,52 @@ internal static class FlowUiChecks
             Task.Run(async () => await manager.DisposeAsync()).GetAwaiter().GetResult();
         }
     }
+    internal static void CheckAntivirusSettings()
+    {
+        ThemeManager.ApplyThemeMode("dark");
+        Strings.SetLanguage("en");
+        var settingsDialog = new SettingsWindow(new AppSettings(), _ => { });
+        try
+        {
+            Require(settingsDialog.FindName("TxtCustomAvPath") == null && settingsDialog.FindName("TxtCustomAvArgs") == null,
+                "antivirus setup still requires a user-selected executable or arguments");
+            Require(settingsDialog.FindName("TxtDetectedAv") is TextBlock && settingsDialog.FindName("BtnDetectAv") is Button,
+                "automatic antivirus detection UI is missing");
+            var knownProducts = Task.Run(AntivirusDetection.InstalledProductNames).GetAwaiter().GetResult();
+            var detect = (Button)settingsDialog.FindName("BtnDetectAv");
+            var detected = (TextBlock)settingsDialog.FindName("TxtDetectedAv");
+            var scanHelp = (TextBlock)settingsDialog.FindName("TxtAntivirusHelp");
+            var selectedScanner = Task.Run(() => AntivirusDetection.Detect()).GetAwaiter().GetResult();
+            for (int attempt = 0; attempt < 4; attempt++)
+            {
+                settingsDialog.Dispatcher.BeginInvoke(new Action(() => detect.RaiseEvent(new RoutedEventArgs(Button.ClickEvent))));
+                Pump(40);
+                var deadline = System.Diagnostics.Stopwatch.StartNew();
+                while (!detect.IsEnabled && deadline.Elapsed < TimeSpan.FromSeconds(10)) Pump(20);
+                Require(detect.IsEnabled, "antivirus refresh did not finish");
+                Require(detected.Text != "Detected: Windows", "scan transport was incorrectly displayed as an antivirus product");
+                if (selectedScanner != null)
+                    Require(scanHelp.Text.Contains(selectedScanner.Name, StringComparison.OrdinalIgnoreCase), "settings did not show the actual selected scanner route");
+                foreach (string product in knownProducts)
+                    Require(detected.Text.Contains(product, StringComparison.OrdinalIgnoreCase), "registered antivirus vanished after Detect again");
+            }
+            Console.WriteLine("PASS actual Detect again button: repeated worker queries retain registered antivirus names");
+        }
+        finally { settingsDialog.Close(); }
+        Console.WriteLine("PASS automatic antivirus settings without manual executable/command fields");
+    }
+
     private static void Require(bool condition, string message) { if (!condition) throw new Exception(message); }
+    private static void WaitForSettlement(Func<bool> settled, string message)
+    {
+        // Off-screen rendering/completion callbacks are scheduled by WPF, not a
+        // wall-clock sleep. Keep intermediate-frame checks, then bound final-state
+        // observation so a late presentation tick is not mistaken for a stuck UI.
+        var deadline = System.Diagnostics.Stopwatch.StartNew();
+        while (!settled() && deadline.Elapsed < TimeSpan.FromSeconds(2)) Pump(20);
+        Require(settled(), message);
+        Console.WriteLine($"PASS animation final state: {message}, observed after {deadline.ElapsedMilliseconds} ms");
+    }
     internal static IEnumerable<T> Descendants<T>(DependencyObject root) where T : DependencyObject
     {
         for (int i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)

@@ -11,7 +11,7 @@
     <UseAppHost>false</UseAppHost>
   </PropertyGroup>
   <ItemGroup>
-    <AssemblyMetadata Include="StableBuild" Value="5" />
+    <AssemblyMetadata Include="StableBuild" Value="6" />
     <EmbeddedResource Include="update-public-key.pem" />
     <InternalsVisibleTo Include="McDm.Tests" />
   </ItemGroup>

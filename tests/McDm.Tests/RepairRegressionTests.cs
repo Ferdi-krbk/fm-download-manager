@@ -27,8 +27,12 @@ public static class RepairRegressionTests
             File.WriteAllText(gui, "fixture GUI");
             check(AntivirusDetection.Detect(gui, installRoots: new[] { root }) == null, "GUI launcher was treated as a file scanner");
             File.WriteAllText(console, "fixture console");
+            string vpn = Path.Combine(root, "Kaspersky Lab", "Kaspersky VPN 99.0");
+            Directory.CreateDirectory(vpn);
+            string vpnConsole = Path.Combine(vpn, "avp.com"); File.WriteAllText(vpnConsole, "fixture VPN console");
             var detected = AntivirusDetection.Detect(installRoots: new[] { root });
             check(detected?.Kind == "kaspersky" && detected.Executable == console, "installed console was not discovered automatically");
+            check(AntivirusDetection.Detect(vpnConsole, installRoots: new[] { root })?.Executable == console, "VPN console was mistaken for an antivirus scanner");
             check(AntivirusDetection.Detect(gui, installRoots: new[] { root })?.Executable == console, "legacy GUI setting was not repaired");
             var command = detected!.ForFile(@"C:\Downloads\a file.ppt");
             check(command.ArgumentList.SequenceEqual(new[] { "SCAN", @"C:\Downloads\a file.ppt", "/i0", "/fa" }), "scanner command or quoting is incorrect");
@@ -90,6 +94,63 @@ public static class RepairRegressionTests
             check(!SegmentedDownloader.ValidatorsMatch("W/\"ABC\"", "W/\"ABC\""), "weak ETags cannot resume");
             check(SegmentedDownloader.ValidatorsMatch("\"ABC\"", "\"ABC\""), "unchanged strong ETag must resume");
             return Task.CompletedTask;
+        });
+
+        foreach (string mode in new[] { "changed-size", "unknown-size", "interrupted", "empty", "html", "unsolicited-partial", "not-found", "cancelled" })
+        await test($"repair: ignored Range safely restarts a full GET ({mode})", async () =>
+        {
+            byte[] old = "old-file-version"u8.ToArray();
+            byte[] expected = mode == "empty" ? Array.Empty<byte>() : "ABCDEFGH"u8.ToArray();
+            int calls = 0, fullGets = 0, partialWrites = 0;
+            using var cancellation = new CancellationTokenSource();
+            using var http = new HttpClient(new Handler((request, _) =>
+            {
+                if (Interlocked.Increment(ref calls) == 1)
+                {
+                    var probe = new HttpResponseMessage(HttpStatusCode.PartialContent) { Content = new ByteArrayContent(old[..1]) };
+                    probe.Content.Headers.ContentRange = new ContentRangeHeaderValue(0, 0, old.Length);
+                    probe.Headers.ETag = new EntityTagHeaderValue("\"old\"");
+                    return probe;
+                }
+                if (request.Headers.Range is { } range)
+                {
+                    var part = range.Ranges.Single();
+                    if (Interlocked.Increment(ref partialWrites) == 1)
+                    {
+                        int from = (int)part.From!.Value, to = (int)part.To!.Value;
+                        var valid = new HttpResponseMessage(HttpStatusCode.PartialContent) { Content = new ByteArrayContent(old[from..(to + 1)]) };
+                        valid.Headers.ETag = new EntityTagHeaderValue("\"old\"");
+                        valid.Content.Headers.ContentRange = new ContentRangeHeaderValue(from, to, old.Length);
+                        return valid;
+                    }
+                    if (mode == "cancelled") cancellation.Cancel();
+                    return new(HttpStatusCode.OK) { Content = new ByteArrayContent(old) };
+                }
+                check(request.Headers.IfRange == null, "full restart retained an If-Range validator");
+                int attempt = Interlocked.Increment(ref fullGets);
+                if (mode == "not-found") return new(HttpStatusCode.NotFound) { Content = new ByteArrayContent([]) };
+                HttpContent content = mode == "interrupted" && attempt == 1 ? new StreamContent(new BrokenStream())
+                    : mode == "unknown-size" ? new StreamContent(new NonSeekableStream()) : new ByteArrayContent(expected);
+                var response = new HttpResponseMessage(mode == "unsolicited-partial" ? HttpStatusCode.PartialContent : HttpStatusCode.OK) { Content = content };
+                response.Headers.ETag = new EntityTagHeaderValue("\"new\"");
+                if (mode == "html") response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/html");
+                return response;
+            }));
+            var item = new DownloadItem { Directory = tmp(), Request = new() { Url = "https://example.test/document", FileName = mode == "html" ? "document.pdf" : "document.bin" } };
+            bool accepted = mode is "changed-size" or "unknown-size" or "interrupted" or "empty";
+            try
+            {
+                await new SegmentedDownloader(http, new EngineOptions { MinSplitBytes = 1, MinChunkBytes = 4, MaxChunkBytes = 4 }).RunAsync(item, 2, cancellation.Token);
+                check(accepted, "invalid full-download response was finalized");
+                check(File.ReadAllBytes(item.SavePath).SequenceEqual(expected), "range fallback mixed entities or appended retry bytes");
+                check(!item.SupportsRanges && item.TotalBytes == expected.Length, "full-download size or range capability is stale");
+                check(!File.Exists(item.SavePath + ".mcdm"), "range checkpoint survived successful fallback");
+            }
+            catch (FatalDownloadException)
+            { check(!accepted, "valid full GET fallback was rejected"); check(!File.Exists(item.SavePath), "invalid response produced a completed file"); }
+            catch (OperationCanceledException) when (mode == "cancelled")
+            { check(!File.Exists(item.SavePath), "cancelled range download was finalized"); }
+            check(fullGets == (mode == "cancelled" ? 0 : mode == "interrupted" ? 2 : 1), "fallback repeated unexpectedly or ignored cancellation");
         });
 
         foreach (string mode in new[] { "capped", "extended", "missing", "wrong-start", "wrong-total", "wrong-unit" })
@@ -327,7 +388,7 @@ public static class RepairRegressionTests
             check(UpdateChecker.ParseRelease(refreshed, "1.0.0", 3)?.HasUpdate == false, "same build creates an update loop");
             check(UpdateChecker.ParseRelease(refreshed, "1.0.0", 4)?.HasUpdate == false, "older stable build was offered as a downgrade");
             check(UpdateChecker.ParseRelease(refreshed, "2.0.0", 1)?.HasUpdate == false, "build marker overrode a newer product version");
-            check(UpdateChecker.CurrentStableBuild == 5, "stable-build assembly metadata missing");
+            check(UpdateChecker.CurrentStableBuild == 6, "stable-build assembly metadata missing");
             var official = refreshed.Replace("v3.8.1", "v1.0.0").Replace("FM_STABLE_BUILD=3", "FM_STABLE_BUILD=4");
             check(UpdateChecker.ParseRelease(official, "1.0.0", 3)?.LatestBuild == 4, "official release build metadata was lost");
             check(UpdateChecker.ParseRelease(official, "1.0.0", 4)?.HasUpdate == false, "official release creates an update loop");
@@ -335,6 +396,10 @@ public static class RepairRegressionTests
             check(UpdateChecker.ParseRelease(hotfix, "1.0.0", 4)?.HasUpdate == true, "installed build 4 cannot discover antivirus hotfix");
             check(UpdateChecker.ParseRelease(hotfix, "1.0.0", 5)?.HasUpdate == false, "installed hotfix creates an update loop");
             check(UpdateChecker.ParseRelease(hotfix, "1.0.0", 6)?.HasUpdate == false, "hotfix downgrades a newer build");
+            var current = hotfix.Replace("FM_STABLE_BUILD=5", "FM_STABLE_BUILD=6");
+            check(UpdateChecker.ParseRelease(current, "1.0.0", 5)?.HasUpdate == true, "installed build 5 cannot discover this update");
+            check(UpdateChecker.ParseRelease(current, "1.0.0", 6)?.HasUpdate == false, "current build creates an update loop");
+            check(UpdateChecker.ParseRelease(current, "1.0.0", 7)?.HasUpdate == false, "current update downgrades a newer build");
             var installed = UpdateChecker.ParseRelease(json, "1.0.0");
             check(installed?.HasUpdate == false, "bridge creates an endless update loop");
             check(UpdateChecker.ParseRelease(json.Replace("FM_STABLE_TARGET=1.0.0", "FM_STABLE_TARGET=garbage"), "1.0.0") == null, "invalid target accepted");

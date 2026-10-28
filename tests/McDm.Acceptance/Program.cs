@@ -21,6 +21,10 @@ internal static class Program
     public static int Main(string[] args)
     {
         if (args.Length == 2 && args[0] == "--antivirus-file") return WindowsAntivirus.RunWorker(args[1]);
+        if (args.Length == 3 && args[0] == "--antivirus-provider") return WindowsAntivirus.RunProviderWorker(args[1], args[2]);
+        // The test renders off-screen. Use WPF software composition so an occluded
+        // GPU surface does not throttle animation clocks; the shipped app is unchanged.
+        System.Windows.Media.RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
         int result = 0;
         var application = new System.Windows.Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         application.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri("/FMDownloadManager;component/Themes/Theme.xaml", UriKind.Relative) });
@@ -37,6 +41,11 @@ internal static class Program
 
     private static void Run(string[] args)
     {
+        if (args.FirstOrDefault() == "--antivirus-ui")
+        {
+            FlowUiChecks.CheckAntivirusSettings();
+            return;
+        }
         if (args.FirstOrDefault() == "--ui-only")
         {
             FlowUiChecks.Run(args.ElementAtOrDefault(1) ?? "dist/flow-ui-checks");

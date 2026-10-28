@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.0.0 download handoff and antivirus priority (stable build 6) - 2026-10-28
+
+- Prioritize all compatible third-party antivirus providers before any Microsoft
+  Defender route. Pin AMSI workers to the selected registered provider, verify its
+  DLL signature, and fall back only on scan failure, never on threats/policy blocks.
+
+- Prefer Kaspersky's antivirus file scanner over generic Windows / AMSI, exclude
+  Kaspersky VPN consoles, show the actual scan route and require completed scan
+  statistics before reporting a Kaspersky scan as passed.
+
+- Restart through a fresh single-stream GET if a server stops honoring Range
+  requests. Discard old partial data/checkpoints, use the new response size, and
+  preserve strict validation of malformed ranges and changed partial entities.
+- Keep the original browser download when FM confirmation is declined or closed.
+  Avoid duplicate page-click/native-download interception and release downloads
+  if the extension encounters an unexpected interception error.
+
 ## 1.0.0 antivirus detection fix (stable build 5) - 2026-10-25
 
 - Fix repeated antivirus-name detection failing with WMI E_FAIL and showing the
